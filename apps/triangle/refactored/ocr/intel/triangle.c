@@ -25,23 +25,23 @@ See the README file for more information.
 
 /*
 void printboard(u64 board[15]) {
-    PRINTF("board\n");
-    PRINTF("          %3d \n", board[0]);
-    PRINTF("         %3d %3d \n", board[1], board[2]);
-    PRINTF("        %3d %3d %3d \n", board[3], board[4], board[5]);
-    PRINTF("       %3d %3d %3d %3d \n", board[6], board[7], board[8], board[9]);
-    PRINTF("      %3d %3d %3d %3d %3d\n", board[10], board[11], board[12], board[13], board[14]);
+    ocrPrintf("board\n");
+    ocrPrintf("          %3d \n", board[0]);
+    ocrPrintf("         %3d %3d \n", board[1], board[2]);
+    ocrPrintf("        %3d %3d %3d \n", board[3], board[4], board[5]);
+    ocrPrintf("       %3d %3d %3d %3d \n", board[6], board[7], board[8], board[9]);
+    ocrPrintf("      %3d %3d %3d %3d %3d\n", board[10], board[11], board[12], board[13], board[14]);
     return ;
 }
 */
 
 ocrGuid_t incrementTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 * counter = depv[0].ptr;
-//PRINTF("in increment with %d\n", *counter);
-//    if(*counter == 0) PRINTF("found first solution...wait for final count\n");
+//ocrPrintf("in increment with %d\n", *counter);
+//    if(*counter == 0) ocrPrintf("found first solution...wait for final count\n");
     (*counter)++;
-//if(*counter %100 == 1) PRINTF("in increment with %d\n", *counter);
-//PRINTF("in increment with %d\n", *counter);
+//if(*counter %100 == 1) ocrPrintf("in increment with %d\n", *counter);
+//ocrPrintf("in increment with %d\n", *counter);
     return NULL_GUID;
 }
 ocrGuid_t triangleTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
@@ -73,7 +73,7 @@ look for legal moves
     ocrGuid_t triangleEdt, once;
     u64 i, j;
     u64 *newboard;
-//PRINTF("starting Triangle with nummoves %d oldmove %d \n", nummoves, oldmove);
+//ocrPrintf("starting Triangle with nummoves %d oldmove %d \n", nummoves, oldmove);
     for(i=0;i<BOARDSIZE;i++) board[i] = oldboard[i];
     if(oldmove != -1){
         nummoves++;
@@ -83,19 +83,19 @@ look for legal moves
     }
 //printboard(board);
     if(nummoves == BOTTOM){
-//PRINTF("nummoves == 13 !!\n");
+//ocrPrintf("nummoves == 13 !!\n");
 /*
         if(*count==0) {
-            PRINTF("board numbering\n");
-            PRINTF("  0  1  2  3  4\n");
-            PRINTF("  5  6  7  8\n");
-            PRINTF("  9 10  11\n");
-            PRINTF(" 12 13\n");
-            PRINTF(" 14\n");
+            ocrPrintf("board numbering\n");
+            ocrPrintf("  0  1  2  3  4\n");
+            ocrPrintf("  5  6  7  8\n");
+            ocrPrintf("  9 10  11\n");
+            ocrPrintf(" 12 13\n");
+            ocrPrintf(" 14\n");
 
-            PRINTF("1st solution\n");
+            ocrPrintf("1st solution\n");
             for(i=0;i<13;i++){
-                PRINTF("%2d %2d %2d\n", rmoves[i][0], rmoves[i][1], rmoves[i][2]);
+                ocrPrintf("%2d %2d %2d\n", rmoves[i][0], rmoves[i][1], rmoves[i][2]);
             }
             printboard(board);
         }
@@ -125,8 +125,8 @@ look for legal moves
 //print final count
 ocrGuid_t wrapupTask(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 * count = depv[0].ptr;
-    if(*count == 29760) PRINTF("PASS  final count %d \n", *count);
-        else PRINTF("FAIL final count %d should be 29760 \n", *count);
+    if(*count == 29760) ocrPrintf("PASS  final count %d \n", *count);
+        else ocrPrintf("FAIL final count %d should be 29760 \n", *count);
 
     ocrShutdown();
     return NULL_GUID;
@@ -225,7 +225,7 @@ ocrGuid_t mainEdt(){
     u64 *counter;
     ocrGuid_t realmain, realmainTemplate, counterDb, boardDb, oldboardDb, pmovesDb;
     u64 *oldboard, *board, *pmoves;
-PRINTF("triangle puzzle BOTTOM %d \n", BOTTOM);
+ocrPrintf("triangle puzzle BOTTOM %d \n", BOTTOM);
 
     ocrDbCreate(&counterDb, (void**) &counter, sizeof(u64), 0, NULL_GUID, NO_ALLOC);
     ocrDbCreate(&oldboardDb, (void**) &oldboard, sizeof(u64)*BOARDSIZE, 0, NULL_GUID, NO_ALLOC);

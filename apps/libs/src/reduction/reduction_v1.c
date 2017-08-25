@@ -57,8 +57,8 @@ void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, 
     ocrEdtCreate( &PTR_reductionTreeHs[0], TML_reduction, EDT_PARAM_DEF, NULL, leaves, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &EVT_reduction_out_once );
     ocrAddDependence( EVT_reduction_out_once, EVT_reduction_out, 0, DB_MODE_RW );
 
-    //PRINTF("maxleaves = %d maxdepth = %d ARITY = %d\n", maxleaves, maxdepth, ARITY);
-    //PRINTF("Creating EDT %d(level=%d) with depc %d\n", 0, idepth, leaves);
+    //ocrPrintf("maxleaves = %d maxdepth = %d ARITY = %d\n", maxleaves, maxdepth, ARITY);
+    //ocrPrintf("Creating EDT %d(level=%d) with depc %d\n", 0, idepth, leaves);
 
     for( idepth = maxdepth; idepth > 1; idepth-- )
     {
@@ -91,7 +91,7 @@ void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, 
                 ocrEdtCreate( &(PTR_reductionTreeHs[inode*nodeGap+ileaf*leafGap]), TML_reduction, EDT_PARAM_DEF, NULL, _depc, NULL, EDT_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), &event);
                 ocrAddDependence( event, EVT_out, 0, ileaf ? DB_MODE_RO : DB_MODE_RW );
                 ocrAddDependence( EVT_out, EDT_node, ileaf, ileaf ? DB_MODE_RO : DB_MODE_RW );
-                //PRINTF("Creating EDT %d(level=%d) with depc %d with output slot triggering edt %d(level=%d) on slot %d\n",
+                //ocrPrintf("Creating EDT %d(level=%d) with depc %d with output slot triggering edt %d(level=%d) on slot %d\n",
                 //        inode*nodeGap+ileaf*leafGap, idepth-1, ndep_leaf, inode*nodeGap, idepth, ileaf);
             }
         }
@@ -117,7 +117,7 @@ void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, 
         {
             ocrGuid_t event = PTR_EVT_inputs[inode*nodeGap+ileaf*leafGap];
             ocrAddDependence( event, EDT_node, ileaf, ileaf ? DB_MODE_RO : DB_MODE_RW );
-            //PRINTF("Creating event guid %d which triggers EDT guid %d(level=%d) on slot %d\n", inode*nodeGap+ileaf*leafGap, inode*nodeGap, idepth, ileaf);
+            //ocrPrintf("Creating event guid %d which triggers EDT guid %d(level=%d) on slot %d\n", inode*nodeGap+ileaf*leafGap, inode*nodeGap, idepth, ileaf);
         }
     }
 
@@ -130,7 +130,7 @@ void ocrLibRed_setup_tree_serial( u32 nParticipants, ocrGuid_t* PTR_EVT_inputs, 
 
 ocrGuid_t FNC_reduction_double(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    //ocrPrintf("%s\n", __func__);
     s32 _paramc, _depc, _idep;
     s32 ielem, NELEM = 1;
     double* PTR_reduction_out = depv[0].ptr;

@@ -183,12 +183,12 @@ ocrGuid_t mainEdt(u32 ocrparamc, u64* ocrparams,
  * OCR argument handling
  * arg0 is the program name
  */
-    int numArgs = getArgc(ocrdepv[0].ptr);
+    int numArgs = ocrGetArgc(ocrdepv[0].ptr);
     if (numArgs != 2 ) {
         ocrShutdown();
         return NULL_GUID;
     }
-    char *arg1 = getArgv(ocrdepv[0].ptr, 1);
+    char *arg1 = ocrGetArgv(ocrdepv[0].ptr, 1);
     int initN=atoi(arg1);
     // placeholder, not used for this call
     ocrGuid_t dbGuid = {0};

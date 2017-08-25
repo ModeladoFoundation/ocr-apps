@@ -12,7 +12,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
   int retval;
   backProjAsyncPRM_t *backProjAsyncParamvIn = (backProjAsyncPRM_t *)paramv;
 #ifdef TRACE_LVL_4
-  PRINTF("//////// enter backproject_async\n");RAG_FLUSH;
+  ocrPrintf("//////// enter backproject_async\n");RAG_FLUSH;
 #endif
   assert(paramc==(PRMNUM(backProjAsync)));
   struct corners_t *corners = &(backProjAsyncParamvIn->corners);
@@ -55,25 +55,25 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
   int blk_size_half = blk_size_whole/2;
   ocrGuid_t A_m_dbg, Phi_m_dbg, image_ptr_dbg;
   float *A_m = spad_malloc(&A_m_dbg, blk_size_whole*sizeof(float));
-  if(A_m == NULL){PRINTF("Error allocating memory for A_m\n");RAG_FLUSH;xe_exit(1);}
+  if(A_m == NULL){ocrPrintf("Error allocating memory for A_m\n");RAG_FLUSH;xe_exit(1);}
   struct complexData *Phi_m = spad_malloc(&Phi_m_dbg, blk_size_whole*sizeof(struct complexData));
-  if(Phi_m == NULL){PRINTF("Error allocating memory for Phi_m\n");RAG_FLUSH;xe_exit(1);}
+  if(Phi_m == NULL){ocrPrintf("Error allocating memory for Phi_m\n");RAG_FLUSH;xe_exit(1);}
 #ifdef RAG_SPAD
 #ifdef TRACE_LVL_5
-  PRINTF("////////// before spad setup in backproject_async\n");RAG_FLUSH;
+  ocrPrintf("////////// before spad setup in backproject_async\n");RAG_FLUSH;
 #endif
   struct complexData **image_ptr;
   image_ptr = (struct complexData **)spad_malloc(&image_ptr_dbg,(m2-m1)*sizeof(struct complexData *)
 			                                       +(m2-m1)*(n2-n1)*sizeof(struct complexData));
-  if(image_ptr == NULL) { PRINTF("Error allocating memory for image_ptr\n");RAG_FLUSH;xe_exit(1);}
+  if(image_ptr == NULL) { ocrPrintf("Error allocating memory for image_ptr\n");RAG_FLUSH;xe_exit(1);}
   struct complexData *image_data_ptr = (struct complexData *)&image_ptr[(m2-m1)];
-  if(image_data_ptr == NULL) { PRINTF("Unable to allocate memory for image_ptr\n");RAG_FLUSH;xe_exit(1);}
+  if(image_data_ptr == NULL) { ocrPrintf("Unable to allocate memory for image_ptr\n");RAG_FLUSH;xe_exit(1);}
   for(int m=0;m<(m2-m1);m++) {
     image_ptr[m] = image_data_ptr + m*(n2-n1);
     BSMtoSPAD( image_ptr[m],&image[m+m1][n1],(n2-n1)*sizeof(struct complexData));
   }
 #ifdef TRACE_LVL_5
-  PRINTF("////////// after spad setup in backproject_async\n");RAG_FLUSH;
+  ocrPrintf("////////// after spad setup in backproject_async\n");RAG_FLUSH;
 #endif
 #endif
 #ifdef RAG_HIST_BIN_DIFFS
@@ -83,7 +83,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
     int old_int_bin = -1;
 
 #ifdef TRACE_LVL_5
-  PRINTF("////////// compute distance to R_mid\n");RAG_FLUSH;
+  ocrPrintf("////////// compute distance to R_mid\n");RAG_FLUSH;
 #endif
     double zr_mid  =                                   - platpos[k][2]; // Z
     double zr_mid2 = zr_mid * zr_mid;
@@ -94,7 +94,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
     double xr_mid2 = xr_mid * xr_mid;
     double R_mid = sqrt (sqrt_arg + xr_mid2);
 #ifdef TRACE_LVL_5
-  PRINTF("////////// compute coefficients for computing bin\n");RAG_FLUSH;
+  ocrPrintf("////////// compute coefficients for computing bin\n");RAG_FLUSH;
 #endif
     float ax  =  xr_mid/R_mid;
     float ay  =  yr_mid/R_mid;
@@ -112,7 +112,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
       A_m[n] = A_m[n-1] + (ax+bx) + (2*(n-1)-blk_size_whole)*bx;
     }
 #ifdef TRACE_LVL_5
-  PRINTF("////////// compute cofficients for computing arg\n");RAG_FLUSH;
+  ocrPrintf("////////// compute cofficients for computing arg\n");RAG_FLUSH;
 #endif
     float ux = ku2dr*ax;
     float uy = ku2dr*ay;
@@ -148,7 +148,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
     UX_VX.imag = sinf(ux+(1-blk_size_whole)*vx);
 #endif
 #ifdef TRACE_LVL_5
-  PRINTF("////////// compute Phi_m\n");RAG_FLUSH;
+  ocrPrintf("////////// compute Phi_m\n");RAG_FLUSH;
 #endif
 #ifdef RAG_SINCOS
     sincosf((-blk_size_half*ux + blk_size_whole*blk_size_whole/4*vx), &(Phi_m[0].imag), &(Phi_m[0].real));
@@ -166,7 +166,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
       UX_VX.imag = tmp.imag;
     }
 #ifdef TRACE_LVL_5
-  PRINTF("////////// compute Phi_n\n");RAG_FLUSH;
+  ocrPrintf("////////// compute Phi_n\n");RAG_FLUSH;
 #endif
     double theta_mid = ku2*R_mid;
     double arg_mid = theta_mid - blk_size_half*uy + blk_size_whole*blk_size_whole/4*vy;
@@ -181,7 +181,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
     Psi_n.imag = sin(arg_mid-2.0*Pi*round(arg_mid/2.0/Pi)); // RAG -- Changed precision to match latest code from Dan Campbell
 #endif
 #ifdef TRACE_LVL_5
-  PRINTF("////////// compute Gamma_m\n");RAG_FLUSH;
+  ocrPrintf("////////// compute Gamma_m\n");RAG_FLUSH;
 #endif
     struct complexData Gamma_m;
 #ifdef RAG_SINCOS
@@ -295,12 +295,12 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
     } // for m
   } // for k
 #ifdef RAG_HIST_BIN_DIFFS
-  PRINTF("HIST = %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld\n",
+  ocrPrintf("HIST = %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld\n",
 	hist[0], hist[1], hist[2], hist[3], hist[4], hist[5], hist[6], hist[7], hist[8], hist[9]);
 #endif
 #ifdef RAG_SPAD
   for(int m=0;m<(m2-m1);m++) {
-    //PRINTF("I<i %d\n",m);
+    //ocrPrintf("I<i %d\n",m);
     SPADtoBSM(&image[m+m1][n1],image_ptr[m],(n2-n1)*sizeof(struct complexData));
    }
    spad_free(image_ptr, image_ptr_dbg);
@@ -316,24 +316,24 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
 
       for(int m=m1; m<m2; m++) {
 #ifdef DEBUG_LVL_1
-	PRINTF("backproject_async m(%d)\n",m);RAG_FLUSH;
+	ocrPrintf("backproject_async m(%d)\n",m);RAG_FLUSH;
 #endif
 	for(int n=n1; n<n2; n++) {
 #ifdef DEBUG_LVL_2
-	  PRINTF("backproject_async n(%d)\n",n);RAG_FLUSH;
+	  ocrPrintf("backproject_async n(%d)\n",n);RAG_FLUSH;
 #endif
 	  acc.real = 0;
 	  acc.imag = 0;
 	  for(int k=0; k<IMAGE_PARAMS_P3; k++) {
 #ifdef DEBUG_LVL_3
-	    PRINTF("backproject_async k(%d)\n",k);RAG_FLUSH;
+	    ocrPrintf("backproject_async k(%d)\n",k);RAG_FLUSH;
 #endif
 	    double x = (double)image_params->xr[m] - platpos[k][0];
 	    double y = (double)image_params->yr[n] - platpos[k][1];
 	    double z = (double)                      platpos[k][2];
 	    double R = sqrt( x*x + y*y + z*z ); // RAG -- Changed precision to match latest code from Dan Campbell
 #ifdef DEBUG_LVL_3
-	    PRINTF("backproject_async                 R(%f)\n",R);RAG_FLUSH;
+	    ocrPrintf("backproject_async                 R(%f)\n",R);RAG_FLUSH;
 #endif
 	    float bin;
 	    if(image_params->TF > 1) {
@@ -372,7 +372,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
 	    acc.imag += sample.real*arg.imag + sample.imag*arg.real;
 	  } // for k
 #ifdef DEBUG_LVL_2
-	  PRINTF("backproject_async                 update image[%d][%d]\n",m,n);RAG_FLUSH;
+	  ocrPrintf("backproject_async                 update image[%d][%d]\n",m,n);RAG_FLUSH;
 #endif
 	  image[n][m] = acc;
 #ifdef RAG_SPAD
@@ -387,7 +387,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
 #endif
 #endif // RAG_PETER_DIST_AND_TRIG
 #ifdef TRACE_LVL_4
-  PRINTF("//////// leave backproject_async\n");RAG_FLUSH;
+  ocrPrintf("//////// leave backproject_async\n");RAG_FLUSH;
 #endif
   return NULL_GUID;
 } // backproject_async
@@ -395,7 +395,7 @@ ocrGuid_t backproject_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc
 ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
   int retval;
 #ifdef TRACE_LVL_3
-  PRINTF("////// enter BackProj_edt\n");RAG_FLUSH;
+  ocrPrintf("////// enter BackProj_edt\n");RAG_FLUSH;
 #endif
   assert(paramc==((sizeof(struct corners_t) + sizeof(uint64_t) - 1)/sizeof(uint64_t)));
   struct corners_t *corners = (struct corners_t *)paramv;
@@ -420,7 +420,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
     fftwf_plan plan_forward, plan_backward;	// FFTW plan variables
 
 #ifdef TRACE_LVL_3
-    PRINTF("////// BackProj FFTW initialization F = %d\n",image_params->F);RAG_FLUSH;
+    ocrPrintf("////// BackProj FFTW initialization F = %d\n",image_params->F);RAG_FLUSH;
 #endif
     input         = (fftwf_complex*)fftwf_malloc(&input_dbg, image_params->S3 * sizeof(fftwf_complex));
     fft_result    = (fftwf_complex*)fftwf_malloc(&fft_result_dbg, image_params->S4 * sizeof(fftwf_complex));
@@ -439,12 +439,12 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 						     +(image_params->P3)*(image_params->S4)*sizeof(struct complexData));
 #endif
     if(Xup == NULL) {
-      PRINTF("Error allocating memory for Xup.\n");RAG_FLUSH;
+      ocrPrintf("Error allocating memory for Xup.\n");RAG_FLUSH;
       xe_exit(1);
     }
     struct complexData *Xup_data_ptr = (struct complexData *)&Xup[image_params->P3];
     if ( Xup_data_ptr == NULL) {
-      PRINTF("Unable to allocate memory for Xup.\n");RAG_FLUSH;
+      ocrPrintf("Unable to allocate memory for Xup.\n");RAG_FLUSH;
       xe_exit(1);
     }
     for(int n=0; n<image_params->P3; n++) {
@@ -482,7 +482,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
     fftwf_destroy_plan(plan_forward);
     fftwf_destroy_plan(plan_backward);
 #ifdef TRACE
-    PRINTF("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d]\n",
+    ocrPrintf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d]\n",
 	      m1, m2-1, n1, n2-1);RAG_FLUSH;
 #endif
 #if !defined(TG_ARCH)
@@ -528,7 +528,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	async_corners.n2   = n+BACK_PROJ_ASYNC_BLOCK_SIZE_N;
 #endif
 #ifdef TRACE_LVL_3
-	PRINTF("////// create an edt for backproject_async\n");RAG_FLUSH;
+	ocrPrintf("////// create an edt for backproject_async\n");RAG_FLUSH;
 #endif
 	ocrGuid_t backproject_async_scg;
     backProjAsyncPRM_t backProjAsyncParamv;
@@ -560,7 +560,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 #endif
   } else { // if F
 #ifdef TRACE
-    PRINTF("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d]\n",
+    ocrPrintf("////// Performing backprojection over Ix[%d:%d] and Iy[%d:%d]\n",
 	      m1, m2-1, n1, n2-1);RAG_FLUSH;
 #endif
 #if !defined(TG_ARCH)
@@ -606,7 +606,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
 	async_corners.n2   = n+BACK_PROJ_ASYNC_BLOCK_SIZE_N;
 #endif
 #ifdef TRACE_LVL_3
-	PRINTF("////// create an edt for backproject_async\n");RAG_FLUSH;
+	ocrPrintf("////// create an edt for backproject_async\n");RAG_FLUSH;
 #endif
 	ocrGuid_t backproject_async_scg;
     backProjAsyncPRM_t backProjAsyncParamv;
@@ -634,7 +634,7 @@ ocrGuid_t BackProj_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   } // if F
 
 #ifdef TRACE_LVL_3
-  PRINTF("////// leave BackProj_edt\n");RAG_FLUSH;
+  ocrPrintf("////// leave BackProj_edt\n");RAG_FLUSH;
 #endif
   return NULL_GUID;
 }

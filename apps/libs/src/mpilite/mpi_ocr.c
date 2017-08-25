@@ -33,17 +33,17 @@ extern ocrGuid_t __ffwd_init(void ** ffwd_add_ptr);
 
 void ERROR(char *s)
 {
-    PRINTF("ERROR: %s; exiting\n",s); exit(1);
+    ocrPrintf("ERROR: %s; exiting\n",s); exit(1);
 }
 
 void WARNING(char *s)
 {
-    PRINTF("WARNING: %s\n",s);
+    ocrPrintf("WARNING: %s\n",s);
 }
 
 // HIDE all the debugging printfs
 #if !DEBUG_MPI
-     #define PRINTF(a,...)
+     #define ocrPrintf(a,...)
      #define fflush(a)
 #endif
 
@@ -51,7 +51,7 @@ void WARNING(char *s)
 static void fillArgv(u64 argc, char *argv[],void *argcArgvPtr)
 {
     // argcArgvPtr points at the data in a datablock, and those addresses are in
-    // the current address space. The getArgv takes what is probably an
+    // the current address space. The ocrGetArgv takes what is probably an
     // offset relative to the beginning of the data block (to get to the
     // char string), and converts it into a pointer, which gets put into the
     // "native" C argv. Note: the char string does NOT need to be copied,
@@ -61,7 +61,7 @@ static void fillArgv(u64 argc, char *argv[],void *argcArgvPtr)
 
     for (int i = 0; i < argc; i++)
         {
-            argv[i] = getArgv(argcArgvPtr, i);
+            argv[i] = ocrGetArgv(argcArgvPtr, i);
         }
 }
 
@@ -121,7 +121,7 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
       .communicators = NULL
     };
 
-    PRINTF("Starting rankEdtFn %d of %d\n",rank, rankContext.numRanks);
+    ocrPrintf("Starting rankEdtFn %d of %d\n",rank, rankContext.numRanks);
 
     const ocrEdtDep_t *argcArgv = &depv[0];
 
@@ -162,11 +162,11 @@ static ocrGuid_t rankEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 
 
     // Turn the argcArgv datablock into a "native" C argc & argv
-    const u64 argc = getArgc(argcArgv->ptr);
+    const u64 argc = ocrGetArgc(argcArgv->ptr);
     char *argv[argc];
     fillArgv(argc, argv, argcArgv->ptr);
 
-    PRINTF("rankEdtFn %d calling main()\n",rank);
+    ocrPrintf("rankEdtFn %d calling main()\n",rank);
 
     extern int  __mpiOcrMain(int, char **);
     __mpiOcrMain(argc, argv);
@@ -188,14 +188,14 @@ if (!ocrGuidIsNull(ffwd_db_guid)) {
         ocrDbDestroy(ffwd_db_guid);
     }
 
-    PRINTF("rankEdtFn %d:  main() is finished, returning\n",rank);
+    ocrPrintf("rankEdtFn %d:  main() is finished, returning\n",rank);
 
     return NULL_GUID;
 }
 
 
 static ocrGuid_t endEdtFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("endEdt: Done\n");
+    ocrPrintf("endEdt: Done\n");
     ocrShutdown();
     return NULL_GUID;
 }
@@ -241,19 +241,19 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
     *affinity = AFFINITY_ROUND_ROBIN;
     int shift = 0;      // amount to shift argv to remove mpilite args
 
-    int argc = getArgc(argcArgv);
+    int argc = ocrGetArgc(argcArgv);
 
 #if 0
-#undef PRINTF
+#undef ocrPrintf
 
-    PRINTF("argcArgv before shift\n");
+    ocrPrintf("argcArgv before shift\n");
 
     for (int k = 0; k<argc; k++){
-        PRINTF("argv[%d]= %s\n", k, getArgv(argcArgv, k));
+        ocrPrintf("argv[%d]= %s\n", k, ocrGetArgv(argcArgv, k));
     }
 #endif
 
-    if (argc > 1 && ! strcmp("-a", getArgv(argcArgv,1)))
+    if (argc > 1 && ! strcmp("-a", ocrGetArgv(argcArgv,1)))
 #if EVENT_ARRAY
         {
             // only supported for LABELing version of mpi-lite
@@ -267,25 +267,25 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
             shift += 1;
         }
 #endif
-    if (argc > 1 && ! strcmp("-aff_seq", getArgv(argcArgv,1)))
+    if (argc > 1 && ! strcmp("-aff_seq", ocrGetArgv(argcArgv,1)))
         {
             *affinity = AFFINITY_SEQUENTIAL;
             shift += 1;
         }
 
-    if (argc > 1 && ! strcmp("-aff_rr", getArgv(argcArgv,1)))
+    if (argc > 1 && ! strcmp("-aff_rr", ocrGetArgv(argcArgv,1)))
         {
             *affinity = AFFINITY_ROUND_ROBIN;
             shift += 1;
         }
 
-    if (argc > 1 && ! strcmp("-aff_none", getArgv(argcArgv,1)))
+    if (argc > 1 && ! strcmp("-aff_none", ocrGetArgv(argcArgv,1)))
         {
             *affinity = AFFINITY_NONE;
             shift += 1;
         }
 
-    if (argc < (3 + shift) || strcmp("-r", getArgv(argcArgv,1 + shift)))
+    if (argc < (3 + shift) || strcmp("-r", ocrGetArgv(argcArgv,1 + shift)))
         {
             char msg[150];
             *numRanks = maxWorkers();
@@ -296,16 +296,16 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
     else
         {
             // should check that is digits
-            *numRanks = atoi(getArgv(argcArgv, 2 + shift));
+            *numRanks = atoi(ocrGetArgv(argcArgv, 2 + shift));
             shift += 2;
         }
 
     // "-t" may be specified without "-a" and/or "-r", so have to look in position 1,2 or
     // 3,4
-    if (argc >= (3+shift) && !strcmp("-t", getArgv(argcArgv, (1+shift))))
+    if (argc >= (3+shift) && !strcmp("-t", ocrGetArgv(argcArgv, (1+shift))))
         {
             // should check that is digits
-            *maxTag = atoi(getArgv(argcArgv, (2+shift)));
+            *maxTag = atoi(ocrGetArgv(argcArgv, (2+shift)));
             shift += 2;
         }
 
@@ -320,12 +320,12 @@ static void parseAndShiftArgv(u64 *argcArgv, u32 *numRanks, u32 *maxTag, bool *a
         argcArgv[1 + i] = argcArgv[1 + shift + i];
     }
 #if 0
-    PRINTF("\nargcArgv after shift\n");
+    ocrPrintf("\nargcArgv after shift\n");
 
     for (int k = 0; k<argc; k++){
-        PRINTF("argv[%d]= %s\n", k, getArgv(argcArgv, k));
+        ocrPrintf("argv[%d]= %s\n", k, ocrGetArgv(argcArgv, k));
     }
-#define PRINTF(a,...)
+#define ocrPrintf(a,...)
 #endif
 }
 
@@ -392,7 +392,7 @@ static void createMessageEventsAndData(ocrGuid_t *messageEventsDB,
 // 4. Wait until they all "finish", and then return to let endEdt close up shop.
 
 static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("Starting mainEdtHelper\n");
+    ocrPrintf("Starting mainEdtHelper\n");
 
     const ocrEdtDep_t *argcArgvDB = &depv[0];
     u64 *argcArgv = (u64*)(argcArgvDB->ptr);
@@ -404,7 +404,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
     u32 affinity = AFFINITY_NONE;
     int rank;
 
-    PRINTF("mainEdtHelper: Parse argv\n");
+    ocrPrintf("mainEdtHelper: Parse argv\n");
     parseAndShiftArgv(argcArgv, &numRanks, &maxTag, &aggressiveNB, &affinity);
 
     // Don't need to touch argcArgv any more, so release it
@@ -423,12 +423,12 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
             ERROR(msg); // exits
         }
 
-    PRINTF("mainEdtHelper: numRanks = %d; maxTag = %d, aggressiveNB = %d\n", numRanks, maxTag, aggressiveNB);
+    ocrPrintf("mainEdtHelper: numRanks = %d; maxTag = %d, aggressiveNB = %d\n", numRanks, maxTag, aggressiveNB);
 
     // create rankEDTs - but don't add depv until endEdt has had their output
     // events added as its depv; so a rank doesn't complete before endEdt is ready.
 
-    PRINTF("mainEdtHelper: creating rank edts\n");fflush(stdout);
+    ocrPrintf("mainEdtHelper: creating rank edts\n");fflush(stdout);
 
     ocrGuid_t rankEdtTemplate;
     ocrEdtTemplateCreate(&rankEdtTemplate, rankEdtFn, paramcCount(rankEdtParamv_t),
@@ -561,7 +561,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
                     ocrAddDependence(messageDataDB, rankEdt, 2, DB_MODE_RW);
 #endif
 
-                    PRINTF("  rank %d edt 0x%llx\n",rank, rankEdt);fflush(stdout);
+                    ocrPrintf("  rank %d edt 0x%llx\n",rank, rankEdt);fflush(stdout);
 
                 }
         }
@@ -573,12 +573,12 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 #if DONT_USE_FINISH_EDT
     //Now that the endEdt has the outputEvent dependences, the dependences
     //for the ranks can be addes so they can start
-    PRINTF("mainEdt: adding deps to rank edts\n");
+    ocrPrintf("mainEdt: adding deps to rank edts\n");
 
 
     for (int rank = 0; rank<numRanks; rank++)
         {
-            PRINTF("  rank %d edt 0x%llx\n",rank, ranks[rank]);
+            ocrPrintf("  rank %d edt 0x%llx\n",rank, ranks[rank]);
 
             // argcArgvDB: will only be read by ranks
             ocrAddDependence(argcArgvDB->guid, ranks[rank], 0, DB_MODE_RO);
@@ -589,7 +589,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
         }
 #endif
 
-    PRINTF("mainEdtHelper: finished\n");fflush(stdout);
+    ocrPrintf("mainEdtHelper: finished\n");fflush(stdout);
 
     return NULL_GUID;
 }
@@ -601,7 +601,7 @@ static ocrGuid_t mainEdtHelperFn(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 // events of All of the rankEdts.]
 //    mainEdtHelper does the startup work.
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("Starting mainEdt\n");
+    ocrPrintf("Starting mainEdt\n");
 
     ocrGuid_t mainEdtHelperTemplate, mainEdtHelper, outputEvent;
     ocrEdtTemplateCreate(&mainEdtHelperTemplate, mainEdtHelperFn, paramc, 1);
@@ -613,7 +613,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrEdtCreate(&mainEdtHelper, mainEdtHelperTemplate, EDT_PARAM_DEF,
          paramv, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_HINT, &outputEvent);
 
-    PRINTF("mainEdtHelper: edt %p\n", mainEdtHelper);
+    ocrPrintf("mainEdtHelper: edt %p\n", mainEdtHelper);
 
     ocrEdtTemplateDestroy(mainEdtHelperTemplate);
 
@@ -624,7 +624,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrEdtCreate(&endEdt, endEdtTemplate, 0, NULL, EDT_PARAM_DEF, endDepv,
                  EDT_PROP_NONE, NULL_HINT, NULL);
 
-    PRINTF("endEdt: edt %p\n", endEdt);
+    ocrPrintf("endEdt: edt %p\n", endEdt);
 
     // Now that endEdt is started, we can fire up mainEdtHelper by
     // satisfying it's dep. (Otherwise it could finish before endEdt gets
@@ -633,7 +633,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     ocrEdtTemplateDestroy(endEdtTemplate);
 
-    PRINTF("mainEdt: finished\n");
+    ocrPrintf("mainEdt: finished\n");
     return NULL_GUID;
 }
 

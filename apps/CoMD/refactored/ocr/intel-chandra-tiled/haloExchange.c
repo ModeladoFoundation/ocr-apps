@@ -194,7 +194,7 @@ void initAtomHaloExchange(HaloExchange* hh, Domain* domain, LinkCell* boxes)
    ocrHint_t myDbkAffinityHNT;
    ocrHintInit( &myDbkAffinityHNT, OCR_HINT_DB_T );
 #ifdef USE_EAGER_DB_HINT
-    if( domain->procCoord[0]==0 && domain->procCoord[1]==0 && domain->procCoord[2]==0 ) PRINTF("Using Eager DB hint\n");
+    if( domain->procCoord[0]==0 && domain->procCoord[1]==0 && domain->procCoord[2]==0 ) ocrPrintf("Using Eager DB hint\n");
    ocrSetHintValue(&myDbkAffinityHNT, OCR_HINT_DB_EAGER, 1);
 #else
    ocrGuid_t currentAffinity = NULL_GUID;
@@ -744,7 +744,7 @@ ocrDBK_t mkAtomCellList(int** list_PTR, LinkCell* boxes, enum HaloFaceOrder iFac
       for (int iy=yBegin; iy<yEnd; ++iy)
          for (int iz=zBegin; iz<zEnd; ++iz)
             list[count++] = getBoxFromTuple(boxes, ix, iy, iz);
-   ASSERT(count == nCells);
+   ocrAssert(count == nCells);
    return DBK_list;
 }
 
@@ -971,7 +971,7 @@ void unloadAtomsBuffer(void* vparms, void* data, int face, int bufSize, char* ch
    SimFlat* s = (SimFlat*) data;
    AtomMsg* buf = (AtomMsg*) charBuf;
    int nBuf = bufSize / sizeof(AtomMsg);
-   ASSERT(bufSize % sizeof(AtomMsg) == 0);
+   ocrAssert(bufSize % sizeof(AtomMsg) == 0);
 
    for (int ii=0; ii<nBuf; ++ii)
    {
@@ -1035,7 +1035,7 @@ ocrDBK_t mkForceSendCellList(int** list_PTR, LinkCell* boxes, int face, int nCel
       xBegin=-1;   xEnd=nx+1; yBegin=-1;   yEnd=ny+1; zBegin=nz-1; zEnd=nz;
       break;
      default:
-      ASSERT(1==0);
+      ocrAssert(1==0);
    }
 
    int count = 0;
@@ -1044,7 +1044,7 @@ ocrDBK_t mkForceSendCellList(int** list_PTR, LinkCell* boxes, int face, int nCel
          for (int iz=zBegin; iz<zEnd; ++iz)
             list[count++] = getBoxFromTuple(boxes, ix, iy, iz);
 
-   ASSERT(count == nCells);
+   ocrAssert(count == nCells);
    return DBK_list;
 }
 
@@ -1087,7 +1087,7 @@ ocrDBK_t mkForceRecvCellList(int** list_PTR, LinkCell* boxes, int face, int nCel
       xBegin=-1; xEnd=nx+1; yBegin=-1; yEnd=ny+1; zBegin=nz; zEnd=nz+1;
       break;
      default:
-      ASSERT(1==0);
+      ocrAssert(1==0);
    }
 
    int count = 0;
@@ -1096,7 +1096,7 @@ ocrDBK_t mkForceRecvCellList(int** list_PTR, LinkCell* boxes, int face, int nCel
          for (int iz=zBegin; iz<zEnd; ++iz)
             list[count++] = getBoxFromTuple(boxes, ix, iy, iz);
 
-   ASSERT(count == nCells);
+   ocrAssert(count == nCells);
    return DBK_list;
 }
 
@@ -1286,7 +1286,7 @@ void unloadForceBuffer(void* vparms, void* vdata, int face, int bufSize, char* c
    ForceExchangeParms* parms = (ForceExchangeParms*) vparms;
    ForceExchangeData* data = (ForceExchangeData*) vdata;
    ForceMsg* buf = (ForceMsg*) charBuf;
-   ASSERT(bufSize % sizeof(ForceMsg) == 0);
+   ocrAssert(bufSize % sizeof(ForceMsg) == 0);
 
    int nCells = parms->nCells[face];
    int* cellList = parms->recvCells[face];
@@ -1301,7 +1301,7 @@ void unloadForceBuffer(void* vparms, void* vdata, int face, int bufSize, char* c
          ++iBuf;
       }
    }
-   ASSERT(iBuf == bufSize/ sizeof(ForceMsg));
+   ocrAssert(iBuf == bufSize/ sizeof(ForceMsg));
 }
 
 void destroyForceExchange(void* vparms)
@@ -1405,13 +1405,13 @@ ocrGuid_t sortAtomsInCellsEdt( EDT_ARGS )
 ///  A function suitable for passing to qsort to sort atoms by gid.
 ///  Because every atom in the simulation is supposed to have a unique
 ///  id, this function checks that the atoms have different gids.  If
-///  that ASSERTion ever fails it is a sign that something has gone
+///  that ocrAssertion ever fails it is a sign that something has gone
 ///  wrong elsewhere in the code.
 int sortAtomsById(const void* a, const void* b)
 {
    int aId = ((AtomMsg*) a)->gid;
    int bId = ((AtomMsg*) b)->gid;
-   ASSERT(aId != bId);
+   ocrAssert(aId != bId);
 
    if (aId < bId)
       return -1;

@@ -47,9 +47,9 @@ void sort_nuclide_grids( NuclideGridPoint ** nuclide_grids, long n_isotopes,
 	/*
 	for( int i = 0; i < n_isotopes; i++ )
 	{
-		PRINTF("NUCLIDE %d ==============================\n", i);
+		ocrPrintf("NUCLIDE %d ==============================\n", i);
 		for( int j = 0; j < n_gridpoints; j++ )
-			PRINTF("E%d = %lf\n", j, nuclide_grids[i][j].energy);
+			ocrPrintf("E%d = %lf\n", j, nuclide_grids[i][j].energy);
 	}
 	*/
 }
@@ -64,7 +64,7 @@ void assignEnergyGridXsPtrs( int* full, GridPoint* energy_grid, long n_unionized
 // from nuclide grids to it.
 GridPoint * generate_energy_grid( ocrDBK_t* DBK_uEnergy_grid,  ocrDBK_t* DBK_xs_grid, long n_isotopes, long n_gridpoints,
                                   NuclideGridPoint ** nuclide_grids, int mype ) {
-	if( mype == 0 ) PRINTF("Generating Unionized Energy Grid...\n");
+	if( mype == 0 ) ocrPrintf("Generating Unionized Energy Grid...\n");
 
 	long n_unionized_grid_points = n_isotopes*n_gridpoints;
 	int (*cmp) (const void *, const void *);
@@ -74,7 +74,7 @@ GridPoint * generate_energy_grid( ocrDBK_t* DBK_uEnergy_grid,  ocrDBK_t* DBK_xs_
 	                         //                      * sizeof( GridPoint ) );
     ocrDbCreate( DBK_uEnergy_grid, (void **) &energy_grid, n_unionized_grid_points*sizeof(NuclideGridPoint),
                     0, NULL_HINT, NO_ALLOC );
-	if( mype == 0 ) PRINTF("Copying and Sorting all nuclide grids...\n");
+	if( mype == 0 ) ocrPrintf("Copying and Sorting all nuclide grids...\n");
 
     ocrDBK_t DBK_nuclide_grids, DBK_nuclide_grid_ptrs;
 	NuclideGridPoint ** n_grid_sorted = gpmatrix( &DBK_nuclide_grids, &DBK_nuclide_grid_ptrs,
@@ -86,7 +86,7 @@ GridPoint * generate_energy_grid( ocrDBK_t* DBK_uEnergy_grid,  ocrDBK_t* DBK_xs_
 	qsort( &n_grid_sorted[0][0], n_unionized_grid_points,
 	       sizeof(NuclideGridPoint), cmp);
 
-	if( mype == 0 ) PRINTF("Assigning energies to unionized grid...\n");
+	if( mype == 0 ) ocrPrintf("Assigning energies to unionized grid...\n");
 
 	for( long i = 0; i < n_unionized_grid_points; i++ )
 		energy_grid[i].energy = n_grid_sorted[0][i].energy;
@@ -104,7 +104,7 @@ GridPoint * generate_energy_grid( ocrDBK_t* DBK_uEnergy_grid,  ocrDBK_t* DBK_xs_
 
 	if( full == NULL )
 	{
-		PRINTF("ERROR - Out Of Memory!\n");
+		ocrPrintf("ERROR - Out Of Memory!\n");
 	}
 
     assignEnergyGridXsPtrs( full, energy_grid, n_unionized_grid_points, n_isotopes);
@@ -113,7 +113,7 @@ GridPoint * generate_energy_grid( ocrDBK_t* DBK_uEnergy_grid,  ocrDBK_t* DBK_xs_
 
     /*
 	for( int i = 0; i < n_unionized_grid_points; i++ )
-		PRINTF("E%d = %f\n", i, energy_grid[i].energy);
+		ocrPrintf("E%d = %f\n", i, energy_grid[i].energy);
     */
 
 	return energy_grid;
@@ -126,7 +126,7 @@ GridPoint * generate_energy_grid( ocrDBK_t* DBK_uEnergy_grid,  ocrDBK_t* DBK_xs_
 void set_grid_ptrs( GridPoint * energy_grid, NuclideGridPoint ** nuclide_grids,
                     long n_isotopes, long n_gridpoints, int mype )
 {
-	if( mype == 0 ) PRINTF("Assigning pointers to Unionized Energy Grid...\n");
+	if( mype == 0 ) ocrPrintf("Assigning pointers to Unionized Energy Grid...\n");
 
 	//#pragma omp parallel for default(none) \
 	//shared( energy_grid, nuclide_grids, n_isotopes, n_gridpoints, mype )
@@ -134,7 +134,7 @@ void set_grid_ptrs( GridPoint * energy_grid, NuclideGridPoint ** nuclide_grids,
 	{
 		double quarry = energy_grid[i].energy;
 		if( INFO && mype == 0 && i % 10000 == 0 )
-			PRINTF( "\rAligning Unionized Grid...(%.2f%% complete)",
+			ocrPrintf( "\rAligning Unionized Grid...(%.2f%% complete)",
 			       100.0 * (double) i / (n_isotopes*n_gridpoints) );
 		for( long j = 0; j < n_isotopes; j++ )
 		{
@@ -144,13 +144,13 @@ void set_grid_ptrs( GridPoint * energy_grid, NuclideGridPoint ** nuclide_grids,
 				binary_search( nuclide_grids[j], quarry, n_gridpoints);
 		}
 	}
-	if( mype == 0 ) PRINTF("\n");
+	if( mype == 0 ) ocrPrintf("\n");
 
 	//test
 	/*
 	for( int i=0; i < n_isotopes * n_gridpoints; i++ )
 		for( int j = 0; j < n_isotopes; j++ )
-			PRINTF("E = %.4lf\tNuclide %d->%p->%.4lf\n",
+			ocrPrintf("E = %.4lf\tNuclide %d->%p->%.4lf\n",
 			       energy_grid[i].energy,
                    j,
 				   energy_grid[i].xs_ptrs[j],

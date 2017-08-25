@@ -129,15 +129,15 @@ ocrDBK_t initLjPot(BasePotential** bpot)
 void ljPrint(BasePotential* pot)
 {
    LjPotential* ljPot = (LjPotential*) pot;
-   PRINTF( "  Potential type   : Lennard-Jones\n");
-   PRINTF( "  Species name     : %s\n", ljPot->name);
-   PRINTF( "  Atomic number    : %d\n", ljPot->atomicNo);
-   PRINTF( "  Mass             : "FMT1" amu\n", ljPot->mass / amuToInternalMass); // print in amu
-   PRINTF( "  Lattice Type     : %s\n", ljPot->latticeType);
-   PRINTF( "  Lattice spacing  : "FMT1" Angstroms\n", ljPot->lat);
-   PRINTF( "  Cutoff           : "FMT1" Angstroms\n", ljPot->cutoff);
-   PRINTF( "  Epsilon          : "FMT1" eV\n", ljPot->epsilon);
-   PRINTF( "  Sigma            : "FMT1" Angstroms\n", ljPot->sigma);
+   ocrPrintf( "  Potential type   : Lennard-Jones\n");
+   ocrPrintf( "  Species name     : %s\n", ljPot->name);
+   ocrPrintf( "  Atomic number    : %d\n", ljPot->atomicNo);
+   ocrPrintf( "  Mass             : "FMT1" amu\n", ljPot->mass / amuToInternalMass); // print in amu
+   ocrPrintf( "  Lattice Type     : %s\n", ljPot->latticeType);
+   ocrPrintf( "  Lattice spacing  : "FMT1" Angstroms\n", ljPot->lat);
+   ocrPrintf( "  Cutoff           : "FMT1" Angstroms\n", ljPot->cutoff);
+   ocrPrintf( "  Epsilon          : "FMT1" eV\n", ljPot->epsilon);
+   ocrPrintf( "  Sigma            : "FMT1" Angstroms\n", ljPot->sigma);
 }
 
 int ljForce(SimFlat* s)
@@ -175,7 +175,7 @@ int ljForce(SimFlat* s)
       {
          int jBox = nbrBoxes[jTmp];
 
-         ASSERT(jBox>=0);
+         ocrAssert(jBox>=0);
 
          int nJBox = s->boxes->nAtoms[jBox];
          if ( nJBox == 0 ) continue;

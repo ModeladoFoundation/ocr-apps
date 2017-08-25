@@ -2,7 +2,7 @@
 
 ocrGuid_t f(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     const u64 n = paramv[0];
-    PRINTF("Hello from %lu\n", n);
+    ocrPrintf("Hello from %lu\n", n);
     return NULL_GUID;
 }
 
@@ -22,7 +22,7 @@ ocrGuid_t launcherEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
             ocrSetHintValue(&_stepHints, OCR_HINT_EDT_PRIORITY, _hintVal);
             ocrSetHint(edt, &_stepHints);
         }
-        PRINTF("CREATE %lu\n", n);
+        ocrPrintf("CREATE %lu\n", n);
     }
 
     ocrEventSatisfy(depEvent, NULL_GUID);
@@ -37,7 +37,7 @@ ocrGuid_t shutdownEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
-    PRINTF("Hello from mainEdt()\n");
+    ocrPrintf("Hello from mainEdt()\n");
 
     ocrGuid_t template, edt, depEvent, outEvent;
     ocrEventCreate(&depEvent, OCR_EVENT_ONCE_T, EVT_PROP_NONE);

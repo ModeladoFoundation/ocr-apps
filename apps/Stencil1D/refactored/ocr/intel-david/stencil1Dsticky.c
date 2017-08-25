@@ -211,12 +211,12 @@ depv[3]:
     else {
 //last time step, serialized using send right.
         if(myrank < nrank-1) {
-            for(i=0;i<npoints;i++) PRINTF("S%ld i%d valu %f \n", myrank, i, a[i]);
+            for(i=0;i<npoints;i++) ocrPrintf("S%ld i%d valu %f \n", myrank, i, a[i]);
                 rightInPTR->buffer = asave;
                 ocrDbRelease(DEPV(stencil,rightIn,guid));
                 ocrEventSatisfy(pbPTR->rightSendEVT,DEPV(stencil,rightIn,guid));
             } else {
-                for(i=0;i<npoints;i++) PRINTF("S%ld i%d valu %f \n", myrank, i, a[i]);
+                for(i=0;i<npoints;i++) ocrPrintf("S%ld i%d valu %f \n", myrank, i, a[i]);
                 ocrShutdown();
             }
         return NULL_GUID;
@@ -437,7 +437,7 @@ ocrGuid_t stencilInitEDT( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] 
 
 
     if( privPTR->myrank < privPTR->nrank - 1 ){
-        //PRINTF("MYRANK: %d %d\n", privPTR->myrank, privPTR->nrank);
+        //ocrPrintf("MYRANK: %d %d\n", privPTR->myrank, privPTR->nrank);
         ocrGuidFromIndex( &rightPTR->EVT, sharedPTR->startDirs[0], privPTR->myrank + 1 );
         ocrEventCreate( &rightPTR->EVT, OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS );
         ocrDbRelease( rightGUID );
@@ -567,32 +567,32 @@ creates and launches realMain
 
 
     void * programArgv = depv[0].ptr;
-    u32 argc = getArgc(programArgv);
+    u32 argc = ocrGetArgc(programArgv);
     if(argc != 4) {
-        PRINTF("using default runtime args\n");
+        ocrPrintf("using default runtime args\n");
         nrank = 4;
         npoints = 10;
         maxt = 100;
     } else {
         i = 1;
-        nrank = (u32) atoi(getArgv(programArgv, i++));
-        npoints = (u32) atoi(getArgv(programArgv, i++));
-        maxt = (u32) atoi(getArgv(programArgv, i++));
+        nrank = (u32) atoi(ocrGetArgv(programArgv, i++));
+        npoints = (u32) atoi(ocrGetArgv(programArgv, i++));
+        maxt = (u32) atoi(ocrGetArgv(programArgv, i++));
     }
 
     #ifndef PARALLEL
-    PRINTF("1D stencil code STICKY style: \n");
+    ocrPrintf("1D stencil code STICKY style: \n");
     #endif
 
     #ifdef PARALLEL
-    PRINTF("1D stencil code STICKY style, parallel init: \n");
+    ocrPrintf("1D stencil code STICKY style, parallel init: \n");
     #endif
 
-    PRINTF("number of workers = %ld \n", nrank);
-    PRINTF("data on each worker = %ld \n", npoints);
-    PRINTF("number of timesteps = %ld \n", maxt);
+    ocrPrintf("number of workers = %ld \n", nrank);
+    ocrPrintf("data on each worker = %ld \n", npoints);
+    ocrPrintf("number of timesteps = %ld \n", maxt);
     if(nrank == 0 || npoints == 0 || maxt == 0) {
-        PRINTF("nrank, npoints, maxt, must all be positive\n");
+        ocrPrintf("nrank, npoints, maxt, must all be positive\n");
         ocrShutdown();
         return NULL_GUID;
     }

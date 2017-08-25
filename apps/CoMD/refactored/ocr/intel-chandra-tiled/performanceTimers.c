@@ -96,14 +96,14 @@ char* timerName[numberOfTimers] = {
    double tick = getTick();
    double loopTime = perfTimer[loopTimer].total*tick;
 
-   PRINTF("\n\nTimings for Rank %d\n", myRank);
-   PRINTF("        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
-   PRINTF("___________________________________________________________________\n");
+   ocrPrintf("\n\nTimings for Rank %d\n", myRank);
+   ocrPrintf("        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
+   ocrPrintf("___________________________________________________________________\n");
    for (int ii=0; ii<numberOfTimers; ++ii)
    {
       double totalTime = perfTimer[ii].total*tick;
       if (perfTimer[ii].count > 0)
-         PRINTF("%16s   %16d     %8.4f      %8.4f    %8.2f\n",
+         ocrPrintf("%16s   %16d     %8.4f      %8.4f    %8.2f\n",
                  timerName[ii],
                  perfTimer[ii].count,
                  totalTime/(double)perfTimer[ii].count,
@@ -111,14 +111,14 @@ char* timerName[numberOfTimers] = {
                  totalTime/loopTime*100.0);
    }
 
-   PRINTF("\nTiming Statistics Across %d Ranks:\n", nRanks);
-   PRINTF("        Timer        Rank: Min(s)       Rank: Max(s)      Avg(s)    Stdev(s)\n");
-   PRINTF("_____________________________________________________________________________\n");
+   ocrPrintf("\nTiming Statistics Across %d Ranks:\n", nRanks);
+   ocrPrintf("        Timer        Rank: Min(s)       Rank: Max(s)      Avg(s)    Stdev(s)\n");
+   ocrPrintf("_____________________________________________________________________________\n");
 
    for (int ii = 0; ii < numberOfTimers; ++ii)
    {
       if (perfTimer[ii].count > 0)
-         PRINTF("%16s    %6d:%10.4f  %6d:%10.4f  %10.4f  %10.4f\n",
+         ocrPrintf("%16s    %6d:%10.4f  %6d:%10.4f  %10.4f  %10.4f\n",
             timerName[ii],
             perfTimer[ii].minRank, perfTimer[ii].minValue*tick,
             perfTimer[ii].maxRank, perfTimer[ii].maxValue*tick,
@@ -131,17 +131,17 @@ char* timerName[numberOfTimers] = {
       (nGlobalAtoms * perfTimer[timestepTimer].count * printRate);
    perfGlobal.atomsPerUSec = 1.0 / perfGlobal.atomAllRate;
 
-   PRINTF("\n---------------------------------------------------\n");
-   PRINTF(" Average atom update rate:     %6.2f us/atom/task\n", perfGlobal.atomRate);
-   PRINTF("---------------------------------------------------\n\n");
+   ocrPrintf("\n---------------------------------------------------\n");
+   ocrPrintf(" Average atom update rate:     %6.2f us/atom/task\n", perfGlobal.atomRate);
+   ocrPrintf("---------------------------------------------------\n\n");
 
-   PRINTF("\n---------------------------------------------------\n");
-   PRINTF(" Average all atom update rate: %6.2f us/atom\n", perfGlobal.atomAllRate);
-   PRINTF("---------------------------------------------------\n\n");
+   ocrPrintf("\n---------------------------------------------------\n");
+   ocrPrintf(" Average all atom update rate: %6.2f us/atom\n", perfGlobal.atomAllRate);
+   ocrPrintf("---------------------------------------------------\n\n");
 
-   PRINTF("\n---------------------------------------------------\n");
-   PRINTF(" Average atom rate:            %6.2f atoms/us\n", perfGlobal.atomsPerUSec);
-   PRINTF("---------------------------------------------------\n\n");
+   ocrPrintf("\n---------------------------------------------------\n");
+   ocrPrintf(" Average atom rate:            %6.2f atoms/us\n", perfGlobal.atomsPerUSec);
+   ocrPrintf("---------------------------------------------------\n\n");
 }
 
 ocrGuid_t printPerformanceResultsEdt( EDT_ARGS )

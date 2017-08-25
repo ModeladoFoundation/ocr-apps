@@ -122,7 +122,7 @@ u64 findNeighborPanel( u64 panel, u32 dir )
 
     u64 neighborPanel = 4;
 
-    if( dir >= 4 ) PRINTF("it is not possible to have a neighboring panel on the diagonal!\n");
+    if( dir >= 4 ) ocrPrintf("it is not possible to have a neighboring panel on the diagonal!\n");
     else{
                                       //  N, E, S, W      // panels
         u32 panelNeighbors [6][4] =   { { 4, 1, 5, 3 },   // 0
@@ -515,15 +515,15 @@ ocrGuid_t patchEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     s64 * dirptr = &patchPTR->n;
 
     if( patchPTR->timestep > 0 ){
-        //PRINTF("cleaning events\n");
+        //ocrPrintf("cleaning events\n");
         for( i = 0; i < 8; i++ )
         {
             if( dirptr[i] > -1 ){
-               // PRINTF("EVENT TO DESTROY\n");//
+               // ocrPrintf("EVENT TO DESTROY\n");//
                 ocrEventDestroy( patchPTR->rcvGUIDs[i][patchPTR->toggle^1] );
             }
         }
-        //PRINTF("done cleaning events\n");
+        //ocrPrintf("done cleaning events\n");
     }
 
     for(i = 0; i < 8; i++){
@@ -587,7 +587,7 @@ ocrGuid_t patchEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
         if( neighborPTRs[i] != NULL ){
             ocrEventCreate( &patchPTR->sendGUIDs[i][tog], OCR_EVENT_STICKY_T, DEFAULT_LG_PROPS );
 
-            if( neighborPTRs[i] == NULL ) PRINTF("DANGER, WILL ROBINSON\n");
+            if( neighborPTRs[i] == NULL ) ocrPrintf("DANGER, WILL ROBINSON\n");
 
             neighborPTRs[i]->patchNum = patchPTR->patchNum;
             ocrDbRelease( neighborGUIDs[i] );
@@ -852,7 +852,7 @@ ocrGuid_t realmainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
 ocrGuid_t wrapupEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    PRINTF("DONE.\n");
+    ocrPrintf("DONE.\n");
     ocrShutdown();
     return NULL_GUID;
 }
@@ -880,13 +880,13 @@ ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     u32 i, argc;
     u64 patchRange;
 
-    argc = getArgc( programArgv );
+    argc = ocrGetArgc( programArgv );
 
     if( argc != 2 ){
-        PRINTF( "INCORRECT NUMBER OF ARGS. USING DEFAULT PARAMS. %s\n", getArgv( programArgv, 0 ) );
+        ocrPrintf( "INCORRECT NUMBER OF ARGS. USING DEFAULT PARAMS. %s\n", ocrGetArgv( programArgv, 0 ) );
         patchRange = 2;
     }else{
-        patchRange = (u64)atoi(getArgv(programArgv, 1));
+        patchRange = (u64)atoi(ocrGetArgv(programArgv, 1));
     }
 
     u64 patchNums;
@@ -899,7 +899,7 @@ ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
     ocrEdtTemplateCreate( &wrapupTPT, wrapupEdt, 0, 1 );
 
-    ocrEdtCreate( &wrapupGUID, wrapupTPT, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, &finishEVT, EDT_PROP_NONE, 
+    ocrEdtCreate( &wrapupGUID, wrapupTPT, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, &finishEVT, EDT_PROP_NONE,
                     NULL_GUID, NULL );
 
     for( i = 0; i < 6; i++ ){

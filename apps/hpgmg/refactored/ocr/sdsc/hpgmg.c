@@ -15,27 +15,27 @@ ocrGuid_t test0_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-  u64 argc = getArgc(depv[0].ptr);
+  u64 argc = ocrGetArgc(depv[0].ptr);
   if(argc!=3){
-    PRINTF("usage: hpgmg log2_box_dim target_boxes\n");
+    ocrPrintf("usage: hpgmg log2_box_dim target_boxes\n");
     ocrShutdown(); return NULL_GUID;
   }
 
   ocrGuid_t args;
   char* argv[2];
-  argv[0] = getArgv(depv[0].ptr,1);
-  argv[1] = getArgv(depv[0].ptr,2);
+  argv[0] = ocrGetArgv(depv[0].ptr,1);
+  argv[1] = ocrGetArgv(depv[0].ptr,2);
 
   int log2_box_dim=atoi(argv[0]);
   int target_boxes=atoi(argv[1]);
 
   if(log2_box_dim<4){
-    PRINTF("log2_box_dim must be at least 4\n");
+    ocrPrintf("log2_box_dim must be at least 4\n");
     ocrShutdown(); return NULL_GUID;
   }
 
   if(target_boxes<1){
-    PRINTF("target_boxes_per_rank must be at least 1\n");
+    ocrPrintf("target_boxes_per_rank must be at least 1\n");
     ocrShutdown(); return NULL_GUID;
   }
 

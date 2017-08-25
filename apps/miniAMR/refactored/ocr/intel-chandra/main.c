@@ -46,7 +46,7 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
 
     void * PTR_cmdLineArgs = depv[0].ptr;
-    u32 argc = getArgc( PTR_cmdLineArgs );
+    u32 argc = ocrGetArgc( PTR_cmdLineArgs );
 
     //Pack the PTR_cmdLineArgs into the "cannonical" char** argv
     ocrGuid_t DBK_argv;
@@ -54,7 +54,7 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrDbCreate( &DBK_argv, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
     for( u32 a = 0; a < argc; ++a )
     {
-       argv[a] = getArgv( PTR_cmdLineArgs, a );
+       argv[a] = ocrGetArgv( PTR_cmdLineArgs, a );
        DEBUG_PRINTF(("argv[%d] %s\n", a, argv[a]));
     }
 
@@ -95,10 +95,10 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
     //3-D Cartesian grid of SPMD EDTs get mapped to a 3-D Cartesian grid of PDs
 #ifdef USE_STATIC_SCHEDULER
-    PRINTF("Using STATIC scheduler\n");
+    ocrPrintf("Using STATIC scheduler\n");
     forkSpmdEdts_staticScheduler_Cart3D( initEdt, edtGridDims, spmdDepv );
 #else
-    PRINTF("NOT Using STATIC scheduler\n");
+    ocrPrintf("NOT Using STATIC scheduler\n");
     forkSpmdEdts_Cart3D( initEdt, edtGridDims, spmdDepv );
 #endif
 
@@ -107,14 +107,14 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
 ocrGuid_t wrapUpEdt( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    PRINTF("Shutting down\n");
+    ocrPrintf("Shutting down\n");
 
 #ifdef SHUTDOWN_LAG
     sleep(SHUTDOWN_LAG); //Added this in caes there are any pending EDTs.
 #endif
 
     ocrShutdown();
-    PRINTF("Done\n");
+    ocrPrintf("Done\n");
     return NULL_GUID;
 }
 
@@ -276,7 +276,7 @@ Command parseCommandLine(int argc, char** argv)
       {
          if (object_num >= cmd.num_objects)
          {
-            PRINTF("object number greater than num_objects\n");
+            ocrPrintf("object number greater than num_objects\n");
             exit(-1);
          }
          cmd.objects[object_num].type = atoi(argv[++i]);
@@ -302,7 +302,7 @@ Command parseCommandLine(int argc, char** argv)
       }
       else
       {
-         PRINTF("** Error ** Unknown input parameter %s\n", argv[i]);
+         ocrPrintf("** Error ** Unknown input parameter %s\n", argv[i]);
          print_help_message();
          ocrShutdown();
       }
@@ -1208,47 +1208,47 @@ ocrGuid_t initEdt( EDT_ARGS )
 
 void print_help_message(void)
 {
-   PRINTF("(Optional) command line input is of the form: \n\n");
+   ocrPrintf("(Optional) command line input is of the form: \n\n");
 
-   PRINTF("--nx - block size x (even && > 0)\n");
-   PRINTF("--ny - block size y (even && > 0)\n");
-   PRINTF("--nz - block size z (even && > 0)\n");
-   PRINTF("--init_x - initial blocks in x (> 0)\n");
-   PRINTF("--init_y - initial blocks in y (> 0)\n");
-   PRINTF("--init_z - initial blocks in z (> 0)\n");
-   PRINTF("--reorder - ordering of blocks if initial number > 1\n");
-   PRINTF("--npx - (0 < npx <= num_pes)\n");
-   PRINTF("--npy - (0 < npy <= num_pes)\n");
-   PRINTF("--npz - (0 < npz <= num_pes)\n");
-   PRINTF("--max_blocks - maximun number of blocks per core\n");
-   PRINTF("--num_refine - (>= 0) number of levels of refinement\n");
-   PRINTF("--block_change - (>= 0) number of levels a block can change in a timestep\n");
-   PRINTF("--uniform_refine - if 1, then grid is uniformly refined\n");
-   PRINTF("--refine_freq - frequency (in timesteps) of checking for refinement\n");
-   PRINTF("--target_active - (>= 0) target number of blocks per core, none if 0\n");
-   PRINTF("--target_max - (>= 0) max number of blocks per core, none if 0\n");
-   PRINTF("--target_min - (>= 0) min number of blocks per core, none if 0\n");
-   PRINTF("--inbalance - percentage inbalance to trigger inbalance\n");
-   PRINTF("--lb_opt - load balancing - 0 = none, 1 = each refine, 2 = each refine phase\n");
-   PRINTF("--num_vars - number of variables (> 0)\n");
-   PRINTF("--comm_vars - number of vars to communicate together\n");
-   PRINTF("--num_tsteps - number of timesteps (> 0)\n");
-   PRINTF("--stages_per_ts - number of comm/calc stages per timestep\n");
-   PRINTF("--checksum_freq - number of stages between checksums\n");
-   PRINTF("--stencil - 7 or 27 point (27 will not work with refinement (except uniform))\n");
-   PRINTF("--error_tol - (e^{-error_tol} ; >= 0) \n");
-   PRINTF("--report_diffusion - (>= 0) none if 0\n");
-   PRINTF("--report_perf - 0, 1, 2\n");
-   PRINTF("--refine_freq - frequency (timesteps) of plotting (0 for none)\n");
-   PRINTF("--code - closely minic communication of different codes\n");
-   PRINTF("         0 minimal sends, 1 send ghosts, 2 send ghosts and process on send\n");
-   PRINTF("--permute - altenates directions in communication\n");
-   PRINTF("--blocking_send - use blocking sends instead of nonblocking\n");
-   PRINTF("--refine_ghost - use full extent of block (including ghosts) to determine if block is refined\n");
-   PRINTF("--num_objects - (>= 0) number of objects to cause refinement\n");
-   PRINTF("--object - type, position, movement, size, size rate of change\n");
+   ocrPrintf("--nx - block size x (even && > 0)\n");
+   ocrPrintf("--ny - block size y (even && > 0)\n");
+   ocrPrintf("--nz - block size z (even && > 0)\n");
+   ocrPrintf("--init_x - initial blocks in x (> 0)\n");
+   ocrPrintf("--init_y - initial blocks in y (> 0)\n");
+   ocrPrintf("--init_z - initial blocks in z (> 0)\n");
+   ocrPrintf("--reorder - ordering of blocks if initial number > 1\n");
+   ocrPrintf("--npx - (0 < npx <= num_pes)\n");
+   ocrPrintf("--npy - (0 < npy <= num_pes)\n");
+   ocrPrintf("--npz - (0 < npz <= num_pes)\n");
+   ocrPrintf("--max_blocks - maximun number of blocks per core\n");
+   ocrPrintf("--num_refine - (>= 0) number of levels of refinement\n");
+   ocrPrintf("--block_change - (>= 0) number of levels a block can change in a timestep\n");
+   ocrPrintf("--uniform_refine - if 1, then grid is uniformly refined\n");
+   ocrPrintf("--refine_freq - frequency (in timesteps) of checking for refinement\n");
+   ocrPrintf("--target_active - (>= 0) target number of blocks per core, none if 0\n");
+   ocrPrintf("--target_max - (>= 0) max number of blocks per core, none if 0\n");
+   ocrPrintf("--target_min - (>= 0) min number of blocks per core, none if 0\n");
+   ocrPrintf("--inbalance - percentage inbalance to trigger inbalance\n");
+   ocrPrintf("--lb_opt - load balancing - 0 = none, 1 = each refine, 2 = each refine phase\n");
+   ocrPrintf("--num_vars - number of variables (> 0)\n");
+   ocrPrintf("--comm_vars - number of vars to communicate together\n");
+   ocrPrintf("--num_tsteps - number of timesteps (> 0)\n");
+   ocrPrintf("--stages_per_ts - number of comm/calc stages per timestep\n");
+   ocrPrintf("--checksum_freq - number of stages between checksums\n");
+   ocrPrintf("--stencil - 7 or 27 point (27 will not work with refinement (except uniform))\n");
+   ocrPrintf("--error_tol - (e^{-error_tol} ; >= 0) \n");
+   ocrPrintf("--report_diffusion - (>= 0) none if 0\n");
+   ocrPrintf("--report_perf - 0, 1, 2\n");
+   ocrPrintf("--refine_freq - frequency (timesteps) of plotting (0 for none)\n");
+   ocrPrintf("--code - closely minic communication of different codes\n");
+   ocrPrintf("         0 minimal sends, 1 send ghosts, 2 send ghosts and process on send\n");
+   ocrPrintf("--permute - altenates directions in communication\n");
+   ocrPrintf("--blocking_send - use blocking sends instead of nonblocking\n");
+   ocrPrintf("--refine_ghost - use full extent of block (including ghosts) to determine if block is refined\n");
+   ocrPrintf("--num_objects - (>= 0) number of objects to cause refinement\n");
+   ocrPrintf("--object - type, position, movement, size, size rate of change\n");
 
-   PRINTF("All associated settings are integers except for objects\n");
+   ocrPrintf("All associated settings are integers except for objects\n");
 }
 
 int check_input(Command cmd)
@@ -1256,79 +1256,79 @@ int check_input(Command cmd)
    int error = 0;
 
    if (cmd.init_block_x < 1 || cmd.init_block_y < 1 || cmd.init_block_z < 1) {
-      PRINTF("initial blocks on processor must be positive\n");
+      ocrPrintf("initial blocks on processor must be positive\n");
       error = 1;
    }
    if (cmd.max_num_blocks < cmd.init_block_x*cmd.init_block_y*cmd.init_block_z) {
-      PRINTF("max_num_blocks not large enough\n");
+      ocrPrintf("max_num_blocks not large enough\n");
       error = 1;
    }
    if (cmd.x_block_size < 1 || cmd.y_block_size < 1 || cmd.z_block_size < 1) {
-      PRINTF("block size must be positive\n");
+      ocrPrintf("block size must be positive\n");
       error = 1;
    }
    if (((cmd.x_block_size/2)*2) != cmd.x_block_size) {
-      PRINTF("block size in x direction must be even\n");
+      ocrPrintf("block size in x direction must be even\n");
       error = 1;
    }
    if (((cmd.y_block_size/2)*2) != cmd.y_block_size) {
-      PRINTF("block size in y direction must be even\n");
+      ocrPrintf("block size in y direction must be even\n");
       error = 1;
    }
    if (((cmd.z_block_size/2)*2) != cmd.z_block_size) {
-      PRINTF("block size in z direction must be even\n");
+      ocrPrintf("block size in z direction must be even\n");
       error = 1;
    }
    if (cmd.target_active && cmd.target_max) {
-      PRINTF("Only one of target_active and target_max can be used\n");
+      ocrPrintf("Only one of target_active and target_max can be used\n");
       error = 1;
    }
    if (cmd.target_active && cmd.target_min) {
-      PRINTF("Only one of target_active and target_min can be used\n");
+      ocrPrintf("Only one of target_active and target_min can be used\n");
       error = 1;
    }
    if (cmd.target_active < 0 || cmd.target_active > cmd.max_num_blocks) {
-      PRINTF("illegal value for target_active\n");
+      ocrPrintf("illegal value for target_active\n");
       error = 1;
    }
    if (cmd.target_max < 0 || cmd.target_max > cmd.max_num_blocks ||
        cmd.target_max < cmd.target_active) {
-      PRINTF("illegal value for target_max\n");
+      ocrPrintf("illegal value for target_max\n");
       error = 1;
    }
    if (cmd.target_min < 0 || cmd.target_min > cmd.max_num_blocks ||
        cmd.target_min > cmd.target_active || cmd.target_min > cmd.target_max) {
-      PRINTF("illegal value for target_min\n");
+      ocrPrintf("illegal value for target_min\n");
       error = 1;
    }
    if (cmd.num_refine < 0) {
-      PRINTF("number of refinement levels must be non-negative\n");
+      ocrPrintf("number of refinement levels must be non-negative\n");
       error = 1;
    }
    if (cmd.block_change < 0) {
-      PRINTF("number of refinement levels must be non-negative\n");
+      ocrPrintf("number of refinement levels must be non-negative\n");
       error = 1;
    }
    if (cmd.num_vars < 1) {
-      PRINTF("number of variables must be positive\n");
+      ocrPrintf("number of variables must be positive\n");
       error = 1;
    }
    //if (num_pes != npx*npy*npz) {
-   //   PRINTF("number of processors used does not match number allocated\n");
+   //   ocrPrintf("number of processors used does not match number allocated\n");
    //   error = 1;
    //}
    if (cmd.stencil != 7 && cmd.stencil != 27) {
-      PRINTF("illegal value for stencil\n");
+      ocrPrintf("illegal value for stencil\n");
       error = 1;
    }
    if (cmd.stencil == 27 && cmd.num_refine && !cmd.uniform_refine)
-      PRINTF("WARNING: 27 point stencil with non-uniform refinement: answers may diverge\n");
+      ocrPrintf("WARNING: 27 point stencil with non-uniform refinement: answers may diverge\n");
    if (cmd.code < 0 || cmd.code > 2) {
-      PRINTF("code must be 0, 1, or 2\n");
+      ocrPrintf("code must be 0, 1, or 2\n");
       error = 1;
    }
    if (cmd.lb_opt != 0 && cmd.lb_opt != 1 && cmd.lb_opt != 31 && cmd.lb_opt != 33) {
-      PRINTF("lb_opt must be 0, 1, 31 or 33\n");
+      ocrPrintf("lb_opt must be 0, 1, 31 or 33\n");
       error = 1;
    }
 

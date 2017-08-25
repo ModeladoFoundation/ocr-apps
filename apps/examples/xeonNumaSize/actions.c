@@ -22,7 +22,7 @@ u64 times[1000];
  * @return  0 if successful or -1
  */
 int countNumberOfCpusPerNode() {
-    PRINTF("\n===== Count number of CPUs in each Node.\n");
+    ocrPrintf("\n===== Count number of CPUs in each Node.\n");
     clockid_t clockid;
 
     int maxNode = numa_max_node();
@@ -30,22 +30,22 @@ int countNumberOfCpusPerNode() {
     int node;
     for (node=0; node<=maxNode; node++) {
         if (moveToNode(node) == -1) {
-            PRINTF("ERROR: countNumberOfCpusPerNode() failed to switch to "
+            ocrPrintf("ERROR: countNumberOfCpusPerNode() failed to switch to "
                    "node %d!\n", node);
             return -1;
         }
         if (numa_node_to_cpus(node, cpuMask) != 0) {
-            PRINTF("ERROR: countNumberOfCpusPerNode) was unable to fill "
+            ocrPrintf("ERROR: countNumberOfCpusPerNode) was unable to fill "
                    "cpuMask for node %d\n", node);
             return -1;
         }
         int numCpus = numa_bitmask_weight(cpuMask);
         if (numCpus < 0) {
-            PRINTF("WARNING: countNumberOfCpusPerNode) was unable to get "
+            ocrPrintf("WARNING: countNumberOfCpusPerNode) was unable to get "
                    "# CPUs for NUMA node %d\n", node);
             continue;
         }
-        PRINTF("  Node %d has %d CPUs\n", node, numCpus);
+        ocrPrintf("  Node %d has %d CPUs\n", node, numCpus);
     }
 
     return 0;
@@ -66,7 +66,7 @@ int runRdtscLoop(int loopMax) {
         times[i] = rdtsc();
     }
     end = rdtsc();
-    PRINTF("  %d calls to getNanos took %ld nanos, or %ld nanos/call\n",
+    ocrPrintf("  %d calls to getNanos took %ld nanos, or %ld nanos/call\n",
            loopMax, end - start, (end-start)/(1LL+loopMax));
     if (loopMax <= 1000) {
         int avg = (end - start) / (loopMax + 1);
@@ -74,7 +74,7 @@ int runRdtscLoop(int loopMax) {
             for (i=0; i<loopMax; i++) {
                 u64 diff = (i==0) ? (times[i]-start) : (times[i]-times[i-1]);
                 if (diff > 30) {
-                    PRINTF("........times[%03d] = %ld, delta=%ld\n",
+                    ocrPrintf("........times[%03d] = %ld, delta=%ld\n",
                            i, times[i], diff);
                 }
             }
@@ -94,7 +94,7 @@ int testRdtscCpu() {
 
     // Run rdtsc 1,000,000 times in chunks of 100
     for (i=0; i<10000; i++) {
-        PRINTF("%03d: ", i);
+        ocrPrintf("%03d: ", i);
         runRdtscLoop(100);
     }
     return 0;
@@ -107,7 +107,7 @@ int testRdtscCpu() {
 int testRdtscTiming() {
     u64 start, end;
     int i;
-    PRINTF("\n===== Test rdtsc() timing on all nodes\n");
+    ocrPrintf("\n===== Test rdtsc() timing on all nodes\n");
 
     int maxNode = numa_max_node();
     struct bitmask *cpuMask = numa_allocate_cpumask();
@@ -115,22 +115,22 @@ int testRdtscTiming() {
     for (node=0; node<=maxNode; node++) {
         // Only test on nodes that have CPUs
         if (numa_node_to_cpus(node, cpuMask) != 0) {
-            PRINTF("ERROR: testRdtscTiming() was unable to fill cpuMask for "
+            ocrPrintf("ERROR: testRdtscTiming() was unable to fill cpuMask for "
                    "node %d\n", node);
             return -1;
         }
         int numCpus = numa_bitmask_weight(cpuMask);
         if (numCpus < 0) {
-            PRINTF("WARNING: testRdtscTiming() was unable to get # CPUs for "
+            ocrPrintf("WARNING: testRdtscTiming() was unable to get # CPUs for "
                    "NUMA node %d\n", node);
             continue;
         }
         if (numCpus == 0)
             continue;
 
-        PRINTF("\n### Node %d\n", node);
+        ocrPrintf("\n### Node %d\n", node);
         if (moveToNode(node) == -1) {
-            PRINTF("ERROR: testRdtscTiming() failed to switch to "
+            ocrPrintf("ERROR: testRdtscTiming() failed to switch to "
                    "node %d!\n", node);
             return -1;
         }
@@ -140,7 +140,7 @@ int testRdtscTiming() {
 
     start = rdtsc();
     end = rdtsc();
-    PRINTF("\n  1 call after warmup took %ld nanos\n", (end-start));
+    ocrPrintf("\n  1 call after warmup took %ld nanos\n", (end-start));
 
     return 0;
 }
@@ -150,7 +150,7 @@ int testRdtscTiming() {
  * @return  0 on success and -1 on failure.
  */
 int testMovingToNodes() {
-    PRINTF("\n===== Test moving to all nodes with CPUs\n");
+    ocrPrintf("\n===== Test moving to all nodes with CPUs\n");
     u64 start, end, tim, sum = 0, j;
     clockid_t clockid;
 
@@ -159,13 +159,13 @@ int testMovingToNodes() {
     int node;
     for (node=0; node<=maxNode; node++) {
         if (numa_node_to_cpus(node, cpuMask) != 0) {
-            PRINTF("ERROR: testMovingToNodes() was unable to fill "
+            ocrPrintf("ERROR: testMovingToNodes() was unable to fill "
                    "cpuMask for node %d\n", node);
             return -1;
         }
         int numCpus = numa_bitmask_weight(cpuMask);
         if (numCpus < 0) {
-            PRINTF("WARNING: testMovingToNodes() was unable to get "
+            ocrPrintf("WARNING: testMovingToNodes() was unable to get "
                    "# CPUs for NUMA node %d\n", node);
             continue;
         }
@@ -173,12 +173,12 @@ int testMovingToNodes() {
         if (numCpus < 1)
             continue;
         if (moveToNode(node) == -1) {
-            PRINTF("ERROR: testMovingToNodes() failed to switch to "
+            ocrPrintf("ERROR: testMovingToNodes() failed to switch to "
                    "node %d!\n", node);
             return -1;
         }
 
-        PRINTF("\n### Node %d\n", node);
+        ocrPrintf("\n### Node %d\n", node);
         if (showCpuAndNode() == -1)
             return -1;
     }
@@ -192,7 +192,7 @@ int testMovingToNodes() {
  * @return  0 if successful or -1 if there is a problem
  */
 int testFindingMcdramOnAllNodes() {
-    PRINTF("====== Test finding MCDRAM for each node\n");
+    ocrPrintf("====== Test finding MCDRAM for each node\n");
     int mcdramNode;
     u64 start, end, tim, sum = 0, j;
     clockid_t clockid;
@@ -202,13 +202,13 @@ int testFindingMcdramOnAllNodes() {
     int node;
     for (node=0; node<=maxNode; node++) {
         if (numa_node_to_cpus(node, cpuMask) != 0) {
-            PRINTF("ERROR: testFindingMcdramOnAllNodes() was unable to fill "
+            ocrPrintf("ERROR: testFindingMcdramOnAllNodes() was unable to fill "
                    "cpuMask for node %d\n", node);
             return -1;
         }
         int numCpus = numa_bitmask_weight(cpuMask);
         if (numCpus < 0) {
-            PRINTF("WARNING: testFindingMcdramOnAllNodes() was unable to get "
+            ocrPrintf("WARNING: testFindingMcdramOnAllNodes() was unable to get "
                    "# CPUs for NUMA node %d\n", node);
             continue;
         }
@@ -216,14 +216,14 @@ int testFindingMcdramOnAllNodes() {
         if (numCpus == 0)
             continue;
         if (moveToNode(node) == -1) {
-            PRINTF("ERROR: testFindingMcdramOnAllNodes() failed to switch to "
+            ocrPrintf("ERROR: testFindingMcdramOnAllNodes() failed to switch to "
                    "node %d!\n", node);
             return -1;
         }
 
-        PRINTF("\n### Node %d\n", node);
+        ocrPrintf("\n### Node %d\n", node);
         mcdramNode = findMyMcdram();
-        PRINTF("  Guessing that MCDRAM is node %d.\n", mcdramNode);
+        ocrPrintf("  Guessing that MCDRAM is node %d.\n", mcdramNode);
     }
 
     return 0;

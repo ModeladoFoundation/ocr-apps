@@ -111,7 +111,7 @@ void initSimulation(rankDataH_t* PTR_rankDataH, rankH_t* PTR_rankH, u64 mype)
 	// =====================================================================
 
 	// Allocate & fill energy grids
-	if( mype == 0) PRINTF("Generating Nuclide Energy Grids...\n");
+	if( mype == 0) ocrPrintf("Generating Nuclide Energy Grids...\n");
 
 	#ifdef VERIFICATION
     u64* seed_v;
@@ -132,7 +132,7 @@ void initSimulation(rankDataH_t* PTR_rankDataH, rankH_t* PTR_rankH, u64 mype)
 	#endif
 
 	// Sort grids by energy
-	if( mype == 0) PRINTF("Sorting Nuclide Energy Grids...\n");
+	if( mype == 0) ocrPrintf("Sorting Nuclide Energy Grids...\n");
 	sort_nuclide_grids( nuclide_grids, in.n_isotopes, in.n_gridpoints );
 
 	// Prepare Unionized Energy Grid Framework
@@ -145,7 +145,7 @@ void initSimulation(rankDataH_t* PTR_rankDataH, rankH_t* PTR_rankH, u64 mype)
 
 	// Get material data
 	if( mype == 0 )
-		PRINTF("Loading Mats...\n");
+		ocrPrintf("Loading Mats...\n");
 	int *num_nucs  = load_num_nucs( &PTR_rankDataH->DBK_num_nucs, in.n_isotopes);
 	int **mats     = load_mats(PTR_rankDataH, num_nucs, in.n_isotopes);
 
@@ -269,7 +269,7 @@ ocrGuid_t iterationsPerThreadEdt( EDT_ARGS )
 
         // Status text
         if( INFO && mype == 0 && tid == 0 && i % 1000 == 0 )
-        	PRINTF("\rCalculating XS's... (%.1f%% completed)",
+        	ocrPrintf("\rCalculating XS's... (%.1f%% completed)",
         			(i / ( (double)in.lookups / (double) in.nthreads ))
         			/ (double) in.nthreads * 100.0);
 
@@ -386,7 +386,7 @@ ocrGuid_t lookUpKernelPerThreadEdt( EDT_ARGS )
             break;
 
         default:
-            PRINTF("Scheduler NOT supported\n");
+            ocrPrintf("Scheduler NOT supported\n");
             break;
     }
 
@@ -586,8 +586,8 @@ ocrGuid_t summaryEdt( EDT_ARGS )
 
 	if( mype == 0)
 	{
-		PRINTF("\n" );
-		PRINTF("Simulation complete.\n" );
+		ocrPrintf("\n" );
+		ocrPrintf("Simulation complete.\n" );
 
 	    // Print / Save Results and Exit
 	    print_results( *PTR_in, mype, *runtime, nprocs, vhash );
@@ -854,7 +854,7 @@ ocrGuid_t initEdt( EDT_ARGS )
 
 ocrGuid_t wrapUpEdt( EDT_ARGS )
 {
-    PRINTF("Shutting down\n");
+    ocrPrintf("Shutting down\n");
     ocrShutdown();
     return NULL_GUID;
 }
@@ -866,14 +866,14 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
 
     void * PTR_cmdLineArgs = depv[0].ptr;
-    u32 argc = getArgc( PTR_cmdLineArgs );
+    u32 argc = ocrGetArgc( PTR_cmdLineArgs );
 
     //Pack the PTR_cmdLineArgs into the "cannonical" char** argv
     ocrGuid_t argv_g;
     char** argv;
     ocrDbCreate( &argv_g, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
     for( u32 a = 0; a < argc; ++a )
-       argv[a] = getArgv( PTR_cmdLineArgs, a );
+       argv[a] = ocrGetArgv( PTR_cmdLineArgs, a );
 
     int version = 13;
     // Process CLI Fields -- store in "Inputs" structure

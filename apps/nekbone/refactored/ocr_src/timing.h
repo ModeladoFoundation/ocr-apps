@@ -30,12 +30,12 @@ typedef long TimeMark_t; //In micro-seconds as provided by gettimeofday()
 TimeMark_t nekbone_getTime(void);
 
 #ifdef NEKO_PRINT_TIMING
-#   define TIMEPRINT1(txt,a)           PRINTF(txt,a)
-#   define TIMEPRINT2(txt,a,b)         PRINTF(txt,a,b)
-#   define TIMEPRINT3(txt,a,b,c)       PRINTF(txt,a,b,c)
-#   define TIMEPRINT4(txt,a,b,c,d)     PRINTF(txt,a,b,c,d)
-#   define TIMEPRINT5(txt,a,b,c,d,e)   PRINTF(txt,a,b,c,d,e)
-#   define TIMEPRINT6(txt,a,b,c,d,e,f) PRINTF(txt,a,b,c,d,e,f)
+#   define TIMEPRINT1(txt,a)           ocrPrintf(txt,a)
+#   define TIMEPRINT2(txt,a,b)         ocrPrintf(txt,a,b)
+#   define TIMEPRINT3(txt,a,b,c)       ocrPrintf(txt,a,b,c)
+#   define TIMEPRINT4(txt,a,b,c,d)     ocrPrintf(txt,a,b,c,d)
+#   define TIMEPRINT5(txt,a,b,c,d,e)   ocrPrintf(txt,a,b,c,d,e)
+#   define TIMEPRINT6(txt,a,b,c,d,e,f) ocrPrintf(txt,a,b,c,d,e,f)
 #else
 #   define TIMEPRINT1(txt,a)           do{}while(0)
 #   define TIMEPRINT2(txt,a,b)         do{}while(0)

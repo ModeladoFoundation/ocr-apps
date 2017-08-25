@@ -5,7 +5,7 @@
 ocrGuid_t stepA_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     //TODO Retrieve the data-block pointer
     //END-TODO
-    PRINTF("Array size: %lu, array[%lu]: %lu\n", paramv[0], paramv[1], data[paramv[1]]);
+    ocrPrintf("Array size: %lu, array[%lu]: %lu\n", paramv[0], paramv[1], data[paramv[1]]);
     ocrShutdown(); // This is the last EDT to execute
     return NULL_GUID;
 }

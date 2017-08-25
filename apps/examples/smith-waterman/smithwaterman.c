@@ -97,7 +97,7 @@ s8* read_file( s8* filename, u32* n_chars ) {
     FILE* file = fopen(filename, "r");
 
     if (!file) {
-        PRINTF("could not open file %s\n",filename);
+        ocrPrintf("could not open file %s\n",filename);
         return NULL;
     }
     fseek (file, 0L, SEEK_END);
@@ -239,7 +239,7 @@ ocrGuid_t smith_waterman_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     ocrDbDestroy(depv[2].guid);
     /* If this is the last tile (bottom right most tile), finish */
     if ( i == n_tiles_height && j == n_tiles_width ) {
-        PRINTF("score: %d\n", curr_bottom_row[tile_width-1]);
+        ocrPrintf("score: %d\n", curr_bottom_row[tile_width-1]);
         u32 score = smithWatermanParamvIn->score;
         VERIFY(curr_bottom_row[tile_width-1] == score, "Expected score: %d\n", score);
         ocrShutdown();
@@ -309,13 +309,13 @@ static void initialize_border_values( Tile_t** tile_matrix, s32 n_tiles_width, s
 }
 
 static u32 __attribute__ ((noinline)) ioHandling ( void* marshalled, s32* p_n_tiles_height, s32* p_n_tiles_width, s32* p_tile_width, s32* p_tile_height, s8** p_string_1, s8** p_string_2, u32 *check_score) {
-    u64 argc = getArgc(marshalled);
+    u64 argc = ocrGetArgc(marshalled);
 
     if(argc < 6) {
 #ifdef TG_ARCH
-        PRINTF("Usage: %s tileWidth tileHeight string1Length string2Length scoreLength\n", getArgv(marshalled, 0)/*argv[0]*/);
+        ocrPrintf("Usage: %s tileWidth tileHeight string1Length string2Length scoreLength\n", ocrGetArgv(marshalled, 0)/*argv[0]*/);
 #else
-        PRINTF("Usage: %s tileWidth tileHeight fileName1 fileName2 scoreFile\n", getArgv(marshalled, 0)/*argv[0]*/);
+        ocrPrintf("Usage: %s tileWidth tileHeight fileName1 fileName2 scoreFile\n", ocrGetArgv(marshalled, 0)/*argv[0]*/);
 #endif
         return 1;
     }
@@ -328,47 +328,47 @@ static u32 __attribute__ ((noinline)) ioHandling ( void* marshalled, s32* p_n_ti
     s8 *file_name_score;
 
 #ifdef TG_ARCH
-    *p_tile_width = (s32) atoi(getArgv(marshalled, 1));
-    *p_tile_height = (s32) atoi(getArgv(marshalled, 2));
-    n_char_in_file_1 = (s32) atoi(getArgv(marshalled, 3));
-    n_char_in_file_2 = (s32) atoi(getArgv(marshalled, 4));
-    n_char_in_file_score = (s32) atoi(getArgv(marshalled, 5));
+    *p_tile_width = (s32) atoi(ocrGetArgv(marshalled, 1));
+    *p_tile_height = (s32) atoi(ocrGetArgv(marshalled, 2));
+    n_char_in_file_1 = (s32) atoi(ocrGetArgv(marshalled, 3));
+    n_char_in_file_2 = (s32) atoi(ocrGetArgv(marshalled, 4));
+    n_char_in_file_score = (s32) atoi(ocrGetArgv(marshalled, 5));
     file_name_1 = NULL; // Doesn't matter anyway
     file_name_2 = NULL; // since the filename is immaterial
     file_name_score = NULL;
 #else
-    *p_tile_width = (s32) atoi(getArgv(marshalled, 1));
-    *p_tile_height = (s32) atoi(getArgv(marshalled, 2));
-    file_name_1 = getArgv(marshalled, 3);
-    file_name_2 = getArgv(marshalled, 4);
-    file_name_score = getArgv(marshalled, 5);
+    *p_tile_width = (s32) atoi(ocrGetArgv(marshalled, 1));
+    *p_tile_height = (s32) atoi(ocrGetArgv(marshalled, 2));
+    file_name_1 = ocrGetArgv(marshalled, 3);
+    file_name_2 = ocrGetArgv(marshalled, 4);
+    file_name_score = ocrGetArgv(marshalled, 5);
 #endif
 
     *p_string_1 = read_file(file_name_1, &n_char_in_file_1);
     if(*p_string_1 == NULL) return 1;
-    PRINTF("Size of input string 1 is %d\n", n_char_in_file_1 );
+    ocrPrintf("Size of input string 1 is %d\n", n_char_in_file_1 );
 
     *p_string_2 = read_file(file_name_2, &n_char_in_file_2);
     if(*p_string_2 == NULL) return 1;
-    PRINTF("Size of input string 2 is %d\n", n_char_in_file_2 );
+    ocrPrintf("Size of input string 2 is %d\n", n_char_in_file_2 );
 
     *check_score = atoi((char *)read_file(file_name_score, &n_char_in_file_score));
-    PRINTF("Score to get it %u\n", *check_score);
-    PRINTF("Tile width is %d\n", *p_tile_width);
-    PRINTF("Tile height is %d\n", *p_tile_height);
+    ocrPrintf("Score to get it %u\n", *check_score);
+    ocrPrintf("Tile width is %d\n", *p_tile_width);
+    ocrPrintf("Tile height is %d\n", *p_tile_height);
 
     *p_n_tiles_width = n_char_in_file_1 / *p_tile_width;
     *p_n_tiles_height = n_char_in_file_2 / *p_tile_height;
 
-    PRINTF("Imported %d x %d tiles.\n", *p_n_tiles_width, *p_n_tiles_height);
+    ocrPrintf("Imported %d x %d tiles.\n", *p_n_tiles_width, *p_n_tiles_height);
 
-    PRINTF("Allocating tile matrix\n");
+    ocrPrintf("Allocating tile matrix\n");
     return 0;
 }
 
 ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    ASSERT ( 0 == paramc );
-    ASSERT ( 1 == depc );
+    ocrAssert ( 0 == paramc );
+    ocrAssert ( 1 == depc );
 
     s32 n_tiles_height;
     s32 n_tiles_width;
@@ -402,7 +402,7 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         }
     }
 
-    PRINTF("Allocated tile matrix\n");
+    ocrPrintf("Allocated tile matrix\n");
 
     initialize_border_values(tile_matrix, n_tiles_width, n_tiles_height, tile_width, tile_height);
     ocrGuid_t smith_waterman_task_template_guid;

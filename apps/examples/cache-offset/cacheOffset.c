@@ -160,11 +160,11 @@ int testRealCacheOffset(TestResults *results) {
         ttotal += tdelta;
         averageTime = ttotal / (loop+1);
 //        if ((loop & 0x7) == 0)
-//            PRINTF(".");
+//            ocrPrintf(".");
     }
     // Use some of the data to try to get compiler to not opt away code.
     if (mem1Longs[14] == mem2Longs[14])
-        PRINTF("THIS ERROR WILL NEVER OCCCUR!\n");
+        ocrPrintf("THIS ERROR WILL NEVER OCCCUR!\n");
 
     results->numIterations = loopEnd;
     results->timeNs = averageTime;
@@ -182,33 +182,33 @@ int testRealCacheOffset(TestResults *results) {
 ocrGuid_t workerEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u32 i, j;
     u64 workerNum = paramv[0];
-    PRINTF("Start EDT %ld\n", workerNum);
+    ocrPrintf("Start EDT %ld\n", workerNum);
 
     TestResults results;
-    
+
     int iRet = testRealCacheOffset(&results);
     dbPtrs[workerNum]->cacheOffIterations = results.numIterations;
     dbPtrs[workerNum]->cacheOffTimeNs = results.timeNs;
     dbPtrs[workerNum]->cacheOffRejects = results.numRejects;
 
-    PRINTF("Finish EDT %ld\n", workerNum);
+    ocrPrintf("Finish EDT %ld\n", workerNum);
     return NULL_GUID;
 }
 
 ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     struct timeval tv;
     int i;
-    PRINTF("Start finishEdt()\n");
+    ocrPrintf("Start finishEdt()\n");
 
     for (i=0; i<NUM_CPUS; i++) {
         WorkerData *data = dbPtrs[i];
-        PRINTF("    EDT %03d : %d iterations over %ld bytes took %ld ns, "
+        ocrPrintf("    EDT %03d : %d iterations over %ld bytes took %ld ns, "
                "with %d bad iterations\n",
                i, data->cacheOffIterations, sizeOfTestArray,
                data->cacheOffTimeNs, data->cacheOffRejects);
     }
 
-    PRINTF("\nDONE! ( calling ocrShutdown() )\n");
+    ocrPrintf("\nDONE! ( calling ocrShutdown() )\n");
 
     ocrShutdown();
     return NULL_GUID;
@@ -228,22 +228,22 @@ u8 *myDbCreate(ocrGuid_t *db, u64 len) {
     iRet = ocrDbCreate(db, &ptr, len, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     if (iRet != 0) {
         if (iRet == OCR_ENOMEM) {
-            PRINTF("ERROR: mainEdt(): ocrDbCreate() failed to "
+            ocrPrintf("ERROR: mainEdt(): ocrDbCreate() failed to "
                    "allocate %d byte block - OCR_ENOMEM !\n", len);
             return NULL;
         }
         if (iRet == OCR_EINVAL) {
-            PRINTF("ERROR: mainEdt(): ocrDbCreate() failed to "
+            ocrPrintf("ERROR: mainEdt(): ocrDbCreate() failed to "
                    "to allocate %d byte block - OCR_EINVAL !\n", len);
             return NULL;
         }
         if (iRet == OCR_EBUSY) {
-            PRINTF("ERROR: mainEdt(): ocrDbCreate() failed to "
+            ocrPrintf("ERROR: mainEdt(): ocrDbCreate() failed to "
                    "to allocate %d byte block - OCR_EBUSY !\n", len);
             // Could retry here...
             return NULL;
         }
-        PRINTF("ERROR: mainEdt(): ocrDbCreate() failed to "
+        ocrPrintf("ERROR: mainEdt(): ocrDbCreate() failed to "
                "to allocate %d byte block - status = %d !\n", len);
         return NULL;
     }
@@ -261,13 +261,13 @@ u8 *myDbCreate(ocrGuid_t *db, u64 len) {
  * @return  a NULL GUID
  */
 ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    u64 argc = getArgc(depv[0].ptr);
+    u64 argc = ocrGetArgc(depv[0].ptr);
     u32 i;
     int iRet;
     char *argv[argc];
 
-    PRINTF("\n=====================================================\n");
-    PRINTF("Running %s, starting on:\n", programName);
+    ocrPrintf("\n=====================================================\n");
+    ocrPrintf("Running %s, starting on:\n", programName);
 
 
     int wkr;
@@ -277,7 +277,7 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 childParamv[1];
     u8 *ptr;
 
-    // Fill array with DBs 
+    // Fill array with DBs
     for (wkr=0; wkr<NUM_CPUS; wkr++) {
         ptr = myDbCreate(&(dbGuids[wkr]),sizeof(WorkerData));
         if (ptr == NULL)
@@ -285,11 +285,11 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         dbPtrs[wkr] = (WorkerData *)ptr;
     }
 
-    PRINTF("There are %d EDTs to be created\n", NUM_CPUS);
+    ocrPrintf("There are %d EDTs to be created\n", NUM_CPUS);
     ocrEdtTemplateCreate(&finishTemplate, finishEdt, 0, NUM_CPUS);
     ocrEdtCreate(&finishGuid, finishTemplate, 0, NULL, NUM_CPUS,
                  NULL, EDT_PROP_NONE, NULL_HINT, NULL);
-        
+
     ocrEdtTemplateCreate(&workerTemplate, workerEdt, 1, 1);
     for (wkr=0; wkr<NUM_CPUS; wkr++) {
         childParamv[0] = wkr;

@@ -33,11 +33,11 @@ Err_t copy_NEKO_CGscalars(NEKO_CGscalars_t * in_from, NEKO_CGscalars_t * o_targe
 }
 void  print_NEKO_CGscalars(NEKO_CGscalars_t * in)
 {
-    PRINTF("NEKO_CGscalars: currentCGiteration= %ld\n", in->currentCGiteration);
-    PRINTF("NEKO_CGscalars: rtz1=%23.14E   rtz2=%23.14E\n", in->rtz1, in->rtz2);
-    PRINTF("NEKO_CGscalars: beta=%23.14E   pap=%23.14E\n", in->beta, in->pap);
-    PRINTF("NEKO_CGscalars: alpha=%23.14E   alphm=%23.14E\n", in->alpha, in->alphm);
-    PRINTF("NEKO_CGscalars: rtr=%23.14E   rnorm=%23.14E\n", in->rtr, in->rnorm);
+    ocrPrintf("NEKO_CGscalars: currentCGiteration= %ld\n", in->currentCGiteration);
+    ocrPrintf("NEKO_CGscalars: rtz1=%23.14E   rtz2=%23.14E\n", in->rtz1, in->rtz2);
+    ocrPrintf("NEKO_CGscalars: beta=%23.14E   pap=%23.14E\n", in->beta, in->pap);
+    ocrPrintf("NEKO_CGscalars: alpha=%23.14E   alphm=%23.14E\n", in->alpha, in->alphm);
+    ocrPrintf("NEKO_CGscalars: rtr=%23.14E   rnorm=%23.14E\n", in->rtr, in->rnorm);
 }
 
 Err_t init_NEKO_CGtimings(NEKO_CGtimings_t * io)
@@ -123,7 +123,7 @@ Err_t nekbone_CGstep0_start(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_N
         for(i=0; i<length; ++i){
             sum += io_R[i] * in_C[i] * io_R[i];
         }
-        //PRINTF("DBG> rank=%u> CGstep0_start> rnorminit = %24.14E\n", in_NEKOglobals->rankID, sum);
+        //ocrPrintf("DBG> rank=%u> CGstep0_start> rnorminit = %24.14E\n", in_NEKOglobals->rankID, sum);
 
         //Calculate glsc3i(rnorminit,r,c,r,n,find,lind)
 #   ifdef REDUCTION_CGSTEP0
@@ -172,22 +172,22 @@ Err_t nekbone_CGstep0_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NE
 
         //Taking care of completing glsc3i(rnorminit,r,c,r,n,find,lind)
         double rnorminit = *in_sum;
-        //PRINTF("DBG> rank=%u> CGstep0_stop> rnorminit = %24.14E\n", in_NEKOglobals->rankID, rnorminit);
+        //ocrPrintf("DBG> rank=%u> CGstep0_stop> rnorminit = %24.14E\n", in_NEKOglobals->rankID, rnorminit);
 
         if( rnorminit < 0) {
             //This should be an error.  But rnorminit is used by no one.
             //So keep this as a warning for now.
-            PRINTF("CGstep0> rank=%u> rnorminit is negative\n", in_NEKOglobals->rankID);
+            ocrPrintf("CGstep0> rank=%u> rnorminit is negative\n", in_NEKOglobals->rankID);
             rnorminit = -rnorminit;
         }
 #       ifdef NEK_USE_ADVANCED_FUNCTIONS
             rnorminit = sqrt(rnorminit);
             if(in_NEKOglobals->rankID == 0){
-                PRINTF("INFO> CGstep0_stop> rnorminit = %24.14E\n", rnorminit);
+                ocrPrintf("INFO> CGstep0_stop> rnorminit = %24.14E\n", rnorminit);
             }
 #       else
             if(in_NEKOglobals->rankID == 0){
-                PRINTF("INFO> CGstep0_stop> rnorminit^2 = %24.14E\n", rnorminit);
+                ocrPrintf("INFO> CGstep0_stop> rnorminit^2 = %24.14E\n", rnorminit);
             }
 #       endif
         err = ocrDbDestroy( in_sum_guid ); IFEB;
@@ -342,7 +342,7 @@ Err_t nekbone_beta_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOg
         //Complete the ALL_Reduce: call gop(sum, work,'+  ',1)
         NBN_REAL sum = *in_sum;
         if(in_NEKOglobals->rankID == 0){
-            //DBG> PRINTF("INFO> beta_stop> sum = %24.14E\n", sum);
+            //DBG> ocrPrintf("INFO> beta_stop> sum = %24.14E\n", sum);
         }
         err = ocrDbDestroy( in_sum_guid ); IFEB;
 
@@ -450,7 +450,7 @@ Err_t nekbone_alpha_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKO
         //nekbone_alpha_stop: Post-process the ALL_Reduce: call gop(*o_partial_sum_pap, work,'+  ',1)
         NBN_REAL sum = *in_sum;
         if(in_NEKOglobals->rankID == 0){
-            //DBG> PRINTF("INFO> alpha_stop> sum = %24.14E\n", sum);
+            //DBG> ocrPrintf("INFO> alpha_stop> sum = %24.14E\n", sum);
         }
         err = ocrDbDestroy( in_sum_guid ); IFEB;
 
@@ -532,7 +532,7 @@ Err_t nekbone_rtr_stop(NEKOstatics_t * in_NEKOstatics, NEKOglobals_t * in_NEKOgl
         //nekbone_rtr_stop: Process the ALL_Reduce: call gop(sum, work,'+  ',1)
         NBN_REAL sum = *in_sum;
         if(in_NEKOglobals->rankID == 0){
-            //DBG> PRINTF("INFO> rtr_stop> sum = %24.14E\n", sum);
+            //DBG> ocrPrintf("INFO> rtr_stop> sum = %24.14E\n", sum);
         }
         err = ocrDbDestroy( in_sum_guid ); IFEB;
 

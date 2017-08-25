@@ -39,34 +39,34 @@ struct CmdLineVals clVals = {
  *
  */
 void sendHelp() {
-    PRINTF("\nusage %s ARGS\n", programName);
-    PRINTF("  ARGS:\n");
-    PRINTF("    -help         Display this help text\n");
-    PRINTF("    -tstMov       Run test of moving thread to all NUMA nodes.\n");
-    PRINTF("    -dcpu         Display number of CPUs per node\n");
-    PRINTF("    -rdtscCpu     Time rdtsc on current CPU (use with '-cpu')\n");
-    PRINTF("    -tstTim       Run rdtsc timing test on all NUMA CPU nodes\n");
-    PRINTF("    -cldbg        Enable command line debugging\n");
-    PRINTF("    -findMcdram   Test finding MCRAM nodes\n");
-    PRINTF("    -cpu=#[,#...] Specify which CPU(s) to run on\n");
-    PRINTF("    -drSize=#     Size of DRAM reads/writes (default=1G)\n");
-    PRINTF("                  You can append a letter as in '-drSize=4M'\n");
-    PRINTF("                    'K' means *1<<10, 'k' means *1,000\n");
-    PRINTF("                    'M' means *1<<20, 'm' means *1,000,000\n");
-    PRINTF("                    'G' means *1<<30, 'g' means *1,000,000,000\n");
-    PRINTF("    -drWLoops=#   Number of DRAM write loops to run\n");
-    PRINTF("    -drRLoops=#   Number of DRAM read loops to run\n");
-    PRINTF("    -drRRLoops=#  Number of DRAM random read loops to run\n");
-    PRINTF("    -mcSize=#     Size of MCDRAM reads/writes (default=1G)\n");
-    PRINTF("                  You can append a letter as in '-drSize' above\n");
-    PRINTF("    -mcWLoops=#   Number of MCDRAM write loops to run\n");
-    PRINTF("    -mcRLoops=#   Number of MCDRAM read loops to run\n");
-    PRINTF("    -mcRRLoops=#  Number of MCDRAM random read loops to run\n");
-    PRINTF("    -cacheLoops=# Number of cache line offset test loops\n");
-    PRINTF("    -cacheAllocLoops=#  Number of real cache line offset loops\n");
-    PRINTF("    -cacheOff=#   Number of bytes for cache line offset allocs\n");
-    PRINTF("    -cacheLarge=# Minimum size that is considered large\n");
-    PRINTF("\n");
+    ocrPrintf("\nusage %s ARGS\n", programName);
+    ocrPrintf("  ARGS:\n");
+    ocrPrintf("    -help         Display this help text\n");
+    ocrPrintf("    -tstMov       Run test of moving thread to all NUMA nodes.\n");
+    ocrPrintf("    -dcpu         Display number of CPUs per node\n");
+    ocrPrintf("    -rdtscCpu     Time rdtsc on current CPU (use with '-cpu')\n");
+    ocrPrintf("    -tstTim       Run rdtsc timing test on all NUMA CPU nodes\n");
+    ocrPrintf("    -cldbg        Enable command line debugging\n");
+    ocrPrintf("    -findMcdram   Test finding MCRAM nodes\n");
+    ocrPrintf("    -cpu=#[,#...] Specify which CPU(s) to run on\n");
+    ocrPrintf("    -drSize=#     Size of DRAM reads/writes (default=1G)\n");
+    ocrPrintf("                  You can append a letter as in '-drSize=4M'\n");
+    ocrPrintf("                    'K' means *1<<10, 'k' means *1,000\n");
+    ocrPrintf("                    'M' means *1<<20, 'm' means *1,000,000\n");
+    ocrPrintf("                    'G' means *1<<30, 'g' means *1,000,000,000\n");
+    ocrPrintf("    -drWLoops=#   Number of DRAM write loops to run\n");
+    ocrPrintf("    -drRLoops=#   Number of DRAM read loops to run\n");
+    ocrPrintf("    -drRRLoops=#  Number of DRAM random read loops to run\n");
+    ocrPrintf("    -mcSize=#     Size of MCDRAM reads/writes (default=1G)\n");
+    ocrPrintf("                  You can append a letter as in '-drSize' above\n");
+    ocrPrintf("    -mcWLoops=#   Number of MCDRAM write loops to run\n");
+    ocrPrintf("    -mcRLoops=#   Number of MCDRAM read loops to run\n");
+    ocrPrintf("    -mcRRLoops=#  Number of MCDRAM random read loops to run\n");
+    ocrPrintf("    -cacheLoops=# Number of cache line offset test loops\n");
+    ocrPrintf("    -cacheAllocLoops=#  Number of real cache line offset loops\n");
+    ocrPrintf("    -cacheOff=#   Number of bytes for cache line offset allocs\n");
+    ocrPrintf("    -cacheLarge=# Minimum size that is considered large\n");
+    ocrPrintf("\n");
 }
 
 /** Parse the command line arguments.
@@ -87,14 +87,14 @@ int parseCmdLineArgs(int argc, char **argv) {
         maxCpus = numa_num_configured_cpus();
         clVals.runCpus = (int *)malloc(maxCpus * sizeof(int));
         if (clVals.runCpus == NULL) {
-            PRINTF("ERROR: Call to malloc(%l) failed: [%s]\n",
+            ocrPrintf("ERROR: Call to malloc(%l) failed: [%s]\n",
                    (maxCpus*sizeof(int)), strerror(errno));
             return -1;
         }
         for (i=0; i<maxCpus; i++)
             clVals.runCpus[i] = -1;
     }
-    
+
     int i;
     for (i=1; i<argc; i++) {
         if ((!strncmp(argv[i], "-h", 2)) ||
@@ -133,8 +133,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-cpu=", 5)) {
             if (argv[i][5] == '\0') {
-                PRINTF("ERROR: Argument '-cpu=' requies a number!\n");
-                PRINTF("       Example: '-cpu=13'\n");
+                ocrPrintf("ERROR: Argument '-cpu=' requies a number!\n");
+                ocrPrintf("       Example: '-cpu=13'\n");
                 retVal = -1;
                 continue;
             }
@@ -144,7 +144,7 @@ int parseCmdLineArgs(int argc, char **argv) {
             for (c=0; c<maxCpus; c++) {
                 long cpu = strtol(startptr, &endptr, 0);
                 if (cpu < 0) {
-                    PRINTF("ERROR: Invalid CPU number '%d'!\n", cpu);
+                    ocrPrintf("ERROR: Invalid CPU number '%d'!\n", cpu);
                     retVal = -1;
                     break;
                 }
@@ -162,8 +162,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-drSize=", 8)) {
             if (argv[i][8] == '\0') {
-                PRINTF("ERROR: Argument '-drSize=' requires a number!\n");
-                PRINTF("       Example: '-drSize=5M' or '-drSize=5000000'\n");
+                ocrPrintf("ERROR: Argument '-drSize=' requires a number!\n");
+                ocrPrintf("       Example: '-drSize=5M' or '-drSize=5000000'\n");
                 retVal = -1;
                 continue;
             }
@@ -186,8 +186,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-drWLoops=", 10)) {
             if (argv[i][10] == '\0') {
-                PRINTF("ERROR: Argument '-drWLoops=' requires a number!\n");
-                PRINTF("       Example: '-drWLoops=100'\n");
+                ocrPrintf("ERROR: Argument '-drWLoops=' requires a number!\n");
+                ocrPrintf("       Example: '-drWLoops=100'\n");
                 retVal = -1;
                 continue;
             }
@@ -197,8 +197,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-drRLoops=", 10)) {
             if (argv[i][10] == '\0') {
-                PRINTF("ERROR: Argument '-drRLoops=' requires a number!\n");
-                PRINTF("       Example: '-drRLoops=100'\n");
+                ocrPrintf("ERROR: Argument '-drRLoops=' requires a number!\n");
+                ocrPrintf("       Example: '-drRLoops=100'\n");
                 retVal = -1;
                 continue;
             }
@@ -208,8 +208,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-drRRLoops=", 11)) {
             if (argv[i][11] == '\0') {
-                PRINTF("ERROR: Argument '-drRRLoops=' requires a number!\n");
-                PRINTF("       Example: '-drRRLoops=100'\n");
+                ocrPrintf("ERROR: Argument '-drRRLoops=' requires a number!\n");
+                ocrPrintf("       Example: '-drRRLoops=100'\n");
                 retVal = -1;
                 continue;
             }
@@ -219,8 +219,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-mcSize=", 8)) {
             if (argv[i][8] == '\0') {
-                PRINTF("ERROR: Argument '-mcSize=' requires a number!\n");
-                PRINTF("       Example: '-mcSize=5M', '-mcSize=5000000'\n");
+                ocrPrintf("ERROR: Argument '-mcSize=' requires a number!\n");
+                ocrPrintf("       Example: '-mcSize=5M', '-mcSize=5000000'\n");
                 retVal = -1;
                 continue;
             }
@@ -243,8 +243,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-mcWLoops=", 10)) {
             if (argv[i][10] == '\0') {
-                PRINTF("ERROR: Argument '-mcWLoops=' requires a number!\n");
-                PRINTF("       Example: '-mcWLoops=100'\n");
+                ocrPrintf("ERROR: Argument '-mcWLoops=' requires a number!\n");
+                ocrPrintf("       Example: '-mcWLoops=100'\n");
                 retVal = -1;
                 continue;
             }
@@ -254,8 +254,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-mcRLoops=", 10)) {
             if (argv[i][10] == '\0') {
-                PRINTF("ERROR: Argument '-mcRLoops=' requires a number!\n");
-                PRINTF("       Example: '-mcRLoops=100'\n");
+                ocrPrintf("ERROR: Argument '-mcRLoops=' requires a number!\n");
+                ocrPrintf("       Example: '-mcRLoops=100'\n");
                 retVal = -1;
                 continue;
             }
@@ -265,8 +265,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-mcRRLoops=", 11)) {
             if (argv[i][11] == '\0') {
-                PRINTF("ERROR: Argument '-mcRRLoops=' requires a number!\n");
-                PRINTF("       Example: '-mcRRLoops=100'\n");
+                ocrPrintf("ERROR: Argument '-mcRRLoops=' requires a number!\n");
+                ocrPrintf("       Example: '-mcRRLoops=100'\n");
                 retVal = -1;
                 continue;
             }
@@ -276,8 +276,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-cacheLoops=", 12)) {
             if (argv[i][12] == '\0') {
-                PRINTF("ERROR: Argument '-cacheLoops=' requires a number!\n");
-                PRINTF("       Example: '-cacheLoops=1000'\n");
+                ocrPrintf("ERROR: Argument '-cacheLoops=' requires a number!\n");
+                ocrPrintf("       Example: '-cacheLoops=1000'\n");
                 retVal = -1;
                 continue;
             }
@@ -288,8 +288,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         if (!strncmp(argv[i], "-cacheOff=", 10)) {
             // Only valid if 'cacheLineLoops' > 0 or 'cacheAllocLoops' > 0
             if (argv[i][10] == '\0') {
-                PRINTF("ERROR: Argument '-cacheOff=' requires a number!\n");
-                PRINTF("       Example: '-cacheOff=128'\n");
+                ocrPrintf("ERROR: Argument '-cacheOff=' requires a number!\n");
+                ocrPrintf("       Example: '-cacheOff=128'\n");
                 retVal = -1;
                 continue;
             }
@@ -298,8 +298,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         }
         if (!strncmp(argv[i], "-cacheAllocLoops=", 17)) {
             if (argv[i][17] == '\0') {
-                PRINTF("ERROR: Argument '-cacheAllocLoops=' requires a number!\n");
-                PRINTF("       Example: '-cacheAllocLoops=1000'\n");
+                ocrPrintf("ERROR: Argument '-cacheAllocLoops=' requires a number!\n");
+                ocrPrintf("       Example: '-cacheAllocLoops=1000'\n");
                 retVal = -1;
                 continue;
             }
@@ -310,8 +310,8 @@ int parseCmdLineArgs(int argc, char **argv) {
         if (!strncmp(argv[i], "-cacheLarge=", 12)) {
             // Only valid if 'cacheAllocLoops' > 0
             if (argv[i][12] == '\0') {
-                PRINTF("ERROR: Argument '-cacheLarge=' requires a number!\n");
-                PRINTF("       Example: '-cacheLarge=1M'\n");
+                ocrPrintf("ERROR: Argument '-cacheLarge=' requires a number!\n");
+                ocrPrintf("       Example: '-cacheLarge=1M'\n");
                 retVal = -1;
                 continue;
             }
@@ -332,53 +332,53 @@ int parseCmdLineArgs(int argc, char **argv) {
             clVals.cacheLineMinLarge = val;
             continue;
         }
-        PRINTF("ERROR: Unrecognized command line argument \"%s\"!\n",
+        ocrPrintf("ERROR: Unrecognized command line argument \"%s\"!\n",
                argv[i]);
         retVal = -1;
     }
 
     if (clVals.cmdLineDebug) {
-        PRINTF("There %s %d command line argument%s:\n",
+        ocrPrintf("There %s %d command line argument%s:\n",
                ((argc==1)?"is":"are"), argc, ((argc==1)?"":"s"));
         for (i=0; i<argc; i++)
-            PRINTF("    ARGV[%d] is \"%s\"\n", i, argv[i]);
+            ocrPrintf("    ARGV[%d] is \"%s\"\n", i, argv[i]);
 
-        PRINTF("Command line flags:\n");
-        PRINTF("    cmdLineDebug = %d\n", clVals.cmdLineDebug);
-        PRINTF("    tstSwitchNodes = %d\n", clVals.tstSwitchNodes);
-        PRINTF("    countNumCpus = %d\n", clVals.countNumCpus);
-        PRINTF("    rdtscCpu = %d\n", clVals.rdtscCpu);
-        PRINTF("    timeRdtsc = %d\n", clVals.timeRdtsc);
-        PRINTF("    findMcdram = %d\n", clVals.findMcdram);
+        ocrPrintf("Command line flags:\n");
+        ocrPrintf("    cmdLineDebug = %d\n", clVals.cmdLineDebug);
+        ocrPrintf("    tstSwitchNodes = %d\n", clVals.tstSwitchNodes);
+        ocrPrintf("    countNumCpus = %d\n", clVals.countNumCpus);
+        ocrPrintf("    rdtscCpu = %d\n", clVals.rdtscCpu);
+        ocrPrintf("    timeRdtsc = %d\n", clVals.timeRdtsc);
+        ocrPrintf("    findMcdram = %d\n", clVals.findMcdram);
         if (clVals.numCpus == 0)
-            PRINTF("    runCpus = not set\n");
+            ocrPrintf("    runCpus = not set\n");
         else {
-            PRINTF("    runCpus = ");
+            ocrPrintf("    runCpus = ");
             for(i=0; i<clVals.numCpus; i++) {
                 if (i > 0)
-                    PRINTF(", %d", clVals.runCpus[i]);
+                    ocrPrintf(", %d", clVals.runCpus[i]);
                 else
-                    PRINTF("%d", clVals.runCpus[i]);
+                    ocrPrintf("%d", clVals.runCpus[i]);
             }
-            PRINTF("\n");
+            ocrPrintf("\n");
         }
-        PRINTF("    dramSize = %lu\n", clVals.dramSize);
-        PRINTF("    dramWLoops = %d\n", clVals.dramWLoops);
-        PRINTF("    dramRLoops = %d\n", clVals.dramRLoops);
-        PRINTF("    dramRRLoops = %d\n", clVals.dramRLoopRand);
-        PRINTF("    mcdramSize = %lu\n", clVals.mcdramSize);
-        PRINTF("    mcdramWLoops = %d\n", clVals.mcdramWLoops);
-        PRINTF("    mcdramRLoops = %d\n", clVals.mcdramRLoops);
-        PRINTF("    mcdramRRLoops = %d\n", clVals.mcdramRLoopRand);
-        PRINTF("    cacheLineLoops = %lu\n", clVals.cacheLineLoops);
-        PRINTF("    cacheLineOffset = %lu\n", clVals.cacheLineOffset);
-        PRINTF("    cacheAllocLoops = %lu\n", clVals.cacheAllocLoops);
-        PRINTF("    cacheLineMinLarge = %lu\n", clVals.cacheLineMinLarge);
-        PRINTF("    cacheAllocLoops = %lu\n", clVals.cacheAllocLoops);
+        ocrPrintf("    dramSize = %lu\n", clVals.dramSize);
+        ocrPrintf("    dramWLoops = %d\n", clVals.dramWLoops);
+        ocrPrintf("    dramRLoops = %d\n", clVals.dramRLoops);
+        ocrPrintf("    dramRRLoops = %d\n", clVals.dramRLoopRand);
+        ocrPrintf("    mcdramSize = %lu\n", clVals.mcdramSize);
+        ocrPrintf("    mcdramWLoops = %d\n", clVals.mcdramWLoops);
+        ocrPrintf("    mcdramRLoops = %d\n", clVals.mcdramRLoops);
+        ocrPrintf("    mcdramRRLoops = %d\n", clVals.mcdramRLoopRand);
+        ocrPrintf("    cacheLineLoops = %lu\n", clVals.cacheLineLoops);
+        ocrPrintf("    cacheLineOffset = %lu\n", clVals.cacheLineOffset);
+        ocrPrintf("    cacheAllocLoops = %lu\n", clVals.cacheAllocLoops);
+        ocrPrintf("    cacheLineMinLarge = %lu\n", clVals.cacheLineMinLarge);
+        ocrPrintf("    cacheAllocLoops = %lu\n", clVals.cacheAllocLoops);
     }
 
     if (numActionOps == 0) {
-        PRINTF("There were no action operations specified...\n");
+        ocrPrintf("There were no action operations specified...\n");
         sendHelp();
         return -1;
     }

@@ -60,7 +60,7 @@ void ljforce(atomData_t* PTR_atomData, atomData_t** nPTR_atomData, real_t sigma,
         dr[1] = PTR_atomData->r[aa][1]-(bPTR_atomData->r[bb][1]+FSHIFT_Y(PTR_atomData->nmask,n));
         dr[2] = PTR_atomData->r[aa][2]-(bPTR_atomData->r[bb][2]+FSHIFT_Z(PTR_atomData->nmask,n));
         r2=dr[0]*dr[0]+dr[1]*dr[1]+dr[2]*dr[2];
-        //PRINTF("gid %d-%d %18.12f %18.12f %18.12f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f s: %18.12f %18.12f %18.12f\n", PTR_atomData->gid[aa], bPTR_atomData->gid[bb], dr[0], dr[1], dr[2], PTR_atomData->r[aa][0], PTR_atomData->r[aa][1], PTR_atomData->r[aa][2],
+        //ocrPrintf("gid %d-%d %18.12f %18.12f %18.12f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f s: %18.12f %18.12f %18.12f\n", PTR_atomData->gid[aa], bPTR_atomData->gid[bb], dr[0], dr[1], dr[2], PTR_atomData->r[aa][0], PTR_atomData->r[aa][1], PTR_atomData->r[aa][2],
         //bPTR_atomData->r[bb][0], bPTR_atomData->r[bb][1], bPTR_atomData->r[bb][2],
         //FSHIFT_X(PTR_atomData->nmask,n),
         //FSHIFT_Y(PTR_atomData->nmask,n),
@@ -87,7 +87,7 @@ void ljforce(atomData_t* PTR_atomData, atomData_t** nPTR_atomData, real_t sigma,
 //depv: DBK_atomDataH0, .., DBK_atomDataH26
 ocrGuid_t ljforce_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-  //PRINTF("ljforce_edt\n");
+  //ocrPrintf("ljforce_edt\n");
   atomData_t* PTR_atomData = (atomData_t*)depv[13].ptr;
 #ifndef TG_ARCH
   memset(PTR_atomData->f,0,sizeof(real3_t)*PTR_atomData->nAtoms);
@@ -110,7 +110,7 @@ ocrGuid_t ljforce_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   {
     //if(n==13) continue;
     nPTR_atomData[k++] = (atomData_t*)depv[n].ptr;
-    //PRINTF("n %d %p\n", n, nPTR_atomData[k-1]);
+    //ocrPrintf("n %d %p\n", n, nPTR_atomData[k-1]);
   }
 
   ljforce(PTR_atomData, nPTR_atomData, sigma, epsilon, cut, shift);
@@ -201,15 +201,15 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 void print_lj(void* po)
 {
   potential_t* p = (potential_t*)po;
-  PRINTF("  Potential type   : Lennard-Jones\n");
-  PRINTF("  Species name     : Cu\n");
-  PRINTF("  Atomic number    : %u\n", p->atomic_no);
-  PRINTF("  Mass             : %.3f amu\n", p->massFloat / amu2internal_mass);
-  PRINTF("  Lattice Type     : FCC\n");
-  PRINTF("  Lattice spacing  : %.3f Angstroms\n", p->lat);
-  PRINTF("  Cutoff           : %.3f Angstroms\n", p->cutoff);
-  PRINTF("  Epsilon          : %.3f eV\n", p->lj.epsilon*.25);
-  PRINTF("  Sigma            : %.3f Angstroms\n", p->lj.sigma);
+  ocrPrintf("  Potential type   : Lennard-Jones\n");
+  ocrPrintf("  Species name     : Cu\n");
+  ocrPrintf("  Atomic number    : %u\n", p->atomic_no);
+  ocrPrintf("  Mass             : %.3f amu\n", p->massFloat / amu2internal_mass);
+  ocrPrintf("  Lattice Type     : FCC\n");
+  ocrPrintf("  Lattice spacing  : %.3f Angstroms\n", p->lat);
+  ocrPrintf("  Cutoff           : %.3f Angstroms\n", p->cutoff);
+  ocrPrintf("  Epsilon          : %.3f eV\n", p->lj.epsilon*.25);
+  ocrPrintf("  Sigma            : %.3f Angstroms\n", p->lj.sigma);
 }
 
 void init_lj(potential_t* p, real_t dt)

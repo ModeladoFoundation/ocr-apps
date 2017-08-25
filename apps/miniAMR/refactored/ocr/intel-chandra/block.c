@@ -90,7 +90,7 @@ _OCR_TASK_FNC_( FNC_splitBlocks )
     u64 ts = PTR_rankH->ts;
 
     #ifdef DEBUG_APP_COARSE
-    PRINTF( "%s ilevel %d id_l %d irefine %d FINAL bp->refine %d ts %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, irefine, bp->refine, PTR_rankH->ts);
+    ocrPrintf( "%s ilevel %d id_l %d irefine %d FINAL bp->refine %d ts %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, irefine, bp->refine, PTR_rankH->ts);
     #endif
 
     s32 _ichild;

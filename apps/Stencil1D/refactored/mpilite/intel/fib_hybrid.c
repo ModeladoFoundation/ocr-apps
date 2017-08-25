@@ -39,7 +39,7 @@ ocrGuid_t complete(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     in1 = *(u32*)depv[0].ptr;
     in2 = *(u32*)depv[1].ptr;
     out = *(u32*)depv[2].ptr;
-    PRINTF("r%d Done with %d (%d + %d)\n", my_ID, out, in1, in2);
+    ocrPrintf("r%d Done with %d (%d + %d)\n", my_ID, out, in1, in2);
     /* we return our answer in the 3rd db passed in as an argument */
     *((u32*)(depv[2].ptr)) = in1 + in2;
 
@@ -64,13 +64,13 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     int my_ID = paramv[1];
 
     u32 n = *(u32*)(depv[0].ptr);
-    PRINTF("r%d Starting fibEdt(%u)\n", my_ID, n);
+    ocrPrintf("r%d Starting fibEdt(%u)\n", my_ID, n);
     if (n < 2) {
-        PRINTF("r%d In fibEdt(%d) -- done (sat %lx)\n", my_ID, n, inDep);
+        ocrPrintf("r%d In fibEdt(%d) -- done (sat %lx)\n", my_ID, n, inDep);
         ocrEventSatisfy(inDep, depv[0].guid);
         return NULL_GUID;
     }
-    PRINTF("r%d In fibEdt(%d) -- spawning children\n", my_ID, n);
+    ocrPrintf("r%d In fibEdt(%d) -- spawning children\n", my_ID, n);
 
     /* create the completion EDT and pass it the in/out argument as a dependency */
     /* create the EDT with the done_event as the argument */
@@ -83,7 +83,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
                      NULL_GUID, NULL);
         ocrEdtTemplateDestroy(templateGuid);
     }
-    PRINTF("r%d In fibEdt(%u) -- spawned complete EDT GUID 0x%llx\n", my_ID, n, (u64)comp);
+    ocrPrintf("r%d In fibEdt(%u) -- spawned complete EDT GUID 0x%llx\n", my_ID, n, (u64)comp);
     ocrAddDependence(depv[0].guid, comp, 2, DB_DEFAULT_MODE);
 
     /* create the events that the completion EDT will "wait" on */
@@ -94,7 +94,7 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     /* allocate the argument to pass to fib(n-1) */
 
     ocrDbCreate(&fibArg[0], (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-    PRINTF("r%d In fibEdt(%u) -- created arg DB GUID 0x%llx\n", my_ID, n, fibArg[0]);
+    ocrPrintf("r%d In fibEdt(%u) -- created arg DB GUID 0x%llx\n", my_ID, n, fibArg[0]);
     *((u32*)ptr) = n-1;
     /* sched the EDT, passing the fibDone event as it's argument */
     {
@@ -108,10 +108,10 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrEdtTemplateDestroy(templateGuid);
     }
 
-    PRINTF("r%d In fibEdt(%u) -- spawned first sub-part EDT GUID 0x%llx\n", my_ID, n, fib0);
+    ocrPrintf("r%d In fibEdt(%u) -- spawned first sub-part EDT GUID 0x%llx\n", my_ID, n, fib0);
     /* then do the exact same thing for n-2 */
     ocrDbCreate(&fibArg[1], (void**)&ptr, sizeof(u32), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-    PRINTF("r%d In fibEdt(%u) -- created arg DB GUID 0x%llx\n", my_ID, n, fibArg[1]);
+    ocrPrintf("r%d In fibEdt(%u) -- created arg DB GUID 0x%llx\n", my_ID, n, fibArg[1]);
     *((u32*)ptr) = n-2;
     {
         u64 paramv[] = {(u64)fibDone[1], my_ID};
@@ -123,9 +123,9 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
                      NULL_GUID, NULL);
         ocrEdtTemplateDestroy(templateGuid);
     }
-    PRINTF("r%d In fibEdt(%u) -- spawned first sub-part EDT GUID 0x%llx\n", my_ID, n, fib1);
+    ocrPrintf("r%d In fibEdt(%u) -- spawned first sub-part EDT GUID 0x%llx\n", my_ID, n, fib1);
 
-    PRINTF("r%d Returning from fibEdt(%u)\n", my_ID, n);
+    ocrPrintf("r%d Returning from fibEdt(%u)\n", my_ID, n);
     return NULL_GUID;
 
 }
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_ID);
     MPI_Comm_size(MPI_COMM_WORLD, &Num_procs);
-    PRINTF("Starting main on rank %d\n", my_ID);
+    ocrPrintf("Starting main on rank %d\n", my_ID);
 
     u32 input;
     u32 myN;
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
     if (0 == my_ID)
         {
             if((argc != 2)) {
-                PRINTF("Usage: fib <num>, defaulting to 10\n");
+                ocrPrintf("Usage: fib <num>, defaulting to 10\n");
                 input = 10;
             } else {
                 input = atoi(argv[1]);
@@ -187,9 +187,9 @@ int main(int argc, char **argv)
     ocrGuid_t fibArg;
     u32* res;
 
-    PRINTF("Before 1st DB create\n");
+    ocrPrintf("Before 1st DB create\n");
     ocrDbCreate(&fibArg, (void**)&res, sizeof(u32), DB_PROP_NONE, NULL_GUID, NO_ALLOC);
-    PRINTF("Got DB created\n");
+    ocrPrintf("Got DB created\n");
 
     /* DB is in/out */
     *res = myN;
@@ -242,11 +242,11 @@ int main(int argc, char **argv)
 
             if (correctAns == ourAns)
                 {
-                    PRINTF("\nFinal Answer Correct fib(%d) = %d\n", input, ourAns);
+                    ocrPrintf("\nFinal Answer Correct fib(%d) = %d\n", input, ourAns);
                 }
             else
                 {
-                    PRINTF("\nFinal Answer **WRONG** fib(%d) = %d, should be %d\n", input, ourAns, correctAns);
+                    ocrPrintf("\nFinal Answer **WRONG** fib(%d) = %d, should be %d\n", input, ourAns, correctAns);
                 }
         }
     MPI_Finalize();

@@ -259,21 +259,21 @@ Command parseCommandLine(int argc, char** argv)
 
 void printCmd(Command* cmd)
 {
-   PRINTF( "Command Line Parameters:\n" );
-   PRINTF( "  doeam: %d\n", cmd->doeam );
-   PRINTF( "  potDir: %s\n", cmd->potDir );
-   PRINTF( "  potName: %s\n", cmd->potName );
-   PRINTF( "  potType: %s\n", cmd->potType );
-   PRINTF( "  nx: %d\n", cmd->nx );
-   PRINTF( "  ny: %d\n", cmd->ny );
-   PRINTF( "  nz: %d\n", cmd->nz );
-   PRINTF( "  xproc: %d\n", cmd->xproc );
-   PRINTF( "  yproc: %d\n", cmd->yproc );
-   PRINTF( "  zproc: %d\n", cmd->zproc );
-   PRINTF( "  Lattice constant: %f Angstroms\n", cmd->lat );
-   PRINTF( "  nSteps: %d\n", cmd->nSteps );
-   PRINTF( "  printRate: %d\n", cmd->printRate );
-   PRINTF( "  Time step: %f fs\n", cmd->dt );
-   PRINTF( "  Initial Temperature: %f K\n", cmd->temperature );
-   PRINTF( "  Initial Delta: %f Angstroms\n\n", cmd->initialDelta );
+   ocrPrintf( "Command Line Parameters:\n" );
+   ocrPrintf( "  doeam: %d\n", cmd->doeam );
+   ocrPrintf( "  potDir: %s\n", cmd->potDir );
+   ocrPrintf( "  potName: %s\n", cmd->potName );
+   ocrPrintf( "  potType: %s\n", cmd->potType );
+   ocrPrintf( "  nx: %d\n", cmd->nx );
+   ocrPrintf( "  ny: %d\n", cmd->ny );
+   ocrPrintf( "  nz: %d\n", cmd->nz );
+   ocrPrintf( "  xproc: %d\n", cmd->xproc );
+   ocrPrintf( "  yproc: %d\n", cmd->yproc );
+   ocrPrintf( "  zproc: %d\n", cmd->zproc );
+   ocrPrintf( "  Lattice constant: %f Angstroms\n", cmd->lat );
+   ocrPrintf( "  nSteps: %d\n", cmd->nSteps );
+   ocrPrintf( "  printRate: %d\n", cmd->printRate );
+   ocrPrintf( "  Time step: %f fs\n", cmd->dt );
+   ocrPrintf( "  Initial Temperature: %f K\n", cmd->temperature );
+   ocrPrintf( "  Initial Delta: %f Angstroms\n\n", cmd->initialDelta );
 }

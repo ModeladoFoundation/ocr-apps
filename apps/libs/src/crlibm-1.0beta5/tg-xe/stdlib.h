@@ -7,7 +7,7 @@
 
 #ifdef TG_ARCH
 
-#define exit(code) { PRINTF("exit(%d)\n",code); ocrShutdown(); }
+#define exit(code) { ocrPrintf("exit(%d)\n",code); ocrShutdown(); }
 
 #endif
 

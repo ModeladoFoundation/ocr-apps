@@ -49,7 +49,7 @@ ocrGuid_t coalesceEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv )
     }
 
     for( i = 0; i < 8; i++ ) childBlock[i] = depv[i].ptr;
-    //PRINTF("%ld is coarsening!\n", PRM_block->id);
+    //ocrPrintf("%ld is coarsening!\n", PRM_block->id);
 
     //set neighborRefinement Levels.
     //
@@ -125,7 +125,7 @@ ocrGuid_t concensusRcvEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * dep
 {
     if( depc == 1 )
     {
-        //PRINTF("recvd 1\n");
+        //ocrPrintf("recvd 1\n");
         return depv[0].guid;
     }
     else if( depc == 4 )
@@ -133,7 +133,7 @@ ocrGuid_t concensusRcvEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * dep
         u64 i;
         coarsenInfo_t * inf;
         ocrGuid_t infDBK;
-        //PRINTF("rcvd 4\n");
+        //ocrPrintf("rcvd 4\n");
 
         ocrDbCreate( &infDBK, (void **)&inf, sizeof(coarsenInfo_t) * 4, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
         for( i = 0; i < 4; i++ )
@@ -144,7 +144,7 @@ ocrGuid_t concensusRcvEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * dep
 
         return infDBK;
     }
-    else PRINTF("wtf?\n");
+    else ocrPrintf("wtf?\n");
     return NULL_GUID;
 }
 
@@ -172,7 +172,7 @@ ocrGuid_t finalConsensus( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv
     if( myInfo->canCoarsen == CAN_COARSEN )
     {
         ocrGuid_t coalesceEVT;
-        //PRINTF("%ld child of %ld root %ld will coarsen.\n", PRM_block->id, PRM_block->parent, PRM_block->rootId);
+        //ocrPrintf("%ld child of %ld root %ld will coarsen.\n", PRM_block->id, PRM_block->parent, PRM_block->rootId);
         memcpy( &coalesceEVT, &PRM_block->parentEVT, sizeof(ocrGuid_t) );
 
         for( i = 0; i < 6; i++ )
@@ -193,19 +193,19 @@ ocrGuid_t finalConsensus( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv
                 }
                 if( isCoarsening )
                 {
-                    //PRINTF("%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
+                    //ocrPrintf("%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
 
                     PRM_block->neighborRefineLvls[i]--;
-                    ASSERT( PRM_block->neighborRefineLvls[i] >= 0 );
+                    ocrAssert( PRM_block->neighborRefineLvls[i] >= 0 );
                 }
             }
             else
             {
                 if( tmp->canCoarsen == CAN_COARSEN )
                 {
-                    //PRINTF("%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
+                    //ocrPrintf("%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
                     PRM_block->neighborRefineLvls[i]--;
-                    ASSERT( PRM_block->neighborRefineLvls[i] >= 0 );
+                    ocrAssert( PRM_block->neighborRefineLvls[i] >= 0 );
                 }
             }
             ocrDbDestroy( depv[i+1].guid );
@@ -235,10 +235,10 @@ ocrGuid_t finalConsensus( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv
                 }
                 if( isCoarsening )
                 {
-                    //PRINTF( "%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
+                    //ocrPrintf( "%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
 
                     PRM_block->neighborRefineLvls[i]--;
-                    ASSERT( PRM_block->neighborRefineLvls[i] >= 0 );
+                    ocrAssert( PRM_block->neighborRefineLvls[i] >= 0 );
                 }
                 //TODO sever ties, if need be.
             }
@@ -246,9 +246,9 @@ ocrGuid_t finalConsensus( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv
             {
                 if( tmp->canCoarsen == CAN_COARSEN )
                 {
-                    //PRINTF( "%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
+                    //ocrPrintf( "%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
                     PRM_block->neighborRefineLvls[i]--;
-                    ASSERT( PRM_block->neighborRefineLvls[i] >= 0 );
+                    ocrAssert( PRM_block->neighborRefineLvls[i] >= 0 );
                 }
             }
             ocrDbDestroy( depv[i+1].guid );
@@ -582,7 +582,7 @@ ocrGuid_t coarsenIntent( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv 
     ocrGuid_t checkConcensusGUID, checkConsensusTML;
     ocrGuid_t rcvTML;
 
-   // PRINTF("%ld coarsenIntent!\n", PRM_block->id);
+   // ocrPrintf("%ld coarsenIntent!\n", PRM_block->id);
 
     ocrEdtTemplateCreate( &checkConsensusTML, checkConsensus, 0, 8 );
     ocrEdtCreate( &checkConcensusGUID, checkConsensusTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NO_ALLOC );
@@ -619,14 +619,14 @@ ocrGuid_t coarsenIntent( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv 
         ocrGuid_t rcvGUID, rcvOUT;
         if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
         {
-            //PRINTF("%d difference\n", difference);
+            //ocrPrintf("%d difference\n", difference);
                 ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
                 ocrAddDependence( rcvOUT, checkConcensusGUID, i+1, DB_MODE_RW );
                 ocrAddDependence( PRM_block->rRcv[i*5], rcvGUID, 0, DB_MODE_RW );
         }
         else
         {
-           // PRINTF("%d difference\n", difference);
+           // ocrPrintf("%d difference\n", difference);
             ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
             ocrAddDependence( rcvOUT, checkConcensusGUID, i+1, DB_MODE_RW );
             u64 base = i*5, offs;

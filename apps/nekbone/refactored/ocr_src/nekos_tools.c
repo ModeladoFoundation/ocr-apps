@@ -5,7 +5,7 @@
 #define XMEMSET(SRC, CHARC, SZ) {unsigned int xmIT; for(xmIT=0; xmIT<SZ; ++xmIT) *((char*)SRC+xmIT)=CHARC;}
 #define XMEMCPY(DEST, SRC, SZ) {unsigned int xmIT; for(xmIT=0; xmIT<SZ; ++xmIT) *((char*)DEST+xmIT)=*((char*)SRC+xmIT);}
 
-#include "ocr.h" //PRINTF
+#include "ocr.h" //ocrPrintf
 
 Err_t init_NEKOtools(NEKOtools_t * io, NEKOstatics_t in_nstatics, unsigned int in_rankID,
                      unsigned int in_pDOF)
@@ -62,28 +62,28 @@ Err_t copy_NEKOtools(NEKOtools_t * in_from, NEKOtools_t * o_target)
 
 void  print_NEKOtools(NEKOtools_t * in, int in_output_neighborhoods)
 {
-    PRINTF("NekTools>%d> mpiRank=%d\t", in->mpiRank, in->mpiRank);
-    PRINTF("R(%d, %d, %d)", in->partR.a, in->partR.b, in->partR.c);
-    PRINTF("E(%d, %d, %d)", in->partE.a, in->partE.b, in->partE.c);
-    PRINTF("P(%d, %d, %d)\t", in->partP.a, in->partP.b, in->partP.c);
+    ocrPrintf("NekTools>%d> mpiRank=%d\t", in->mpiRank, in->mpiRank);
+    ocrPrintf("R(%d, %d, %d)", in->partR.a, in->partR.b, in->partR.c);
+    ocrPrintf("E(%d, %d, %d)", in->partE.a, in->partE.b, in->partE.c);
+    ocrPrintf("P(%d, %d, %d)\t", in->partP.a, in->partP.b, in->partP.c);
 
-    PRINTF("gR(%d, %d, %d)", in->globPartR.a, in->globPartR.b, in->globPartR.c);
-    PRINTF("gE(%d, %d, %d)", in->globPartE.a, in->globPartE.b, in->globPartE.c);
-    PRINTF("gP(%d, %d, %d)\n", in->globPartP.a, in->globPartP.b, in->globPartP.c);
+    ocrPrintf("gR(%d, %d, %d)", in->globPartR.a, in->globPartR.b, in->globPartR.c);
+    ocrPrintf("gE(%d, %d, %d)", in->globPartE.a, in->globPartE.b, in->globPartE.c);
+    ocrPrintf("gP(%d, %d, %d)\n", in->globPartP.a, in->globPartP.b, in->globPartP.c);
 
-    PRINTF("NekTools>%d> sz_nloads=%d\ttotal_shared_nodes=%lu\tlargest_countDOFdisco=%u\n",
+    ocrPrintf("NekTools>%d> sz_nloads=%d\ttotal_shared_nodes=%lu\tlargest_countDOFdisco=%u\n",
            in->mpiRank, in->sz_nloads, in->total_shared_nodes, in->largest_countDOFdisco);
 
-    PRINTF("NekTools>%d> dir_present=", in->mpiRank);
+    ocrPrintf("NekTools>%d> dir_present=", in->mpiRank);
     unsigned int j;
     for(j=0; j<NEKbone_regionCount; ++j){
         if( in->dir_present[j]){
-            PRINTF("1");
+            ocrPrintf("1");
         } else {
-            PRINTF("0");
+            ocrPrintf("0");
         }
     }
-    PRINTF("\n");
+    ocrPrintf("\n");
 
     const char self[]   = "  self";
     const char zero[]   = "  zero";
@@ -106,7 +106,7 @@ void  print_NEKOtools(NEKOtools_t * in, int in_output_neighborhoods)
             case IAactZERO: interact = zero; break;
         }
 
-        PRINTF("NekTools>%d> -->  R=%d\tDIRid=%ld  interaction=%s\tddof=%lu\tocDof=%lu\n",
+        ocrPrintf("NekTools>%d> -->  R=%d\tDIRid=%ld  interaction=%s\tddof=%lu\tocDof=%lu\n",
                in->mpiRank,
                b->rid, b->did, interact, b->disconnectedDOF, b->ownedConnectDOF
                );
@@ -222,7 +222,7 @@ Err_t make_neighbors_loads2(NEKOtools_t * io)
         dofOnEdgeY -= 2; //Removing the two corner DOF.
         dofOnEdgeZ -= 2; //Removing the two corner DOF.
 
-        if(0) PRINTF("%d>DOFonEdge(X|Y|Z)=(%ld|%ld|%ld)\n",__LINE__,dofOnEdgeX,dofOnEdgeY,dofOnEdgeZ);
+        if(0) ocrPrintf("%d>DOFonEdge(X|Y|Z)=(%ld|%ld|%ld)\n",__LINE__,dofOnEdgeX,dofOnEdgeY,dofOnEdgeZ);
 
         //dofOnEdge(X|Y|Z) can be zero but never negative.
         if(dofOnEdgeX<0 || dofOnEdgeY<0 || dofOnEdgeZ<0) {err=__LINE__; break;} //Sanity check.
@@ -268,7 +268,7 @@ Err_t make_neighbors_loads2(NEKOtools_t * io)
                         }
                         ddof += 4;                              //For the 4 corners
 
-                        if(0) {PRINTF("%d> ddof = %lu\n",__LINE__,ddof); }
+                        if(0) {ocrPrintf("%d> ddof = %lu\n",__LINE__,ddof); }
                     }
                     break;
                 case IAactEDGE:

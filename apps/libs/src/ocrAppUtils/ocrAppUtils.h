@@ -10,7 +10,7 @@
 #define PARAMC_U64(name) ((sizeof(name) + sizeof(u64) -1)/sizeof(u64))
 
 #ifdef DEBUG_APP
-    #define DEBUG_PRINTF(X) PRINTF X
+    #define DEBUG_PRINTF(X) ocrPrintf X
 #else
     #define DEBUG_PRINTF(X) do {} while(0)
 #endif

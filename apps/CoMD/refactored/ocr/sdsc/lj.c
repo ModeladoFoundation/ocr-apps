@@ -10,15 +10,15 @@ void fork_lj_force(ocrGuid_t sim, simulation* sim_ptr, ocrGuid_t cont, ocrGuid_t
 
 void lj_print(potential* p)
 {
-  PRINTF("  Potential type   : Lennard-Jones\n");
-  PRINTF("  Species name     : %s\n", p->name);
-  PRINTF("  Atomic number    : %d\n", p->atomic_no);
-  PRINTF("  Mass             : "FMT1" amu\n", p->mass / amu2internal_mass); // print in amu
-  PRINTF("  Lattice Type     : %s\n", p->lattice_type);
-  PRINTF("  Lattice spacing  : %f Angstroms\n", p->lat);
-  PRINTF("  Cutoff           : %f Angstroms\n", p->cutoff);
-  PRINTF("  Epsilon          : %f eV\n", p->lj.epsilon);
-  PRINTF("  Sigma            : %f Angstroms\n", p->lj.sigma);
+  ocrPrintf("  Potential type   : Lennard-Jones\n");
+  ocrPrintf("  Species name     : %s\n", p->name);
+  ocrPrintf("  Atomic number    : %d\n", p->atomic_no);
+  ocrPrintf("  Mass             : "FMT1" amu\n", p->mass / amu2internal_mass); // print in amu
+  ocrPrintf("  Lattice Type     : %s\n", p->lattice_type);
+  ocrPrintf("  Lattice spacing  : %f Angstroms\n", p->lat);
+  ocrPrintf("  Cutoff           : %f Angstroms\n", p->cutoff);
+  ocrPrintf("  Epsilon          : %f eV\n", p->lj.epsilon);
+  ocrPrintf("  Sigma            : %f Angstroms\n", p->lj.sigma);
 }
 
 void init_lj(potential* p, real_t dt)

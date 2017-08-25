@@ -32,22 +32,22 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 argc;
 
     void *programArg = depv[0].ptr;
-    argc = getArgc(programArg);
+    argc = ocrGetArgc(programArg);
     if ( argc !=  4 ) {
-        PRINTF("Usage: ./basicIO offset size fileName \n");
+        ocrPrintf("Usage: ./basicIO offset size fileName \n");
         ocrShutdown();
         return 1;
     }
 
-    offset = atoi(getArgv(programArg, 1));
-    size = atoi(getArgv(programArg, 2));
+    offset = atoi(ocrGetArgv(programArg, 1));
+    size = atoi(ocrGetArgv(programArg, 2));
     u64 nparamv[2];
     nparamv[0] = offset;
     nparamv[1] = size;
     FILE *in;
-    in = fopen(getArgv(programArg, 3), "r");
+    in = fopen(ocrGetArgv(programArg, 3), "r");
     if( !in ) {
-        PRINTF("Cannot find file: %s\n", getArgv(programArg, 3));
+        ocrPrintf("Cannot find file: %s\n", ocrGetArgv(programArg, 3));
         ocrShutdown();
         return NULL_GUID;
     }

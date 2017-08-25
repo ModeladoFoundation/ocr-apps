@@ -109,7 +109,7 @@ ocrGuid_t wrapupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
     get_time(&stop);
     double elapsed = elapsed_sec(&PRM(wrapup,start), &stop);
     double initElapsed = *((double *) DEPV(wrapup,initTimer,ptr));
-    PRINTF("startup time=%f (s) elapsed time=%f (s)\n", initElapsed, elapsed);
+    ocrPrintf("startup time=%f (s) elapsed time=%f (s)\n", initElapsed, elapsed);
     print_throughput("Reduction", PRM(wrapup,nbInstances), elapsed);
     ocrShutdown();
 }
@@ -157,7 +157,7 @@ runs T iterations cloning and launching reduction (using F8_ADD  e.g. global sum
 #ifdef SHOW_RESULTS
         if(myrank == 0 && timestep <= maxtimestep) {
             for(i=0;i<ndata;i++)
-                PRINTF("C%d T%d i%d %f \n", myrank, timestep, i, b[i]);
+                ocrPrintf("C%d T%d i%d %f \n", myrank, timestep, i, b[i]);
         }
 #endif
         for(i=0;i<ndata;i++) {
@@ -279,7 +279,7 @@ launch driverEDT
 
 
 
-//PRINTF("M%ld PBGUID %lx \n", myrank, DEPV(initReal,reductionPrivate, guid));
+//ocrPrintf("M%ld PBGUID %lx \n", myrank, DEPV(initReal,reductionPrivate, guid));
 //
 
     ocrEdtCreate(&driverEDT, privatePTR->driverTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &(privatePTR->myAffinityHNT), NULL);
@@ -393,7 +393,7 @@ launch parallel init with myrank as a parameter
     ocrGuid_t wrapupEdt;
     ocrEdtCreate(&wrapupEdt, wrapupTML, EDT_PARAM_DEF, (u64 *) &wrapupPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, &myHNT, NULL);
     sharedPTR->wrapupEDT = wrapupEdt;
-//PRINTF("returnEVT %lx \n", sharedPTR->returnEVT);
+//ocrPrintf("returnEVT %lx \n", sharedPTR->returnEVT);
     ocrDbRelease(sharedDBK);
     u64 i;
     ocrGuid_t initEDT, initTML;
@@ -431,7 +431,7 @@ launch parallel init with myrank as a parameter
 }
 
 void bomb(char * s){
-    PRINTF("error: %s \n", s);
+    ocrPrintf("error: %s \n", s);
     ocrShutdown();
 }
 
@@ -448,7 +448,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
      u32 _paramc, _depc, _idep;
 
      void * programArgv = depv[0].ptr;
-     u32 argc = getArgc(programArgv);
+     u32 argc = ocrGetArgc(programArgv);
 
      PRM(realMain,nrank) = DEFAULTnrank;
      PRM(realMain,ndata) = DEFAULTndata;
@@ -459,9 +459,9 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 
      if(argc == 4) {
          u32 k = 1;
-         PRM(realMain,nrank) = (u64) atoi(getArgv(programArgv, k++));
-         PRM(realMain,ndata) = (u64) atoi(getArgv(programArgv, k++));
-         PRM(realMain,maxtimestep) = (u64) atoi(getArgv(programArgv, k++));
+         PRM(realMain,nrank) = (u64) atoi(ocrGetArgv(programArgv, k++));
+         PRM(realMain,ndata) = (u64) atoi(ocrGetArgv(programArgv, k++));
+         PRM(realMain,maxtimestep) = (u64) atoi(ocrGetArgv(programArgv, k++));
          if(PRM(realMain,nrank) == 0) bomb("number of workers must be positive");
          if(PRM(realMain,ndata) == 0) bomb("number of entries must be positive");
          if(PRM(realMain,maxtimestep) == 0) bomb("number of timesteps must be positive");
@@ -469,10 +469,10 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 
     ocrGuid_t realMainEDT, realMainTML, wrapupEDT, wrapupTML, sharedDBK, reductionSharedDBK;
 
-    PRINTF("reduction driver \n");
-    PRINTF("Number of workers is %d \n", PRM(realMain,nrank));
-    PRINTF("data per worker %d \n", PRM(realMain,ndata));
-    PRINTF("Number of timesteps is %d \n", PRM(realMain,maxtimestep));
+    ocrPrintf("reduction driver \n");
+    ocrPrintf("Number of workers is %d \n", PRM(realMain,nrank));
+    ocrPrintf("data per worker %d \n", PRM(realMain,ndata));
+    ocrPrintf("Number of timesteps is %d \n", PRM(realMain,maxtimestep));
 
     ocrEdtTemplateCreate(&realMainTML, realMainEdt, PRMNUM(realMain), DEPVNUM(realMain));
     ocrEdtCreate(&realMainEDT, realMainTML, EDT_PARAM_DEF, (u64 *) realMainPRM, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL);

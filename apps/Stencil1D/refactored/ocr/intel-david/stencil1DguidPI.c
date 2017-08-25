@@ -47,11 +47,11 @@ ocrGuid_t wrapupEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
     for(i=0;i<n;i++) {
         data[i] = depv[i].ptr;
-        for(j=0;j<m;j++) PRINTF("%lld %lld %f \n", i, j, data[i][j]);
+        for(j=0;j<m;j++) ocrPrintf("%lld %lld %f \n", i, j, data[i][j]);
         }
     if(m==50&&n==10&&t==10000) //default values for Jenkins
-        if(data[4][49] - .000836 < 1e-5) PRINTF("PASS\n");
-           else PRINTF("fail by %f\n", data[4][49]-.000836);
+        if(data[4][49] - .000836 < 1e-5) ocrPrintf("PASS\n");
+           else ocrPrintf("fail by %f\n", data[4][49]-.000836);
 
     ocrShutdown();
     return NULL_GUID;
@@ -497,7 +497,7 @@ ocrGuid_t realmainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
     u64 i;
 
-    PRINTF("N = %u\nM = %u\nT = %u\n", paramv[0], paramv[1], paramv[2]);
+    ocrPrintf("N = %u\nM = %u\nT = %u\n", paramv[0], paramv[1], paramv[2]);
 
     for( i = 0; i < 2; i++ ){
         ocrGuidRangeCreate( &(shared->ranges[i]),
@@ -569,19 +569,19 @@ ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     u64 cmdArgs[3];
 
     ocrGuid_t shared, realMain, realMainTemplate;
-    u32 argc = getArgc( programArgv );
+    u32 argc = ocrGetArgc( programArgv );
 
-    PRINTF("STENCIL 1D PARALLEL INIT WITH NO EVENTS\n");
+    ocrPrintf("STENCIL 1D PARALLEL INIT WITH NO EVENTS\n");
 
     if( argc != 4){
-        PRINTF( "INCORRECT NUMBER OF ARGS. USING DEFAULT PARAMS. %s\n", getArgv(programArgv, 0) );
+        ocrPrintf( "INCORRECT NUMBER OF ARGS. USING DEFAULT PARAMS. %s\n", ocrGetArgv(programArgv, 0) );
         cmdArgs[0] = N;
         cmdArgs[1] = M;
         cmdArgs[2] = T;
     }else{
-        cmdArgs[0] = (u64)atoi(getArgv(programArgv, 1));
-        cmdArgs[1] = (u64)atoi(getArgv(programArgv, 2));
-        cmdArgs[2] = (u64)atoi(getArgv(programArgv, 3));
+        cmdArgs[0] = (u64)atoi(ocrGetArgv(programArgv, 1));
+        cmdArgs[1] = (u64)atoi(ocrGetArgv(programArgv, 2));
+        cmdArgs[2] = (u64)atoi(ocrGetArgv(programArgv, 3));
     }
 
     ocrDbCreate(    &shared,

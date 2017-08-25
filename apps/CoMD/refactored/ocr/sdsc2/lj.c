@@ -176,15 +176,15 @@ ocrGuid_t ljforcevel_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 void print_lj(void* po)
 {
   potential_t* p = (potential_t*)po;
-  PRINTF("  Potential type   : Lennard-Jones\n");
-  PRINTF("  Species name     : Cu\n");
-  PRINTF("  Atomic number    : %u\n", p->atomic_no);
-  PRINTF("  Mass             : %.3f amu\n", p->massFloat / amu2internal_mass);
-  PRINTF("  Lattice Type     : FCC\n");
-  PRINTF("  Lattice spacing  : %.3f Angstroms\n", p->lat);
-  PRINTF("  Cutoff           : %.3f Angstroms\n", p->cutoff);
-  PRINTF("  Epsilon          : %.3f eV\n", p->lj.epsilon*.25);
-  PRINTF("  Sigma            : %.3f Angstroms\n", p->lj.sigma);
+  ocrPrintf("  Potential type   : Lennard-Jones\n");
+  ocrPrintf("  Species name     : Cu\n");
+  ocrPrintf("  Atomic number    : %u\n", p->atomic_no);
+  ocrPrintf("  Mass             : %.3f amu\n", p->massFloat / amu2internal_mass);
+  ocrPrintf("  Lattice Type     : FCC\n");
+  ocrPrintf("  Lattice spacing  : %.3f Angstroms\n", p->lat);
+  ocrPrintf("  Cutoff           : %.3f Angstroms\n", p->cutoff);
+  ocrPrintf("  Epsilon          : %.3f eV\n", p->lj.epsilon*.25);
+  ocrPrintf("  Sigma            : %.3f Angstroms\n", p->lj.sigma);
 }
 
 void init_lj(potential_t* p, real_t dt)

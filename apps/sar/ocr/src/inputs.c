@@ -213,7 +213,7 @@ ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   int retval;
   readDataPRM_t *readDataParamvIn = (readDataPRM_t *)paramv;
 #ifdef TRACE_LVL_2
-  PRINTF("//// enter ReadData_edt\n");RAG_FLUSH;
+  ocrPrintf("//// enter ReadData_edt\n");RAG_FLUSH;
 #endif
   assert(paramc==PRMNUM(readData));
   ocrGuid_t arg_scg = readDataParamvIn->arg_scg;; // FormImage_scg or refFormImage_scg
@@ -235,7 +235,7 @@ ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   FILE *pInFile3 = file_args_lcl.pInFile3;
 #endif
 #ifdef DEBUG
-  PRINTF("file descripters are %ld %ld %ld\n",(uint64_t)pInFile, (uint64_t)pInFile2, (uint64_t) pInFile3);RAG_FLUSH;
+  ocrPrintf("file descripters are %ld %ld %ld\n",(uint64_t)pInFile, (uint64_t)pInFile2, (uint64_t) pInFile3);RAG_FLUSH;
 #endif
 #ifndef TG_ARCH
   void ReadData(struct ImageParams *image_params, FILE *pFile1, FILE *pFile2, FILE *pFile3,
@@ -258,7 +258,7 @@ ocrGuid_t ReadData_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtD
   RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,Tp_dbg,6);
 
 #ifdef TRACE_LVL_2
-  PRINTF("//// leave ReadData_edt\n");RAG_FLUSH;
+  ocrPrintf("//// leave ReadData_edt\n");RAG_FLUSH;
 #endif
   return NULL_GUID;
 }
@@ -274,7 +274,7 @@ void ReadData(struct ImageParams *image_params, void *pFile1, void *pFile2, void
 #endif
 {
 #ifdef TRACE_LVL_2
-  PRINTF("//// enter ReadData()\n");RAG_FLUSH;
+  ocrPrintf("//// enter ReadData()\n");RAG_FLUSH;
 #endif
 
 #ifdef RAG_IMPLICIT_INPUTS
@@ -285,13 +285,13 @@ void ReadData(struct ImageParams *image_params, void *pFile1, void *pFile2, void
   extern SHARED struct {int32_t t; } pulse_0[RAG_P1][1];
   extern SHARED struct {int32_t t; } pulse_1[RAG_P1][1];
 #ifdef TRACE_LVL_2
-  PRINTF("//// RAG_IMPLICIT_INPUTS P1 = %d S1 = %d\n",image_params->P1,image_params->S1);RAG_FLUSH;
+  ocrPrintf("//// RAG_IMPLICIT_INPUTS P1 = %d S1 = %d\n",image_params->P1,image_params->S1);RAG_FLUSH;
 #endif
 #endif
 
   for(int m=0; m<image_params->P1; m++) {
 #ifdef TRACE_LVL_2
-    if(!m)PRINTF("//// Read complex SAR data\n");RAG_FLUSH;
+    if(!m)ocrPrintf("//// Read complex SAR data\n");RAG_FLUSH;
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
     fread(&X[m][0], sizeof(struct complexData), image_params->S1, pFile1);
@@ -305,7 +305,7 @@ void ReadData(struct ImageParams *image_params, void *pFile1, void *pFile2, void
     } // endif image
 #endif
 #ifdef TRACE_LVL_2
-    if(!m){PRINTF("//// Read platform positions\n");RAG_FLUSH;}
+    if(!m){ocrPrintf("//// Read platform positions\n");RAG_FLUSH;}
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
     fread(&Pt[m][0], sizeof(float), 3, pFile2);
@@ -320,7 +320,7 @@ void ReadData(struct ImageParams *image_params, void *pFile1, void *pFile2, void
 #endif
   } // for m (P1)
 #ifdef TRACE_LVL_2
-  PRINTF("//// Read pulse transmission timestamps\n");RAG_FLUSH;
+  ocrPrintf("//// Read pulse transmission timestamps\n");RAG_FLUSH;
 #endif
 #ifndef RAG_IMPLICIT_INPUTS
   fread(Tp, sizeof(float), image_params->P1, pFile3);
@@ -339,6 +339,6 @@ void ReadData(struct ImageParams *image_params, void *pFile1, void *pFile2, void
   image_params->imageNumber++;
 #endif
 #ifdef TRACE_LVL_2
-  PRINTF("//// leave ReadData()\n");RAG_FLUSH;
+  ocrPrintf("//// leave ReadData()\n");RAG_FLUSH;
 #endif
 }

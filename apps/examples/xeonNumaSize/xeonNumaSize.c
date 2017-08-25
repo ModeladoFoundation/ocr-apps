@@ -110,7 +110,7 @@ WorkerData **dbPtrs;
  */
 int testCacheOffset(TestResults *results) {
     if (clVals.cacheLineLoops == 0) {
-        PRINTF("ERROR! testCacheOffset() - clVals.cacheLineLoops == 0!\n");
+        ocrPrintf("ERROR! testCacheOffset() - clVals.cacheLineLoops == 0!\n");
         return -1;
     }
 
@@ -120,19 +120,19 @@ int testCacheOffset(TestResults *results) {
     u64 size = base;
     void *mem1 = allocateInLocalDram(size, 0);
     u64 *mem1Longs = (u64 *)mem1;
-//    PRINTF("Size1=%lu, mem1=%p, mem1Longs=%p\n",
+//    ocrPrintf("Size1=%lu, mem1=%p, mem1Longs=%p\n",
 //           size, mem1, mem1Longs);
 
     u64 size2 = base + offset;
     void *mem2 = allocateInLocalDram(size2, 0);
     u64 *mem2Longs = (u64 *)(mem2 + offset);
-//    PRINTF("Size2=%lu, mem2=%p, mem2Longs=%p\n",
+//    ocrPrintf("Size2=%lu, mem2=%p, mem2Longs=%p\n",
 //           size2, mem2, mem2Longs);
 
     u64 size3 = base + offset + offset;
     void *mem3 = allocateInLocalDram(size3, 0);
     u64 *mem3Longs = (u64 *)(mem3 + offset + offset);
-//    PRINTF("Size3=%lu, mem3=%p, mem3Longs=%p\n",
+//    ocrPrintf("Size3=%lu, mem3=%p, mem3Longs=%p\n",
 //           size3, mem3, mem3Longs);
 
     // Fill memory with indices
@@ -176,10 +176,10 @@ int testCacheOffset(TestResults *results) {
         ttotal += tdelta;
         averageTime = ttotal / (loop+1);
         if ((loop & 0x3) == 0)
-            PRINTF(".");
+            ocrPrintf(".");
     }
     if (mem1Longs[14] == mem2Longs[14])
-        PRINTF("THIS ERROR WILL NEVER OCCCUR!\n");
+        ocrPrintf("THIS ERROR WILL NEVER OCCCUR!\n");
 
     results->numIterations = loopEnd;
     results->timeNs = averageTime;
@@ -195,7 +195,7 @@ int testCacheOffset(TestResults *results) {
  */
 int testRealCacheOffset(TestResults *results) {
     if (clVals.cacheAllocLoops == 0) {
-        PRINTF("ERROR! testRealCacheOffset() - clVals.cacheAllocLoops == 0!\n");
+        ocrPrintf("ERROR! testRealCacheOffset() - clVals.cacheAllocLoops == 0!\n");
         return -1;
     }
 
@@ -214,17 +214,17 @@ int testRealCacheOffset(TestResults *results) {
 
     ocrDbCreate(&mem1Guid, &mem1, size, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     u64 *mem1Longs = (u64 *)mem1;
-    PRINTF("Size1=%lu, mem1=%p, mem1Longs=%p\n",
+    ocrPrintf("Size1=%lu, mem1=%p, mem1Longs=%p\n",
            size, mem1, mem1Longs);
 
     ocrDbCreate(&mem2Guid, &mem2, size, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     u64 *mem2Longs = (u64 *)mem2;
-    PRINTF("Size=%lu, mem2=%p, mem2Longs=%p\n",
+    ocrPrintf("Size=%lu, mem2=%p, mem2Longs=%p\n",
            size, mem2, mem2Longs);
 
     ocrDbCreate(&mem3Guid, &mem3, size, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     u64 *mem3Longs = (u64 *)mem3;
-    PRINTF("Size=%lu, mem3=%p, mem3Longs=%p\n",
+    ocrPrintf("Size=%lu, mem3=%p, mem3Longs=%p\n",
            size, mem3, mem3Longs);
 
     // Fill memory with indices
@@ -268,10 +268,10 @@ int testRealCacheOffset(TestResults *results) {
         ttotal += tdelta;
         averageTime = ttotal / (loop+1);
         if ((loop & 0x3) == 0)
-            PRINTF(".");
+            ocrPrintf(".");
     }
     if (mem1Longs[14] == mem2Longs[14])
-        PRINTF("THIS ERROR WILL NEVER OCCCUR!\n");
+        ocrPrintf("THIS ERROR WILL NEVER OCCCUR!\n");
 
     results->numIterations = loopEnd;
     results->timeNs = averageTime;
@@ -302,7 +302,7 @@ int testReadingMem(int kind, TestResults *results) {
         mem = allocateInLocalDram(size, 0);
     }
     if (mem == NULL) {
-        PRINTF("ERROR: testReadingMem(%s) failed to allocate %lu bytes "
+        ocrPrintf("ERROR: testReadingMem(%s) failed to allocate %lu bytes "
                "of DRAM\n", (kind?"MCDRAM":"DRAM"), size);
         return -1;
     }
@@ -330,7 +330,7 @@ int testReadingMem(int kind, TestResults *results) {
         tstart = rdtsc();
         for (i=0; i<end; i++) {
             if (memLongs[i] != i) {
-                PRINTF("ERROR: testReadingMem(%s) loop %d failed! "
+                ocrPrintf("ERROR: testReadingMem(%s) loop %d failed! "
                        "memLongs[%ld] was %ld!\n",
                        loop, (kind?"MCDRAM":"DRAM"), memLongs[i], i);
                 errors++;
@@ -349,7 +349,7 @@ int testReadingMem(int kind, TestResults *results) {
         averageTime = ttotal / (loop+1);
 
         if ((loop & 0x3) == 0)
-            PRINTF(".");
+            ocrPrintf(".");
     }
 
     results->numIterations = loopEnd;
@@ -367,7 +367,7 @@ int testReadingMem(int kind, TestResults *results) {
  * @return  0 if successful or -1 if there was an error.
  */
 int testReadingRandMem(int kind, TestResults *results) {
-    u64 size; 
+    u64 size;
 
     // Allocate memory in this node's DRAM
     void *mem;
@@ -380,7 +380,7 @@ int testReadingRandMem(int kind, TestResults *results) {
         mem = allocateInLocalDram(size, 0);
     }
     if (mem == NULL) {
-        PRINTF("ERROR: testReadingRandMem(%s) failed to allocate %lu bytes "
+        ocrPrintf("ERROR: testReadingRandMem(%s) failed to allocate %lu bytes "
                "of DRAM\n", (kind?"MCDRAM":"DRAM"), size);
         return -1;
     }
@@ -431,7 +431,7 @@ int testReadingRandMem(int kind, TestResults *results) {
     u64 numBads = 0;
     u64 tot = 0;
     u64 next = 0;
-    PRINTF("loopEnd is %d\n", loopEnd);
+    ocrPrintf("loopEnd is %d\n", loopEnd);
     for (loop=0; loop<loopEnd; loop++) {
         tstart = rdtsc();
         for (i=0; i<end; i++) {
@@ -449,12 +449,12 @@ int testReadingRandMem(int kind, TestResults *results) {
 
         ttotal += tdelta;
         averageTime = ttotal / (loop+1);
-//        PRINTF("(%lu)  %lu / %lu = %lu\n", tdelta, ttotal, loop+1, averageTime);
+//        ocrPrintf("(%lu)  %lu / %lu = %lu\n", tdelta, ttotal, loop+1, averageTime);
         if ((loop & 0x3) == 0)
-            PRINTF(".");
+            ocrPrintf(".");
     }
     if (tot == -2)
-        PRINTF("Ignore this value! %ld\n", tot);
+        ocrPrintf("Ignore this value! %ld\n", tot);
 
     results->numIterations = loopEnd;
     results->timeNs = averageTime;
@@ -470,7 +470,7 @@ ocrGuid_t workerEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 workerNum = paramv[0];
 
     TestResults results;
-    
+
     if (clVals.dramRLoops > 0) {
         testReadingMem(0, &results);
         dbPtrs[workerNum]->dramSeqIterations = results.numIterations;
@@ -507,7 +507,7 @@ ocrGuid_t workerEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         dbPtrs[workerNum]->cacheOffTimeNs = results.timeNs;
         dbPtrs[workerNum]->cacheOffRejects = results.numRejects;
     }
-    
+
 
     return NULL_GUID;
 }
@@ -517,10 +517,10 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     int i;
 
     if (clVals.dramRLoops > 0) {
-        PRINTF("\nRunning DRAM sequential read test:\n");
+        ocrPrintf("\nRunning DRAM sequential read test:\n");
         for (i=0; i<clVals.numCpus; i++) {
             WorkerData *data = dbPtrs[i];
-            PRINTF("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
+            ocrPrintf("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
                    "with %d bad iterations\n",
                    clVals.runCpus[i], data->dramSeqIterations,
                    clVals.dramSize, data->dramSeqTimeNs,
@@ -528,10 +528,10 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         }
     }
     if (clVals.dramRLoopRand > 0) {
-        PRINTF("\nRunning DRAM random read test:\n");
+        ocrPrintf("\nRunning DRAM random read test:\n");
         for (i=0; i<clVals.numCpus; i++) {
             WorkerData *data = dbPtrs[i];
-            PRINTF("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
+            ocrPrintf("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
                    "with %d bad iterations\n",
                    clVals.runCpus[i], data->dramRandIterations,
                    clVals.dramSize, data->dramRandTimeNs,
@@ -540,10 +540,10 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     }
 
     if (clVals.mcdramRLoops > 0) {
-        PRINTF("\nRunning MCDRAM sequential read test:\n");
+        ocrPrintf("\nRunning MCDRAM sequential read test:\n");
         for (i=0; i<clVals.numCpus; i++) {
             WorkerData *data = dbPtrs[i];
-            PRINTF("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
+            ocrPrintf("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
                    "with %d bad iterations\n",
                    clVals.runCpus[i], data->mcdramSeqIterations,
                    clVals.mcdramSize, data->mcdramSeqTimeNs,
@@ -551,10 +551,10 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         }
     }
     if (clVals.mcdramRLoopRand > 0) {
-        PRINTF("\nRunning MCDRAM random read test:\n");
+        ocrPrintf("\nRunning MCDRAM random read test:\n");
         for (i=0; i<clVals.numCpus; i++) {
             WorkerData *data = dbPtrs[i];
-            PRINTF("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
+            ocrPrintf("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
                    "with %d bad iterations\n",
                    clVals.runCpus[i], data->mcdramRandIterations,
                    clVals.mcdramSize, data->mcdramRandTimeNs,
@@ -562,11 +562,11 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         }
     }
     if (clVals.cacheLineLoops > 0) {
-        PRINTF("\nRunning cache line offset test with offset = %ld:\n",
+        ocrPrintf("\nRunning cache line offset test with offset = %ld:\n",
                clVals.cacheLineOffset);
         for (i=0; i<clVals.numCpus; i++) {
             WorkerData *data = dbPtrs[i];
-            PRINTF("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
+            ocrPrintf("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
                    "with %d bad iterations\n",
                    clVals.runCpus[i], data->cacheOffIterations,
                    clVals.mcdramSize, data->cacheOffTimeNs,
@@ -574,12 +574,12 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         }
     }
     if (clVals.cacheAllocLoops > 0) {
-        PRINTF("\nRunning cache line offset test with real allocator, "
+        ocrPrintf("\nRunning cache line offset test with real allocator, "
                "offset = %ld, large = %ld\n",
                clVals.cacheLineOffset, clVals.cacheLineMinLarge);
         for (i=0; i<clVals.numCpus; i++) {
             WorkerData *data = dbPtrs[i];
-            PRINTF("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
+            ocrPrintf("    CPU %03d : %d iterations over %ld bytes took %ld ns, "
                    "with %d bad iterations\n",
                    clVals.runCpus[i], data->cacheOffIterations,
                    clVals.mcdramSize, data->cacheOffTimeNs,
@@ -587,7 +587,7 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         }
     }
 
-    PRINTF("\nDONE!\n");
+    ocrPrintf("\nDONE!\n");
 
     ocrShutdown();
     return NULL_GUID;
@@ -603,29 +603,29 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
  * @return  a NULL GUID
  */
 ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    u64 argc = getArgc(depv[0].ptr);
+    u64 argc = ocrGetArgc(depv[0].ptr);
     u32 i;
     int iRet;
     char *argv[argc];
 
     for(i=0;i<argc;i++) {
-        argv[i] = getArgv(depv[0].ptr,i);
+        argv[i] = ocrGetArgv(depv[0].ptr,i);
     }
     programName = argv[0];
     if (parseCmdLineArgs(argc, argv) == -1)
         EXIT;
 
-    PRINTF("\n=====================================================\n");
-    PRINTF("Running xeonNumaSize\n");
+    ocrPrintf("\n=====================================================\n");
+    ocrPrintf("Running xeonNumaSize\n");
     if (showCpuAndNode() == -1)
         EXIT;
-    PRINTF("\n");
+    ocrPrintf("\n");
 
 
     // Make sure NUMA interface is available.
     int tf = numa_available();
     if (tf == -1) {
-        PRINTF("Function numa_available() returned -1! libnuma not working!\n");
+        ocrPrintf("Function numa_available() returned -1! libnuma not working!\n");
         EXIT;
     }
 
@@ -655,7 +655,7 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     if (clVals.findMcdram) {
         testFindingMcdramOnAllNodes();
     }
-    
+
 
     {
         int wkr;
@@ -668,16 +668,16 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         // Create array to hold DBs
         dbGuids = (ocrGuid_t *)malloc(clVals.numCpus * sizeof(ocrGuid_t));
         if (dbGuids == NULL) {
-            PRINTF("ERROR: mainEdt() failed to malloc(%d) for worker Guids!\n",
+            ocrPrintf("ERROR: mainEdt() failed to malloc(%d) for worker Guids!\n",
                    (clVals.numCpus * sizeof(ocrGuid_t)));
             EXIT;
         }
         dbPtrs = (WorkerData **)malloc(clVals.numCpus * sizeof(u8 *));
         if (dbPtrs == NULL) {
-            PRINTF("ERROR: mainEdt() failed to malloc(%d) for worker pointers!\n",
+            ocrPrintf("ERROR: mainEdt() failed to malloc(%d) for worker pointers!\n",
                    (clVals.numCpus * sizeof(u8 *)));
         }
-        // Fill array with DBs 
+        // Fill array with DBs
         for (wkr=0; wkr<clVals.numCpus; wkr++) {
             ptr = myDbCreate(&(dbGuids[wkr]),sizeof(WorkerData));
             if (ptr == NULL)
@@ -685,11 +685,11 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
             dbPtrs[wkr] = (WorkerData *)ptr;
         }
 
-        PRINTF("There are %d cpus to be created\n", clVals.numCpus);
+        ocrPrintf("There are %d cpus to be created\n", clVals.numCpus);
         ocrEdtTemplateCreate(&finishTemplate, finishEdt, 0, clVals.numCpus);
         ocrEdtCreate(&finishGuid, finishTemplate, 0, NULL, clVals.numCpus,
                      NULL, EDT_PROP_NONE, NULL_HINT, NULL);
-        
+
         ocrEdtTemplateCreate(&workerTemplate, workerEdt, 1, 1);
         for (wkr=0; wkr<clVals.numCpus; wkr++) {
             paramv[0] = wkr;

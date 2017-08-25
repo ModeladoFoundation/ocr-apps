@@ -53,7 +53,7 @@ ocrGuid_t smooth_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
   u64 s = paramv[0];
 #if DEBUG
-PRINTF("s = %u\n", s);
+ocrPrintf("s = %u\n", s);
 #endif
 
   // Manu:: these are passed as function args in Sam's code
@@ -63,7 +63,7 @@ PRINTF("s = %u\n", s);
   double *vec_temp = (double*)((char*)box+ level->vec_temp);
 
   if((CHEBYSHEV_DEGREE*NUM_SMOOTHS)&1){
-    PRINTF("Error: CHEBYSHEV_DEGREE*NUM_SMOOTHS must be even for the chebyshev smoother\n");
+    ocrPrintf("Error: CHEBYSHEV_DEGREE*NUM_SMOOTHS must be even for the chebyshev smoother\n");
     ABORT(0);
   }
 
@@ -85,7 +85,7 @@ PRINTF("s = %u\n", s);
     chebyshev_c2[s1] = rho_n*2.0/delta;
   }
 #if DEBUG
-  PRINTF("level = %u, box = %u, level->volume = %u\n", level->level, box->global_box_id, level->volume);
+  ocrPrintf("level = %u, box = %u, level->volume = %u\n", level->level, box->global_box_id, level->volume);
 #endif
 
 

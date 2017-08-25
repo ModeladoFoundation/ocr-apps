@@ -105,7 +105,7 @@ int makea(classdb_t* class, ocrGuid_t* a)
     }
 
     if(nza>(class->na*(class->nonzer+1)*(class->nonzer+1))) {
-        PRINTF("Space for matrix elements exceeded in sparse %lu > %lu\n", nza, class->na*(u64)(class->nonzer+1)*(class->nonzer+1));
+        ocrPrintf("Space for matrix elements exceeded in sparse %lu > %lu\n", nza, class->na*(u64)(class->nonzer+1)*(class->nonzer+1));
         ocrDbDestroy(acolid);
         ocrDbDestroy(aeltid);
         ocrDbDestroy(arowid);
@@ -201,7 +201,7 @@ int makea(classdb_t* class, ocrGuid_t* a)
       }
     }
 
-    PRINTF("number of nonzeros = %lu\n", nza);
+    ocrPrintf("number of nonzeros = %lu\n", nza);
 
     ocrDbDestroy(acolid);
     ocrDbDestroy(aeltid);

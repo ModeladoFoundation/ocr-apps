@@ -669,7 +669,7 @@ int check_block( rankH_t* PTR_rankH, double cor[3][2] )
             }
          }
       } else {
-         PRINTF("undefined object %d\n", op->type);
+         ocrPrintf("undefined object %d\n", op->type);
       }
    }
 

@@ -132,14 +132,14 @@ _OCR_TASK_FNC_( FNC_redistributeblocks )
     PTR_rankH->seqRank = seqRank; //update here
 
     #ifdef DEBUG_APP_COARSE
-    PRINTF( "%s ilevel %d id_l %d myRank_g %d zValue %d seqRank %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->myRank_g, PTR_rankH->zValue, seqRank, PTR_rankH->ts );
+    ocrPrintf( "%s ilevel %d id_l %d myRank_g %d zValue %d seqRank %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, PTR_rankH->myRank_g, PTR_rankH->zValue, seqRank, PTR_rankH->ts );
     #endif
 
     ocrDbRelease( PTR_rankH->DBK_active_blockids );
 
     if(PTR_cmd->lb_opt) {
         if(!seqRank) {
-            PRINTF("ts %d Doing load balancing\n", PTR_rankH->ts);
+            ocrPrintf("ts %d Doing load balancing\n", PTR_rankH->ts);
         }
 
         int newPD = mapBlocktoPD( PTR_rankH, PTR_cmd->lb_opt );
@@ -173,7 +173,7 @@ int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt )
         pd = getPolicyDomainID_Cart3D( PTR_rankH->seqRank, edtGridDims, pdGridDims );
 
         #ifdef DEBUG_APP_COARSE
-        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d (zValue %d) is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], edtGridDims[1], edtGridDims[2], pdGridDims[0], pdGridDims[1], pdGridDims[2], PTR_rankH->myRank_g, PTR_rankH->zValue, PTR_rankH->seqRank, pd );
+        ocrPrintf( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d (zValue %d) is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], edtGridDims[1], edtGridDims[2], pdGridDims[0], pdGridDims[1], pdGridDims[2], PTR_rankH->myRank_g, PTR_rankH->zValue, PTR_rankH->seqRank, pd );
         #endif
     }
     else if( lb_opt == 31 || lb_opt == 1 ) { //1D or Morton/Z-curve
@@ -182,7 +182,7 @@ int mapBlocktoPD( rankH_t* PTR_rankH, int lb_opt )
         pd = getPolicyDomainID_Cart1D( PTR_rankH->seqRank, edtGridDims, pdGridDims );
 
         #ifdef DEBUG_APP_COARSE
-        PRINTF( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d (zValue %d) is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], 1, 1, pdGridDims[0], 1, 1, PTR_rankH->myRank_g, PTR_rankH->zValue, PTR_rankH->seqRank, pd );
+        ocrPrintf( "EDT grid %dx%dx%d, PD grid %dx%dx%d: Block %d (zValue %d) is at location %d to be ASSIGNED PD %d\n", edtGridDims[0], 1, 1, pdGridDims[0], 1, 1, PTR_rankH->myRank_g, PTR_rankH->zValue, PTR_rankH->seqRank, pd );
         #endif
     }
 
@@ -217,21 +217,21 @@ void printGatheredBlockIDs( rankH_t* PTR_rankH, int* blockids_gathered )
     }
 
     #ifdef DEBUG_APP_COARSE
-    PRINTF("Active block ids (zValues): ");
+    ocrPrintf("Active block ids (zValues): ");
     for( i = 0; i < PTR_rankH->active_blockcount; i++ ) {
-        PRINTF("%d (%d) ", PTR_rankH->active_blockids[i], PTR_rankH->active_blockzValues[i]);
+        ocrPrintf("%d (%d) ", PTR_rankH->active_blockids[i], PTR_rankH->active_blockzValues[i]);
     }
-    PRINTF("\n");
+    ocrPrintf("\n");
     #endif
 
     sortArray( PTR_rankH->active_blockcount, PTR_rankH->active_blockzValues ); //Now, sort it
 
     #ifdef DEBUG_APP_COARSE
-    PRINTF("Sorted Active block zValues: ");
+    ocrPrintf("Sorted Active block zValues: ");
     for( i = 0; i < PTR_rankH->active_blockcount; i++ ) {
-        PRINTF("%d ", PTR_rankH->active_blockzValues[i]);
+        ocrPrintf("%d ", PTR_rankH->active_blockzValues[i]);
     }
-    PRINTF("\n");
+    ocrPrintf("\n");
     #endif
 }
 

@@ -257,9 +257,9 @@ void forkSpmdEdts_Cart1D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    PRINTF("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
+    ocrPrintf("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
 #else
-    PRINTF("NOT Using affinity API\n\n");
+    ocrPrintf("NOT Using affinity API\n\n");
 #endif
     u64 PD_X = affinityCount;
 
@@ -312,9 +312,9 @@ void forkSpmdEdts_Cart2D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    PRINTF("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
+    ocrPrintf("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
 #else
-    PRINTF("NOT Using affinity API\n\n");
+    ocrPrintf("NOT Using affinity API\n\n");
 #endif
     u64 PD_X, PD_Y;
     splitDimension_Cart2D( affinityCount, &PD_X, &PD_Y ); //Split available PDs into a 2-D grid
@@ -369,9 +369,9 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    PRINTF("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
+    ocrPrintf("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
 #else
-    PRINTF("NOT Using affinity API\n\n");
+    ocrPrintf("NOT Using affinity API\n\n");
 #endif
     u64 PD_X, PD_Y, PD_Z;
     splitDimension_Cart3D( affinityCount, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 3-D grid

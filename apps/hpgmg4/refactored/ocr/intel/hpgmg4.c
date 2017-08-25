@@ -52,7 +52,7 @@ November 2016 abandoned to concentrate on hpcg performance
 
 
 #include "string.h" //if memcpy is needed
-#include "stdio.h"  //needed for PRINTF debugging
+#include "stdio.h"  //needed for ocrPrintf debugging
 
 #include "reduction.h"
 #include "macros.h"
@@ -131,7 +131,7 @@ typedef struct{
 
 
 void bomb(char * s) {
-PRINTF("ERROR %s TERMINATING\n", s);
+ocrPrintf("ERROR %s TERMINATING\n", s);
 ocrShutdown();
 return;
 }
@@ -187,7 +187,7 @@ printf("start level %d boxsize %d npx %d expansion %d myrank %d \n", level, boxs
 
 
 
-PRINTF("myrank %d level %d boxsize %d exp %d lp %d myx %d myy %d myz %d npx %d\n",pbPTR->myrank[level], level, boxsize, expansion, lp, myx, myy, myz, npx);
+ocrPrintf("myrank %d level %d boxsize %d exp %d lp %d myx %d myy %d myz %d npx %d\n",pbPTR->myrank[level], level, boxsize, expansion, lp, myx, myy, myz, npx);
 
     for(j=0;j<26;j++) {
         pbPTR->haloSendEVT[level][j] = UNINITIALIZED_GUID;
@@ -284,7 +284,7 @@ printf("myrank %d level %d exp %d lp %d lx %d ly %d lz %d \n", myrank, level, ex
             for(j=-1;j<2;j++)
                 for(i=-1;i<2;i++) {
                     if(i==0 && j==0 && k==0) continue; //skip "center" of cube
-//PRINTF("ind %d "GUIDF" "GUIDF" "GUIDF"\n", ind,GUIDA(pbPTR->haloSendEVT[level][ind]), GUIDA(NULL_GUID), GUIDA(UNINITIALIZED_GUID));
+//ocrPrintf("ind %d "GUIDF" "GUIDF" "GUIDF"\n", ind,GUIDA(pbPTR->haloSendEVT[level][ind]), GUIDA(NULL_GUID), GUIDA(UNINITIALIZED_GUID));
                     if(ocrGuidIsNull(pbPTR->haloSendEVT[level][ind])) {
                         pbPTR->haloRecvEVT[level][ind] = NULL_GUID;
                     } else {
@@ -294,20 +294,20 @@ printf("myrank %d level %d exp %d lp %d lx %d ly %d lz %d \n", myrank, level, ex
                     ocrGuidFromIndex(&(stickyEVT), pbPTR->haloRangeGUID, index);
                     ocrEventCreate(&stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
                     pbPTR->haloSendEVT[level][ind] = stickyEVT;
-PRINTF("I%d i%d j%d k%d send ind %d index in %d guid "GUIDF" \n", myrank, i, j, k, ind, index, GUIDA(stickyEVT));
+ocrPrintf("I%d i%d j%d k%d send ind %d index in %d guid "GUIDF" \n", myrank, i, j, k, ind, index, GUIDA(stickyEVT));
 
 //receive
                     index = 26*nrank*(nlevels-level) + 26*(myrank + k*npx*npx + j*npx + i) + 25-ind;
                     ocrGuidFromIndex(&(stickyEVT), pbPTR->haloRangeGUID, index);
                     ocrEventCreate(&stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
                     pbPTR->haloRecvEVT[level][ind] = stickyEVT;
-PRINTF("I%d i%d j%d k%d recv ind %d index in %d guid "GUIDF" "GUIDF" \n", myrank, i, j, k, ind, index, GUIDA(stickyEVT), GUIDA(pbPTR->haloRecvEVT[level][ind]));
+ocrPrintf("I%d i%d j%d k%d recv ind %d index in %d guid "GUIDF" "GUIDF" \n", myrank, i, j, k, ind, index, GUIDA(stickyEVT), GUIDA(pbPTR->haloRecvEVT[level][ind]));
 
                 }
                 ind++;
         }
 
-for(i=0;i<26;i++) PRINTF("HI%d i %d sendEVT "GUIDF" recvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloSendEVT[level][i]), GUIDA(pbPTR->haloRecvEVT[level][i]));
+for(i=0;i<26;i++) ocrPrintf("HI%d i %d sendEVT "GUIDF" recvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloSendEVT[level][i]), GUIDA(pbPTR->haloRecvEVT[level][i]));
 
         if(boxsize != AGGLOMERATION_SIZE) return;
 
@@ -361,8 +361,8 @@ printf("npx %d target %d ind %d \n", npx, target, ind);
        pbPTR->myrank[level-1] = lx/2 + (ly/2)*npx/2 + (lz/2)*npx*npx/4;
 printf("lx %d ly %d lz %d npx %d myrank %d\n",lx, ly, lz, npx, pbPTR->myrank[level-1]);
     }
-for(i=0;i<7;i++) PRINTF("HI%d i %d coarseRecvEVT "GUIDF" refineSendEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->coarsenRecvEVT[level][i]), GUIDA(pbPTR->refineSendEVT[level][i]));
-PRINTF("HI%d i %d coarseSendEVT "GUIDF" refineRecvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->coarsenSendEVT[level]), GUIDA(pbPTR->refineRecvEVT[level]));
+for(i=0;i<7;i++) ocrPrintf("HI%d i %d coarseRecvEVT "GUIDF" refineSendEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->coarsenRecvEVT[level][i]), GUIDA(pbPTR->refineSendEVT[level][i]));
+ocrPrintf("HI%d i %d coarseSendEVT "GUIDF" refineRecvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->coarsenSendEVT[level]), GUIDA(pbPTR->refineRecvEVT[level]));
 
 //create reductionPrivate block
 
@@ -464,10 +464,10 @@ ocrGuid_t wrapUpEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     DEPVDEF(wrapUp);
     PRMDEF(wrapUp);
     double * returnPTR = (double *) DEPV(wrapUp,returnBlock,ptr);
-    PRINTF("final deviation: %f \n", returnPTR[0]);
+    ocrPrintf("final deviation: %f \n", returnPTR[0]);
     u64 stop = getTime();
     double elapsed = TICK*(stop - PRM(wrapUp,startTime));
-    PRINTF("elapsed time: %f \n", elapsed);
+    ocrPrintf("elapsed time: %f \n", elapsed);
     ocrShutdown();
     return NULL_GUID;
 }
@@ -490,31 +490,31 @@ Creates and fills the reduction shared datablock
     u32 _paramc, _depc, _idep;
 
     void * programArgv = depv[0].ptr;
-    u32 argc = getArgc(programArgv);
+    u32 argc = ocrGetArgc(programArgv);
 
     u64 startTime = getTime();
 
     if(argc < 3) bomb("must input log2(box size) and log2(cuberoot(ranks))");
     if(argc > 4) bomb("no fourth parameter, third parameter is optional debug level");
 
-    boxsize = (u64) atoi(getArgv(programArgv, 1));
+    boxsize = (u64) atoi(ocrGetArgv(programArgv, 1));
     if(boxsize < 4) bomb("log2(boxsize) must be at least 4");
     if(boxsize > 10) bomb("log2(boxsize) must be at most 10");
 
-    npx = (u64) atoi(getArgv(programArgv, 2));
+    npx = (u64) atoi(ocrGetArgv(programArgv, 2));
     if(npx < 0) bomb("log2(cuberoot(ranks)) must be nonnegative");
     if(npx > 4) bomb("log2(cuberoot(ranks)) must 4 or less");
 
 
     debug = 0;
-    if(argc == 4) debug = atoi(getArgv(programArgv, 3));
+    if(argc == 4) debug = atoi(ocrGetArgv(programArgv, 3));
 
 
-    PRINTF("HPGMG fourth order FV\n");
-    PRINTF("log2 box size = %d \n", boxsize);
-    PRINTF("log2(cuberoot(ranks)) = %d \n", npx);
-    PRINTF("debug = %d\n", debug);
-    PRINTF("startTime %u \n", startTime);
+    ocrPrintf("HPGMG fourth order FV\n");
+    ocrPrintf("log2 box size = %d \n", boxsize);
+    ocrPrintf("log2(cuberoot(ranks)) = %d \n", npx);
+    ocrPrintf("debug = %d\n", debug);
+    ocrPrintf("startTime %u \n", startTime);
 
     u64 nlevels = npx + boxsize;
 
@@ -607,7 +607,7 @@ Creates and fills the reduction shared datablock
 
     ocrEdtTemplateDestroy(initTML);
 
-    if(debug != 0) PRINTF("M finish\n");
+    if(debug != 0) ocrPrintf("M finish\n");
 
 */
     return NULL_GUID;

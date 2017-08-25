@@ -85,7 +85,7 @@ _OCR_TASK_FNC_( FNC_timestepLoop )
     ocrDbRelease(DBK_rankH);
     ocrDbRelease(DBK_octTreeRedH);
 
-    ASSERT( number >= 0 );
+    ocrAssert( number >= 0 );
 
     if( ts <= num_tsteps ) {
 
@@ -668,19 +668,19 @@ _OCR_TASK_FNC_( FNC_print )
     //if (PTR_cmd->report_diffusion && !my_pe)
     if( ts != 0 ) {
         if ( PTR_cmd->report_diffusion && !PTR_rankH->seqRank ) {
-          PRINTF("ts %d CHECKSUM sum %f old %f diff %f tol 10^(-%f) ilevel %d id_l %d istage %d var %d \n", ts,sum, grid_sum[var], fabs(sum - grid_sum[var]), log(1.0/PTR_rankH->tol)/log(10), ilevel, PTR_rankH->myRank, istage, var );
+          ocrPrintf("ts %d CHECKSUM sum %f old %f diff %f tol 10^(-%f) ilevel %d id_l %d istage %d var %d \n", ts,sum, grid_sum[var], fabs(sum - grid_sum[var]), log(1.0/PTR_rankH->tol)/log(10), ilevel, PTR_rankH->myRank, istage, var );
         }
 
         if (fabs(sum - grid_sum[var])/grid_sum[var] > PTR_rankH->tol) {
            if (!PTR_rankH->seqRank)
-              PRINTF("Time step %d sum %f (old %f) variable %d difference too large\n", ts, sum, grid_sum[var], var);
+              ocrPrintf("Time step %d sum %f (old %f) variable %d difference too large\n", ts, sum, grid_sum[var], var);
         }
     }
     else {
         if ( PTR_cmd->report_diffusion && !PTR_rankH->seqRank ){
-          if(var==0) PRINTF("INITIAL\n");
-          PRINTF("ts %d CHECKSUM sum %f ilevel %d id_l %d istage %d var %d \n", ts, sum, ilevel, PTR_rankH->myRank, istage, var );
-          if(var==PTR_cmd->num_vars-1) PRINTF("\n");
+          if(var==0) ocrPrintf("INITIAL\n");
+          ocrPrintf("ts %d CHECKSUM sum %f ilevel %d id_l %d istage %d var %d \n", ts, sum, ilevel, PTR_rankH->myRank, istage, var );
+          if(var==PTR_cmd->num_vars-1) ocrPrintf("\n");
 
        }
 
@@ -728,7 +728,7 @@ _OCR_TASK_FNC_( FNC_finalize )
     ocrTML_t TML_reduceAllUp = PTR_rankTemplateH->TML_reduceAllUp;
 
     #ifdef DEBUG_APP_COARSE
-    PRINTF( "%s ilevel %d id_l %d ts %d seqRank %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->ts, PTR_rankH->seqRank );
+    ocrPrintf( "%s ilevel %d id_l %d ts %d seqRank %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->ts, PTR_rankH->seqRank );
     #endif
 
     PTR_rankH->total_time = timer()-PTR_rankH->tBegin;
@@ -791,18 +791,18 @@ _OCR_TASK_FNC_( FNC_finalizeBarrier )
     ocrEVT_t wrapUpEVT = PTR_rankH->globalParamH.ocrParamH.EVT_OUT_spmdJoin_reduction;
 
     #ifdef DEBUG_APP_COARSE
-    PRINTF( "%s ilevel %d id_l %d ts %d seqRank %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->ts, PTR_rankH->seqRank );
+    ocrPrintf( "%s ilevel %d id_l %d ts %d seqRank %d\n", __func__, PTR_rankH->ilevel, PTR_rankH->myRank, PTR_rankH->ts, PTR_rankH->seqRank );
     #endif
 
     if( PTR_rankH->seqRank == 0 ) {
-        PRINTF( "\nCompute phase elapsed time is %f seconds\n\n", in[0] );
+        ocrPrintf( "\nCompute phase elapsed time is %f seconds\n\n", in[0] );
         int j;
 
-        PRINTF( "Active block stats at the end of the simulation\n" );
+        ocrPrintf( "Active block stats at the end of the simulation\n" );
         for (j = 0; j <= PTR_rankH->cur_max_level; j++)
-            PRINTF("ts %d level %d #blocks %d\n", PTR_rankH->ts, j, PTR_rankH->num_blocks[j] );
+            ocrPrintf("ts %d level %d #blocks %d\n", PTR_rankH->ts, j, PTR_rankH->num_blocks[j] );
 
-        PRINTF("\n" );
+        ocrPrintf("\n" );
 
         ocrAddDependence( NULL_GUID,  wrapUpEVT, 0, DB_MODE_NULL ); //wrapUpEdt
     }

@@ -18,7 +18,7 @@
  **/
 u8 ocrReservationCreate(ocrGuid_t *res, void *in_params)
 {
-    ASSERT(in_params == NULL); //for now
+    ocrAssert(in_params == NULL); //for now
     //reservation is represented using a channel event
     ocrEventParams_t params;
     params.EVENT_CHANNEL.maxGen = RESERVATION_SIZE;

@@ -216,8 +216,8 @@ void Image::computeGridPtIndex()
 /* Here, we compute the index --in the local grid-- of the coordinate value at which we have to plot.
    For x, y, the local grid is the same as the global grid, but for z, k resets at each refinement boundary. */
 
-//   ASSERT(m_isInitializedGridSize);
-//   ASSERT(m_isInitializedZMin)    ;
+//   ocrAssert(m_isInitializedGridSize);
+//   ocrAssert(m_isInitializedZMin)    ;
 
 // Seems to work as follows:
 //           For X and Y images,  m_gridPtIndex[g] is the coordinate index of the
@@ -332,7 +332,7 @@ void Image::computeGridPtIndex()
         fileWriterIDs.push_back(i);
       }
 
-  ASSERT2(fileWriterIDs.size() > 0,
+  ocrAssert2(fileWriterIDs.size() > 0,
           "ImageSlice write error, no processors in communicator")          ;
 
   //  m_rankWriter = fileWriterIDs[0];
@@ -349,7 +349,7 @@ void Image::computeGridPtIndex()
 
 //   getchar();
 
-//  ASSERT(m_mpiComm_writers != MPI_COMM_NULL);
+//  ocrAssert(m_mpiComm_writers != MPI_COMM_NULL);
 
   m_isDefinedMPIWriters = true;
   //  m_gridPtValueInitialized = true;
@@ -530,7 +530,7 @@ void Image::define_pio( )
 //-----------------------------------------------------------------------
 void Image::allocatePlane()
 {
-  ASSERT(m_isDefinedMPIWriters);
+  ocrAssert(m_isDefinedMPIWriters);
 
 // plane_in_proc returns true for z=const planes, because all processors have a part in these planes
   bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
@@ -605,8 +605,8 @@ void Image::allocatePlane()
 void Image::computeImageDivCurl( vector<Sarray> &a_Up, vector<Sarray>& a_U,
 				 vector<Sarray> &a_Um, double dt, int dminus )
 {
-   ASSERT(m_isDefinedMPIWriters);
-   ASSERT( mMode == Image::DIV || mMode == Image::CURLMAG || mMode == Image::DIVDT
+   ocrAssert(m_isDefinedMPIWriters);
+   ocrAssert( mMode == Image::DIV || mMode == Image::CURLMAG || mMode == Image::DIVDT
 	   || mMode == Image::CURLMAGDT );
 // plane_in_proc returns true for z=const lpanes, because all processors have a part in these planes
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
@@ -742,7 +742,7 @@ void Image::computeImageDivCurl( vector<Sarray> &a_Up, vector<Sarray>& a_U,
 //-----------------------------------------------------------------------
 void Image::computeImageQuantity(std::vector<Sarray> &a_mu, int a_nComp )
 {
-  ASSERT(m_isDefinedMPIWriters);
+  ocrAssert(m_isDefinedMPIWriters);
 // plane_in_proc returns true for z=const lpanes, because all processors have a part in these planes
   bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
   if (iwrite)
@@ -775,8 +775,8 @@ void Image::computeImageQuantity(std::vector<Sarray> &a_mu, int a_nComp )
 //-----------------------------------------------------------------------
 void Image::computeImageGrid( Sarray &a_X, Sarray &a_Y, Sarray &a_Z )
 {
-  ASSERT(m_isDefinedMPIWriters);
-  ASSERT( mMode == Image::GRIDX ||mMode == Image::GRIDY ||mMode == Image::GRIDZ );
+  ocrAssert(m_isDefinedMPIWriters);
+  ocrAssert( mMode == Image::GRIDX ||mMode == Image::GRIDY ||mMode == Image::GRIDZ );
   if (plane_in_proc(m_gridPtIndex[0]))
   {
      int topCartesian = mEW->mNumberOfCartesianGrids - 1;
@@ -833,8 +833,8 @@ void Image::computeImageGrid( Sarray &a_X, Sarray &a_Y, Sarray &a_Z )
 //-----------------------------------------------------------------------
 void Image::computeImageLatLon(Sarray &a_X, Sarray &a_Y, Sarray &a_Z )
 {
-   ASSERT(m_isDefinedMPIWriters);
-   ASSERT( mMode == Image::LAT || mMode == Image::LON );
+   ocrAssert(m_isDefinedMPIWriters);
+   ocrAssert( mMode == Image::LAT || mMode == Image::LON );
 // plane_in_proc returns true for z=const lpanes, because all processors have a part in these planes
    if (plane_in_proc(m_gridPtIndex[0]))
    {
@@ -890,8 +890,8 @@ void Image::computeImageLatLon(Sarray &a_X, Sarray &a_Y, Sarray &a_Z )
 void Image::computeImagePvel(std::vector<Sarray> &mu, std::vector<Sarray> &lambda,
 			     std::vector<Sarray> &rho )
 {
-   ASSERT(m_isDefinedMPIWriters);
-   ASSERT( mMode == Image::P );
+   ocrAssert(m_isDefinedMPIWriters);
+   ocrAssert( mMode == Image::P );
    if (plane_in_proc(m_gridPtIndex[0]))
    {
       int gmin, gmax;
@@ -922,8 +922,8 @@ void Image::computeImagePvel(std::vector<Sarray> &mu, std::vector<Sarray> &lambd
 //-----------------------------------------------------------------------
 void Image::computeImageSvel(std::vector<Sarray> &mu, std::vector<Sarray> &rho )
 {
-   ASSERT(m_isDefinedMPIWriters);
-   ASSERT( mMode == Image::S );
+   ocrAssert(m_isDefinedMPIWriters);
+   ocrAssert( mMode == Image::S );
    if (plane_in_proc(m_gridPtIndex[0]))
    {
       int gmin, gmax;
@@ -954,7 +954,7 @@ void Image::computeImageSvel(std::vector<Sarray> &mu, std::vector<Sarray> &rho )
 //-----------------------------------------------------------------------
 void Image::copy2DArrayToImage(Sarray &u2)
 {
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
    REQUIRE2( u2.m_nc == 1, "Image::copy2DArrayToImage, only implemented for one-component arrays" );
    int ie = u2.m_ie, ib=u2.m_ib, je=u2.m_je, jb=u2.m_jb;
    REQUIRE2( ib == mEW->m_iStart[mEW->mNumberOfGrids-1] && ie == mEW->m_iEnd[mEW->mNumberOfGrids-1] &&
@@ -964,7 +964,7 @@ void Image::copy2DArrayToImage(Sarray &u2)
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
    if (iwrite)
    {
-      ASSERT2(mLocationType == Image::Z, "Image::copy2DArrayToImage only works for z=const");
+      ocrAssert2(mLocationType == Image::Z, "Image::copy2DArrayToImage only works for z=const");
 // write the data...
       int g = m_gridPtIndex[1];
       size_t iField = 0;
@@ -986,7 +986,7 @@ void Image::writeImagePlane_2(int cycle, std::string &path, double t )
    if( !m_user_created )
       return;
 
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
 
 // plane_in_proc returns true for z=const lpanes, because all processors have a part in these planes
    bool ihavearray = plane_in_proc(m_gridPtIndex[0]);
@@ -1508,9 +1508,9 @@ void Image::update_maxes_vMax(std::vector<Sarray> &a_U )
 //-----------------------------------------------------------------------
 void Image::computeDivergence( std::vector<Sarray> &a_U, std::vector<double*>& a_div )
 {
-   ASSERT(m_isDefinedMPIWriters);
-   ASSERT( a_U.size() == mEW->mNumberOfGrids )
-   ASSERT( a_div.size() == a_U.size() )
+   ocrAssert(m_isDefinedMPIWriters);
+   ocrAssert( a_U.size() == mEW->mNumberOfGrids )
+   ocrAssert( a_div.size() == a_U.size() )
 
 // plane_in_proc returns true for z=const lpanes, because all processors have a part in these planes
    bool iwrite    = plane_in_proc(m_gridPtIndex[0]);
@@ -1752,9 +1752,9 @@ void Image::computeDivergence( std::vector<Sarray> &a_U, std::vector<double*>& a
 //-----------------------------------------------------------------------
 void Image::computeCurl( std::vector<Sarray>& a_U, std::vector<double*>& a_curl )
 {
-   ASSERT(m_isDefinedMPIWriters);
-   ASSERT( a_U.size()    == mEW->mNumberOfGrids )
-   ASSERT( a_curl.size() == a_U.size() )
+   ocrAssert(m_isDefinedMPIWriters);
+   ocrAssert( a_U.size()    == mEW->mNumberOfGrids )
+   ocrAssert( a_curl.size() == a_U.size() )
 
 // plane_in_proc returns true for z=const lpanes, because all processors have a part in these planes
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
@@ -2059,7 +2059,7 @@ void Image::computeImageMagdt( vector<Sarray> &a_Up, vector<Sarray> &a_Um,
 			       double dt )
 {
    // dt is distance between Up and Um.
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
 // plane_in_proc returns true for z=const planes, because all processors have a part in these planes
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
    if (iwrite)
@@ -2099,7 +2099,7 @@ void Image::computeImageMagdt( vector<Sarray> &a_Up, vector<Sarray> &a_Um,
 void Image::computeImageMag( vector<Sarray> &a_U )
 {
    // dt is distance between Up and Um.
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
 // plane_in_proc returns true for z=const planes, because all processors have a part in these planes
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
    if (iwrite)
@@ -2138,7 +2138,7 @@ void Image::computeImageHmagdt(vector<Sarray> &a_Up, vector<Sarray> &a_Um,
 			       double dt )
 {
    // dt is distance between Up and Um.
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
 // plane_in_proc returns true for z=const planes, because all processors have a part in these planes
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
    if (iwrite)
@@ -2177,7 +2177,7 @@ void Image::computeImageHmagdt(vector<Sarray> &a_Up, vector<Sarray> &a_Um,
 void Image::computeImageHmag( vector<Sarray> &a_U )
 {
    // dt is distance between Up and Um.
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
 // plane_in_proc returns true for z=const planes, because all processors have a part in these planes
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
    if (iwrite)
@@ -2213,7 +2213,7 @@ void Image::computeImageHmag( vector<Sarray> &a_U )
 void Image::compute_image_gradp( vector<Sarray>& a_gLambda, vector<Sarray>& a_Mu,
 				 vector<Sarray>& a_Lambda, vector<Sarray>& a_Rho )
 {
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
 
 // plane_in_proc returns true for z=const planes, because all processors have a part in these planes
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
@@ -2250,7 +2250,7 @@ void Image::compute_image_gradp( vector<Sarray>& a_gLambda, vector<Sarray>& a_Mu
 void Image::compute_image_grads( vector<Sarray>& a_gMu, vector<Sarray>& a_gLambda,
 				 vector<Sarray>& a_Mu, vector<Sarray>& a_Rho )
 {
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
 
 // plane_in_proc returns true for z=const planes, because all processors have a part in these planes
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);
@@ -2454,7 +2454,7 @@ void Image::output_image( int a_cycle, double a_time, double a_dt,
 void Image::computeImageQuantityDiff( vector<Sarray>& a_U, vector<Sarray>& a_Uex,
 				      int comp )
 {
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
 
 // plane_in_proc returns true for z=const planes, because all processors have a part in these planes
    bool iwrite   = plane_in_proc(m_gridPtIndex[0]);

@@ -251,7 +251,7 @@ void initializeEdt( initParams &params )
 
 void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs> args)
 {
-    PRINTF("hello, world! ocxxr successfully included!\n");
+    ocrPrintf("hello, world! ocxxr successfully included!\n");
 
 
     u32 nWorkers;

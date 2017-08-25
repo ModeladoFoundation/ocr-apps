@@ -194,7 +194,7 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
         else if( nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
-            PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
+            ocrPrintf("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
 
@@ -224,7 +224,7 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
         else if( nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
-            PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
+            ocrPrintf("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
     ocrAddDependence( packRefnBufsOEVTS, unpackRefnBufsEDT, _idep++, DB_MODE_NULL ); //TODO - is this really needed?
@@ -249,7 +249,7 @@ int blockNnbrs(block *bp, int iAxis)
         else if( bp->nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
-            PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
+            ocrPrintf("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
 
@@ -346,7 +346,7 @@ ocrGuid_t packRefnBufsEdt(EDT_ARGS)
         else if( bp->nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
-            PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
+            ocrPrintf("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
 
@@ -495,7 +495,7 @@ ocrGuid_t unpackRefnBufsEdt(EDT_ARGS)
         else if( bp->nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
-            PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
+            ocrPrintf("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
 

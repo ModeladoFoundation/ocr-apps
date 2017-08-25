@@ -81,7 +81,7 @@ static void getTuple(LinkCell* boxes, int iBox, int* ixp, int* iyp, int* izp);
 void initLinkCells(LinkCell* ll, const Domain* domain, real_t cutoff)
 {
     DEBUG_PRINTF(( "%s\n", __func__ ));
-   ASSERT(domain);
+   ocrAssert(domain);
 
    for (int i = 0; i < 3; i++)
    {
@@ -107,7 +107,7 @@ void initLinkCells(LinkCell* ll, const Domain* domain, real_t cutoff)
 
     //ocrDbRelease( ll->DBK_nAtoms ); //TODO
 
-   ASSERT ( (ll->gridSize[0] >= 2) && (ll->gridSize[1] >= 2) && (ll->gridSize[2] >= 2) );
+   ocrAssert ( (ll->gridSize[0] >= 2) && (ll->gridSize[1] >= 2) && (ll->gridSize[2] >= 2) );
 }
 
 //void destroyLinkCells(LinkCell** boxes)
@@ -183,7 +183,7 @@ void moveAtom(LinkCell* boxes, Atoms* atoms, int iId, int iBox, int jBox)
    copyAtom(boxes, atoms, iId, iBox, nj, jBox);
    boxes->nAtoms[jBox]++;
 
-   ASSERT(boxes->nAtoms[jBox] < MAXATOMS);
+   ocrAssert(boxes->nAtoms[jBox] < MAXATOMS);
 
    boxes->nAtoms[iBox]--;
    int ni = boxes->nAtoms[iBox];
@@ -356,8 +356,8 @@ int getBoxFromTuple(LinkCell* boxes, int ix, int iy, int iz)
    {
       iBox = ix + gridSize[0]*iy + gridSize[0]*gridSize[1]*iz;
    }
-   ASSERT(iBox >= 0);
-   ASSERT(iBox < boxes->nTotalBoxes);
+   ocrAssert(iBox >= 0);
+   ocrAssert(iBox < boxes->nTotalBoxes);
 
    return iBox;
 }

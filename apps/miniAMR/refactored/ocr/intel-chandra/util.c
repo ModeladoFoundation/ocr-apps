@@ -56,7 +56,7 @@ double timer(void)
 void ma_malloc_counter( timerH_t* PTR_timerH, void* ptr, size_t size, char *file, int line)
 {
    if (ptr == NULL) {
-      PRINTF("NULL pointer from ocrDbCreate call in %s at %d\n", file, line);
+      ocrPrintf("NULL pointer from ocrDbCreate call in %s at %d\n", file, line);
    }
 
    PTR_timerH->counter_malloc++;
@@ -100,7 +100,7 @@ int binary_search_double( int n, int quarry, int * A)
     if( p != NULL )
         return p-A;
     else {
-        PRINTF("Not found! %d is not present in the list.\n", quarry);
+        ocrPrintf("Not found! %d is not present in the list.\n", quarry);
         return 0;
     }
 }

@@ -41,7 +41,7 @@ static inline u32 __attribute__((always_inline)) fclose(FILE *fp) {
 inline u32 __attribute__((always_inline)) fread(void *ptr, u32 size, u32 nmemb, FILE *fp) {
     hal_memCopy(ptr, (BLOB_START+(*fp)*sizeof(u8)), size*nmemb, 0);
     *fp += size*nmemb;
-    ASSERT(*fp <= *(u64 *)(BLOB_START));
+    ocrAssert(*fp <= *(u64 *)(BLOB_START));
     return size*nmemb;
 }
 

@@ -41,7 +41,7 @@ ocrGuid_t lapacke_dpotrf_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
 
     double* aBlock = (double*) (depv[0].ptr);
 
-//    PRINTF("RUNNING sequential_cholesky %d with 0x%llx to satisfy\n", k, (u64)(out_lkji_kkkp1_event_guid));
+//    ocrPrintf("RUNNING sequential_cholesky %d with 0x%llx to satisfy\n", k, (u64)(out_lkji_kkkp1_event_guid));
 
     ocrGuid_t out_lkji_kkkp1_db_guid;
     ocrGuid_t out_lkji_kkkp1_db_affinity = NULL_GUID;
@@ -50,9 +50,9 @@ ocrGuid_t lapacke_dpotrf_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
 
     if (info != 0)
     {
-        if (info > 0) PRINTF("Matrix A is not Symmetric Positive Definite (SPD)");
-        else PRINTF("i-th parameter had an illegal value.");
-        ASSERT(0);
+        if (info > 0) ocrPrintf("Matrix A is not Symmetric Positive Definite (SPD)");
+        else ocrPrintf("i-th parameter had an illegal value.");
+        ocrAssert(0);
         ocrShutdown();
         return NULL_GUID;
     }
@@ -71,7 +71,7 @@ ocrGuid_t cblas_dtrsm_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     u32 tileSize = (u32) func_args[2];
     ocrGuid_t out_lkji_jkkp1_event_guid = (ocrGuid_t) func_args[3];
 
-//    PRINTF("RUNNING trisolve (%d, %d)\n", k, j);
+//    ocrPrintf("RUNNING trisolve (%d, %d)\n", k, j);
 
     double* aBlock = (double*) (depv[0].ptr);
     double* liBlock = (double*) (depv[1].ptr);
@@ -100,7 +100,7 @@ ocrGuid_t cblas_dsyrk_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     u32 tileSize = (u32) func_args[3];
     ocrGuid_t out_lkji_jjkp1_event_guid = (ocrGuid_t) func_args[4];
 
-//    PRINTF("RUNNING update_diagonal (%d, %d, %d)\n", k, j, i);
+//    ocrPrintf("RUNNING update_diagonal (%d, %d, %d)\n", k, j, i);
 
     double* aBlock = (double*) (depv[0].ptr);
     double* l2Block = (double*) (depv[1].ptr);
@@ -125,7 +125,7 @@ ocrGuid_t cblas_dgemm_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     u32 tileSize = (u32) func_args[3];
     ocrGuid_t out_lkji_jikp1_event_guid = (ocrGuid_t) func_args[4];
 
-//    PRINTF("RUNNING update_nondiagonal (%d, %d, %d)\n", k, j, i);
+//    ocrPrintf("RUNNING update_nondiagonal (%d, %d, %d)\n", k, j, i);
 
     double* aBlock = (double*) (depv[0].ptr);
     double* l1Block = (double*) (depv[1].ptr);
@@ -155,7 +155,7 @@ ocrGuid_t wrap_up_task ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) 
     {
         FILE* outCSV = fopen("ocr_mkl_cholesky_stats.csv", "a");
         if( !outCSV ) {
-            PRINTF("Cannot find file: %s\n", "ocr_mkl_cholesky_stats.csv");
+            ocrPrintf("Cannot find file: %s\n", "ocr_mkl_cholesky_stats.csv");
             ocrShutdown();
             return NULL_GUID;
         }
@@ -363,7 +363,7 @@ inline static void satisfyInitialTiles(u32 numTiles, u32 tileSize,
     FILE *fin;
 
     fin = fopen("inputfile", "r");
-    if(fin == NULL) PRINTF("Error opening input file\n");
+    if(fin == NULL) ocrPrintf("Error opening input file\n");
     for( i = 0 ; i < numTiles ; ++i ) {
         for( j = 0 ; j <= i ; ++j ) {
             ocrDbCreate(&db_guid, &temp_db, sizeof(double)*tileSize*tileSize,
@@ -426,7 +426,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     u64 argc;
 
     void *programArg = depv[0].ptr;
-    argc = getArgc(programArg);
+    argc = ocrGetArgc(programArg);
 
     char *nparamv[argc];
 
@@ -434,27 +434,27 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     for (i=0; i< argc; i++)
     {
-        nparamv[i] = getArgv(programArg, i);
+        nparamv[i] = ocrGetArgv(programArg, i);
     }
 
     if ( argc == 1) {
-        PRINTF("OCR-MKL Cholesky\n");
-        PRINTF("__________________________________________________________________________________________________\n");
-        PRINTF("Solves an OCR version of a Tiled Cholesky Decomposition with all math kernels using Intel MKL only\n\n");
-        PRINTF("Usage:\n");
-        PRINTF("\tocr_mkl_cholesky.exe {Arguments}\n\n");
-        PRINTF("Arguments:\n");
-        PRINTF("\t--ds -- Specify the Size of the Input Matrix\n");
-        PRINTF("\t--ts -- Specify the Tile Size\n");
-        PRINTF("\t--fi -- Specify the Input File Name of the Matrix\n");
-//        PRINTF("\t--fo -- Specify an Output File Name (default: ocr_mkl_cholesky.out)\n");
-        PRINTF("\t--ol -- Output Selection Level:\n");
-        PRINTF("\t\t0: Print solution to stdout\n");
-        PRINTF("\t\t1: Write solution to text file\n");
-        PRINTF("\t\t2: Write solution to binary file (default)\n");
-        PRINTF("\t\t3: Write solution to text file and print to stdout\n");
-        PRINTF("\t\t4: Write solution to binary file and print to stdout\n");
-        PRINTF("\t\t5: Write algorithm timing data to ocr_mkl_cholesky_stats.csv and write solution to binary file\n");
+        ocrPrintf("OCR-MKL Cholesky\n");
+        ocrPrintf("__________________________________________________________________________________________________\n");
+        ocrPrintf("Solves an OCR version of a Tiled Cholesky Decomposition with all math kernels using Intel MKL only\n\n");
+        ocrPrintf("Usage:\n");
+        ocrPrintf("\tocr_mkl_cholesky.exe {Arguments}\n\n");
+        ocrPrintf("Arguments:\n");
+        ocrPrintf("\t--ds -- Specify the Size of the Input Matrix\n");
+        ocrPrintf("\t--ts -- Specify the Tile Size\n");
+        ocrPrintf("\t--fi -- Specify the Input File Name of the Matrix\n");
+//        ocrPrintf("\t--fo -- Specify an Output File Name (default: ocr_mkl_cholesky.out)\n");
+        ocrPrintf("\t--ol -- Output Selection Level:\n");
+        ocrPrintf("\t\t0: Print solution to stdout\n");
+        ocrPrintf("\t\t1: Write solution to text file\n");
+        ocrPrintf("\t\t2: Write solution to binary file (default)\n");
+        ocrPrintf("\t\t3: Write solution to text file and print to stdout\n");
+        ocrPrintf("\t\t4: Write solution to binary file and print to stdout\n");
+        ocrPrintf("\t\t5: Write algorithm timing data to ocr_mkl_cholesky_stats.csv and write solution to binary file\n");
 
         ocrShutdown();
         return NULL_GUID;
@@ -483,45 +483,45 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
             switch (c)
             {
             case 'a':
-                //PRINTF("Option a: matrixSize with value '%s'\n", optarg);
+                //ocrPrintf("Option a: matrixSize with value '%s'\n", optarg);
                 matrixSize = (u32) atoi(optarg);
                 break;
             case 'b':
-                //PRINTF("Option b: tileSize with value '%s'\n", optarg);
+                //ocrPrintf("Option b: tileSize with value '%s'\n", optarg);
                 tileSize = (u32) atoi(optarg);
                 break;
             case 'c':
-                //PRINTF("Option c: fileNameIn with value '%s'\n", optarg);
+                //ocrPrintf("Option c: fileNameIn with value '%s'\n", optarg);
                 fileNameIn = optarg;
                 break;
             case 'd':
-                //PRINTF("Option d: fileNameOut with value '%s'\n", optarg);
+                //ocrPrintf("Option d: fileNameOut with value '%s'\n", optarg);
                 fileNameOut = (char*) mkl_realloc(fileNameOut, sizeof(optarg));
                 strcpy(fileNameOut, optarg);
                 break;
             case 'e':
-                //PRINTF("Option e: outSelLevel with value '%s'\n", optarg);
+                //ocrPrintf("Option e: outSelLevel with value '%s'\n", optarg);
                 outSelLevel = (u32) atoi(optarg);
                 break;
             default:
-                PRINTF("ERROR: Invalid argument switch\n\n");
-                PRINTF("OCR-MKL Cholesky\n");
-                PRINTF("__________________________________________________________________________________________________\n");
-                PRINTF("Solves an OCR version of a Tiled Cholesky Decomposition with all math kernels using Intel MKL only\n\n");
-                PRINTF("Usage:\n");
-                PRINTF("\tocr_mkl_cholesky.exe {Arguments}\n\n");
-                PRINTF("Arguments:\n");
-                PRINTF("\t--ds -- Specify the Size of the Input Matrix\n");
-                PRINTF("\t--ts -- Specify the Tile Size\n");
-                PRINTF("\t--fi -- Specify the Input File Name of the Matrix\n");
-//                PRINTF("\t--fo -- Specify an Output File Name (default: ocr_mkl_cholesky.out)\n");
-                PRINTF("\t--ol -- Output Selection Level:\n");
-                PRINTF("\t\t0: Print solution to stdout\n");
-                PRINTF("\t\t1: Write solution to text file\n");
-                PRINTF("\t\t2: Write solution to binary file (default)\n");
-                PRINTF("\t\t3: Write solution to text file and print to stdout\n");
-                PRINTF("\t\t4: Write solution to binary file and print to stdout\n");
-                PRINTF("\t\t5: Write algorithm timing data to ocr_mkl_cholesky_stats.csv and write solution to binary file\n");
+                ocrPrintf("ERROR: Invalid argument switch\n\n");
+                ocrPrintf("OCR-MKL Cholesky\n");
+                ocrPrintf("__________________________________________________________________________________________________\n");
+                ocrPrintf("Solves an OCR version of a Tiled Cholesky Decomposition with all math kernels using Intel MKL only\n\n");
+                ocrPrintf("Usage:\n");
+                ocrPrintf("\tocr_mkl_cholesky.exe {Arguments}\n\n");
+                ocrPrintf("Arguments:\n");
+                ocrPrintf("\t--ds -- Specify the Size of the Input Matrix\n");
+                ocrPrintf("\t--ts -- Specify the Tile Size\n");
+                ocrPrintf("\t--fi -- Specify the Input File Name of the Matrix\n");
+//                ocrPrintf("\t--fo -- Specify an Output File Name (default: ocr_mkl_cholesky.out)\n");
+                ocrPrintf("\t--ol -- Output Selection Level:\n");
+                ocrPrintf("\t\t0: Print solution to stdout\n");
+                ocrPrintf("\t\t1: Write solution to text file\n");
+                ocrPrintf("\t\t2: Write solution to binary file (default)\n");
+                ocrPrintf("\t\t3: Write solution to text file and print to stdout\n");
+                ocrPrintf("\t\t4: Write solution to binary file and print to stdout\n");
+                ocrPrintf("\t\t5: Write algorithm timing data to ocr_mkl_cholesky_stats.csv and write solution to binary file\n");
 
                 ocrShutdown();
                 return NULL_GUID;
@@ -531,20 +531,20 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     if(matrixSize == -1 || tileSize == -1)
     {
-        PRINTF("Must specify matrix size and tile size\n");
+        ocrPrintf("Must specify matrix size and tile size\n");
         ocrShutdown();
         return NULL_GUID;
     }
     else if(matrixSize % tileSize != 0)
     {
-        PRINTF("Incorrect tile size %d for the matrix of size %d \n", tileSize, matrixSize);
+        ocrPrintf("Incorrect tile size %d for the matrix of size %d \n", tileSize, matrixSize);
         ocrShutdown();
         return NULL_GUID;
     }
 
     numTiles = matrixSize/tileSize;
 
-    PRINTF("Matrixsize %d, tileSize %d\n", matrixSize, tileSize);
+    ocrPrintf("Matrixsize %d, tileSize %d\n", matrixSize, tileSize);
 
 #ifndef TG_ARCH
     struct timeval a;
@@ -557,7 +557,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
             outCSV = fopen("ocr_mkl_cholesky_stats.csv", "w");
 
             if( !outCSV ) {
-                PRINTF("Cannot find file: %s\n", "ocr_mkl_cholesky_stats.csv");
+                ocrPrintf("Cannot find file: %s\n", "ocr_mkl_cholesky_stats.csv");
                 ocrShutdown();
                 return NULL_GUID;
             }
@@ -578,7 +578,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     FILE *in;
     in = fopen(fileNameIn, "r");
     if( !in ) {
-        PRINTF("Cannot find file: %s\n", fileNameIn);
+        ocrPrintf("Cannot find file: %s\n", fileNameIn);
         ocrShutdown();
         return NULL_GUID;
     }
@@ -589,7 +589,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     {
         FILE* outCSV = fopen("ocr_mkl_cholesky_stats.csv", "a");
         if( !outCSV ) {
-            PRINTF("Cannot find file: %s\n", "ocr_mkl_cholesky_stats.csv");
+            ocrPrintf("Cannot find file: %s\n", "ocr_mkl_cholesky_stats.csv");
             ocrShutdown();
             return NULL_GUID;
         }
@@ -611,7 +611,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrEdtTemplateCreate(&templateUpdate, cblas_dsyrk_task, 5, 2);
     ocrEdtTemplateCreate(&templateWrap, wrap_up_task, 3, (numTiles+1)*numTiles/2);
 
-//    PRINTF("Going to satisfy initial tiles\n");
+//    ocrPrintf("Going to satisfy initial tiles\n");
 #ifdef TG_ARCH
     satisfyInitialTiles(numTiles, tileSize, lkji_event_guids);
 #else
@@ -619,7 +619,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
 #endif
 
     for ( k = 0; k < numTiles; ++k ) {
-//        PRINTF("Prescribing sequential task %d\n", k);
+//        ocrPrintf("Prescribing sequential task %d\n", k);
         lapacke_dpotrf_task_prescriber(templateSeq, k, tileSize, lkji_event_guids);
 
         for( j = k + 1 ; j < numTiles ; ++j ) {
@@ -638,7 +638,7 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
     wrap_up_task_prescriber (templateWrap, numTiles, tileSize,
                              outSelLevel, lkji_event_guids);
 
-//    PRINTF("Wrapping up mainEdt\n");
+//    ocrPrintf("Wrapping up mainEdt\n");
     return NULL_GUID;
 }
 

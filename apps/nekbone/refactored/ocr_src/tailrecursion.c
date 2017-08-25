@@ -2,7 +2,7 @@
 #include "tailrecursion.h"
 #endif
 
-//#define TAILRECURSION_VERBOSE //Define this macro in order to get many PRINTF activated.
+//#define TAILRECURSION_VERBOSE //Define this macro in order to get many ocrPrintf activated.
                               //Otherwise, to keep silent, undefine the macro.
 
 Err_t tailRecurInitialize(TailRecurIterate_t * io_iterate,
@@ -24,7 +24,7 @@ Err_t tailRecurInitialize(TailRecurIterate_t * io_iterate,
 
 #   ifdef TAILRECURSION_VERBOSE
         print_SPMDglobals(in_globald, "INSIDE TAILRECUR INIT");
-        PRINTF("TESTIO> TAILRECUR INIT: %ld in [%ld, %ld[ by step of %ld\n",
+        ocrPrintf("TESTIO> TAILRECUR INIT: %ld in [%ld, %ld[ by step of %ld\n",
                io_iterate->current,
                io_iterate->begin,
                io_iterate->end,
@@ -47,7 +47,7 @@ int tailRecurCondition(TailRecurIterate_t * io_iterate) //Return 1 upon success;
     }
 
 #   ifdef TAILRECURSION_VERBOSE
-        PRINTF("TESTIO> TAILRECUR CONDITION: Checking iteration %ld in [%ld, %ld[ by step of %ld : %s\n",
+        ocrPrintf("TESTIO> TAILRECUR CONDITION: Checking iteration %ld in [%ld, %ld[ by step of %ld : %s\n",
                io_iterate->current,
                io_iterate->begin,
                io_iterate->end,
@@ -63,7 +63,7 @@ Err_t tailRecurConclude()
     Err_t err=0;
     while(!err){
 #   ifdef TAILRECURSION_VERBOSE
-        PRINTF("TESTIO> TAILRECUR CONCLUSION: Reached.\n");
+        ocrPrintf("TESTIO> TAILRECUR CONCLUSION: Reached.\n");
 #   endif
         break;  //  while(!err)
     }
@@ -85,7 +85,7 @@ Err_t tailRecurIfThenClause(const TailRecurIterate_t * in_iterate)
         }
 
 #       ifdef TAILRECURSION_VERBOSE
-            PRINTF("TESTIO> TAILRECUR IF-THEN: Performing iteration %ld in [%ld, %ld[\n",
+            ocrPrintf("TESTIO> TAILRECUR IF-THEN: Performing iteration %ld in [%ld, %ld[\n",
                    in_iterate->current,
                    in_iterate->begin,
                    in_iterate->end
@@ -105,7 +105,7 @@ Err_t tailRecurElseClause(const TailRecurIterate_t * in_iterate)
             err=__LINE__; IFEB;
         }
 //DEV#       ifdef TAILRECURSION_VERBOSE
-            PRINTF("TESTIO> TAILRECUR ELSE: Performing iteration %ld in [%ld, %ld[\n",
+            ocrPrintf("TESTIO> TAILRECUR ELSE: Performing iteration %ld in [%ld, %ld[\n",
                    in_iterate->current,
                    in_iterate->begin,
                    in_iterate->end

@@ -104,12 +104,12 @@ typedef struct
 }
     eventPair_t, * eventPairP_t;
 
-#define MPI_INFO(s,w) {PRINTF("WARNING: %s, will return" #w "\n",(s));}
-#define MPI_ERROR(s) {PRINTF("ERROR: %s; exiting\n",s); exit(1);}
+#define MPI_INFO(s,w) {ocrPrintf("WARNING: %s, will return" #w "\n",(s));}
+#define MPI_ERROR(s) {ocrPrintf("ERROR: %s; exiting\n",s); exit(1);}
 
 // HIDE all the debugging printfs if debug off
 #if !DEBUG_MPI
-    #define PRINTF(a,...)
+    #define ocrPrintf(a,...)
     #define fflush(a)
 #endif
 
@@ -177,7 +177,7 @@ static int sendData(void *buf, int count, MPI_Datatype
     memcpy(&(ptr->data), buf, totalSize);
 
 #if DEBUG_MPI
-    PRINTF("sendData: rank #%d: Send to %d tag:%d on event guid %p, DB %p, ptr %p\n"
+    ocrPrintf("sendData: rank #%d: Send to %d tag:%d on event guid %p, DB %p, ptr %p\n"
            "\tptr->{%lx,%lx,%lx,%lx}\n",
 	    source,  dest, tag, messageEvent, DB, ptr,
 	    ((u64*)ptr)[0],((u64*)ptr)[1],((u64*)ptr)[2],((u64*)ptr)[3]); fflush(stdout);
@@ -245,7 +245,7 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
         ERROR(msg); // exits
     }
 
-    //PRINTF("mpiOcrSend: rank #%d: Sending to %d tag:%d on event guid %p\n",
+    //ocrPrintf("mpiOcrSend: rank #%d: Sending to %d tag:%d on event guid %p\n",
     //       source,  dest, tag, labeledEvent); fflush(stdout);
 
     // We've got a valid event, so use it for the send
@@ -257,7 +257,7 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
 #else  // USE_CHANNEL
 
 #if DEBUG_MPI
-    PRINTF("mpiOcrSend: rank #%d: Using CHANNEL support.\n", source); fflush(stdout);
+    ocrPrintf("mpiOcrSend: rank #%d: Using CHANNEL support.\n", source); fflush(stdout);
 #endif
 
    // see if the channel event is in the local hashtable.
@@ -281,7 +281,7 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
             ERROR(msg); // exits
         }
 
-        PRINTF("mpiOcrSend: rank #%d got labeled event guid %p\n", source, labeledEvent);
+        ocrPrintf("mpiOcrSend: rank #%d got labeled event guid %p\n", source, labeledEvent);
         fflush(stdout);
 
 
@@ -303,7 +303,7 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
             }
         }
 
-        PRINTF("mpiOcrSend: rank #%d created labeled event %p\n",source, labeledEvent);
+        ocrPrintf("mpiOcrSend: rank #%d created labeled event %p\n",source, labeledEvent);
         fflush(stdout);
 
 
@@ -325,7 +325,7 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
             ERROR(msg); // exits
         }
 
-        PRINTF("mpiOcrSend: rank #%d created channelEvent %p\n", source, channelEvent);
+        ocrPrintf("mpiOcrSend: rank #%d created channelEvent %p\n", source, channelEvent);
         fflush(stdout);
 
 
@@ -345,9 +345,9 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
 
 	unsigned long * tmpPtr = (unsigned long *)myPtr;
 
-	PRINTF("mpiOcrSend: rank #%d: myPtr->channelEvent=%p, myPtr->localEvent=%p\n",
+	ocrPrintf("mpiOcrSend: rank #%d: myPtr->channelEvent=%p, myPtr->localEvent=%p\n",
 	       source, (unsigned long)tmpPtr[0], (unsigned long)tmpPtr[1]);
-        PRINTF("mpiOcrSend: rank #%d: calling ocrEventSatisfy(%p, %p)\n",
+        ocrPrintf("mpiOcrSend: rank #%d: calling ocrEventSatisfy(%p, %p)\n",
                source, labeledEvent, DB); fflush(stdout);
         fflush(stdout);
 
@@ -360,7 +360,7 @@ int mpiOcrSend(void *buf, int count, /*MPI_Datatype*/ int
             ERROR(msg); // exits
         }
 
-        PRINTF("mpiOcrSend: rank #%d satisfied labeled event %p with DB %p containing channel %p\n",
+        ocrPrintf("mpiOcrSend: rank #%d satisfied labeled event %p with DB %p containing channel %p\n",
                source, labeledEvent, DB, channelEvent); fflush(stdout);
 
 
@@ -419,7 +419,7 @@ int mpiOcrTrySend(void *buf, int count, /*MPI_Datatype*/ int
     if (err=ocrEventCreate(&messageEvent, OCR_EVENT_STICKY_T,
                    EVT_PROP_TAKES_ARG | GUID_PROP_IS_LABELED | GUID_PROP_CHECK))
         {
-            PRINTF("*mpiOcrTrySend: rank #%d: Sending to %d tag:%d on event guid %p: fail:%d\n",
+            ocrPrintf("*mpiOcrTrySend: rank #%d: Sending to %d tag:%d on event guid %p: fail:%d\n",
                    source, dest, tag, messageEvent, err);  fflush(stdout);
             if (OCR_EGUIDEXISTS == err)
                 {
@@ -438,7 +438,7 @@ int mpiOcrTrySend(void *buf, int count, /*MPI_Datatype*/ int
                     ERROR(msg); // exits
                 }
         }
-    //PRINTF("mpiOcrTrySend: rank #%d: Sending to %d tag:%d on event guid %p: success\n",
+    //ocrPrintf("mpiOcrTrySend: rank #%d: Sending to %d tag:%d on event guid %p: success\n",
     //      source, dest, tag, messageEvent);  fflush(stdout);
 
     *done = TRUE;
@@ -494,7 +494,7 @@ static int recvData(void *buf, int count, MPI_Datatype
     mpiOcrMessageP_t ptr = (mpiOcrMessageP_t) messagePtr;
 
 #if DEBUG_MPI
-    PRINTF("recvData: rank #%d: Recved from %d tag:%d, DB %p, ptr %p\n"
+    ocrPrintf("recvData: rank #%d: Recved from %d tag:%d, DB %p, ptr %p\n"
            "\tptr->{%lx,%lx,%lx,%lx}\n",
            dest, source, tag, DB, ptr,
            ((u64*)ptr)[0],((u64*)ptr)[1],((u64*)ptr)[2],((u64*)ptr)[3]);  fflush(stdout);
@@ -595,7 +595,7 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
         ERROR(msg); // exits
     }
 
-    PRINTF("mpiOcrRecv: rank #%d: Recving from %d tag:%d on event guid %p\n",
+    ocrPrintf("mpiOcrRecv: rank #%d: Recving from %d tag:%d on event guid %p\n",
            dest, source, tag, labeledEvent);  fflush(stdout);
 
     // Block until event is "legal" , and has been satisfied
@@ -609,7 +609,7 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
     }
 
     // Old style: we've got everything we need
-    PRINTF("mpiOcrRecv before recvData: rank #%d: Recved from %d tag:%d on event guid %p, DB %p, ptr %p\n"
+    ocrPrintf("mpiOcrRecv before recvData: rank #%d: Recved from %d tag:%d on event guid %p, DB %p, ptr %p\n"
            "\tptr->{%lx,%lx,%lx,%lx}\n",
            dest, source, tag, labeledEvent, DB, myPtr,
            ((u64*)myPtr)[0],((u64*)myPtr)[1],((u64*)myPtr)[2],((u64*)myPtr)[3]);  fflush(stdout);
@@ -630,7 +630,7 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
 							       index);
     if (channelEventPtr != NULL) {
         channelEvent = *channelEventPtr;
-	PRINTF("mpiOcrRecv: rank:#%d: got channelEvent=%p from hashtable\n", dest, channelEvent);
+	ocrPrintf("mpiOcrRecv: rank:#%d: got channelEvent=%p from hashtable\n", dest, channelEvent);
     }
 
 
@@ -645,10 +645,10 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
         }
 
 
-	PRINTF("mpiOcrRecv: rank #%d: Recving from %d tag:%d on labeled  event guid %p\n",
+	ocrPrintf("mpiOcrRecv: rank #%d: Recving from %d tag:%d on labeled  event guid %p\n",
 	       dest, source, tag, labeledEvent);  fflush(stdout);
 
-	PRINTF("mpiOcrRecv rank #%d: calling ocrLegacyBlockProgress on labeled event(%p) to extract the DB\n",
+	ocrPrintf("mpiOcrRecv rank #%d: calling ocrLegacyBlockProgress on labeled event(%p) to extract the DB\n",
 	       dest, labeledEvent);
 	fflush(stdout);
 
@@ -672,7 +672,7 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
 			channelEventPtr);
 
 
-	PRINTF( "mpiOcrRecv: rank #%d , got channel %p and localEvent %p, from ocrLegacyBlockProgress(%p)\n",
+	ocrPrintf( "mpiOcrRecv: rank #%d , got channel %p and localEvent %p, from ocrLegacyBlockProgress(%p)\n",
 		dest ,channelEvent, localEvent, labeledEvent);
 	fflush(stdout);
 
@@ -717,7 +717,7 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
                 ERROR(msg); // exits
             }
 
-            PRINTF("mpiOcrRecv: rank:#%d, created localEvent %p \n",dest, localEvent); fflush(stdout);
+            ocrPrintf("mpiOcrRecv: rank:#%d, created localEvent %p \n",dest, localEvent); fflush(stdout);
 
             // Unfortunately the RO mode only has effect if destination is an EDT,
             // not an event...
@@ -732,7 +732,7 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
 
    // Block until event has been satisfied via channel
 
-   PRINTF("mpiOcrRecv: rank #%d: calling  ocrLegacyBlockProgress on  localEvent=%p\n", dest, localEvent);  fflush(stdout);
+   ocrPrintf("mpiOcrRecv: rank #%d: calling  ocrLegacyBlockProgress on  localEvent=%p\n", dest, localEvent);  fflush(stdout);
 
    if (err=ocrLegacyBlockProgress(localEvent, &DB, &myPtr, &dbSize,
                                   LEGACY_PROP_CHECK /*NONE*/))
@@ -743,7 +743,7 @@ int mpiOcrRecv(void *buf, int count, /*MPI_Datatype*/ int
        ERROR(msg); // exits
    }
 
-   PRINTF("mpiOcrRecv before recvData: rank #%d: Recved from %d tag:%d on localEvent guid %p, DB %p, ptr %p\n"
+   ocrPrintf("mpiOcrRecv before recvData: rank #%d: Recved from %d tag:%d on localEvent guid %p, DB %p, ptr %p\n"
           "\tptr->{%lx,%lx,%lx,%lx}\n",
           dest, source, tag, localEvent, DB, myPtr,
           ((u64*)myPtr)[0],((u64*)myPtr)[1],((u64*)myPtr)[2],((u64*)myPtr)[3]);  fflush(stdout);
@@ -789,7 +789,7 @@ int mpiOcrTryRecv(void *buf, int count, /*MPI_Datatype*/ int
         }
 
 
-    /* PRINTF("mpiOcrTryRecv: rank #%d: Recving on event guid %p\n",
+    /* ocrPrintf("mpiOcrTryRecv: rank #%d: Recving on event guid %p\n",
                source, messageEvent); */
 
     // If event has been created, stay in BlockProgress, expecting doSend
@@ -805,14 +805,14 @@ int mpiOcrTryRecv(void *buf, int count, /*MPI_Datatype*/ int
     if(err=ocrLegacyBlockProgress(labeledEvent, &DB, &myPtr, &dbSize,
                                   LEGACY_PROP_NONE))
     {
-        PRINTF("*mpiOcrTryRecv: rank #%d: Recv from %d tag:%d on event guid %p fail:%d\n",
+        ocrPrintf("*mpiOcrTryRecv: rank #%d: Recv from %d tag:%d on event guid %p fail:%d\n",
                dest, source, tag, labeledEvent, err);  fflush(stdout);
 
         *done = FALSE;
         return MPI_SUCCESS;
     }
 
-    PRINTF("mpiOcrTryRecv: rank #%d: Recv from %d tag:%d on event guid %p success\n",
+    ocrPrintf("mpiOcrTryRecv: rank #%d: Recv from %d tag:%d on event guid %p success\n",
            dest, source, tag, labeledEvent);  fflush(stdout);
 
     // We've got the message! Don't need event any more - delete. And now
@@ -830,7 +830,7 @@ int mpiOcrTryRecv(void *buf, int count, /*MPI_Datatype*/ int
     {
         // There's no created labeled event, so there is certainly
         // nothing to be received. Nothing to clean up, either.
-        PRINTF("*mpiOcrTryRecv: rank #%d: Recv from %d tag:%d on labeledEvent guid %p fail:%d\n",
+        ocrPrintf("*mpiOcrTryRecv: rank #%d: Recv from %d tag:%d on labeledEvent guid %p fail:%d\n",
                dest, source, tag, labeledEvent, err);  fflush(stdout);
 
         *done = FALSE;
@@ -883,7 +883,7 @@ int mpiOcrTryRecv(void *buf, int count, /*MPI_Datatype*/ int
         return MPI_SUCCESS;
     }
 
-    PRINTF("mpiOcrTryRecv before recvData: rank #%d: Recved from %d tag:%d on local guid %p, DB %p, ptr %p\n"
+    ocrPrintf("mpiOcrTryRecv before recvData: rank #%d: Recved from %d tag:%d on local guid %p, DB %p, ptr %p\n"
            "\tptr->{%lx,%lx,%lx,%lx}\n",
            dest, source, tag, localEvent, messageDB, messagePtr,
            ((u64*)messagePtr)[0],((u64*)messagePtr)[1],((u64*)messagePtr)[2],((u64*)messagePtr)[3]);  fflush(stdout);

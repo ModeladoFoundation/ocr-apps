@@ -60,7 +60,7 @@ _OCR_TASK_FNC_( FNC_refine )
 
     int num_refine_step = (PTR_rankH->ts!=0) ? PTR_cmd->block_change : PTR_cmd->num_refine;
 
-    ASSERT( bp->number >= 0 );
+    ocrAssert( bp->number >= 0 );
 
     ocrHNT_t myDbkAffinityHNT, myEdtAffinityHNT;
     myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
@@ -77,7 +77,7 @@ _OCR_TASK_FNC_( FNC_refine )
     mark_refinementIntention( PTR_rankH, irefine );
 
     #ifdef DEBUG_APP_COARSE
-    PRINTF( "%s ilevel %d id_l %d irefine %d REFINE %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, irefine, bp->refine, PTR_rankH->ts);
+    ocrPrintf( "%s ilevel %d id_l %d irefine %d REFINE %d ts %d\n", __func__, ilevel, PTR_rankH->myRank, irefine, bp->refine, PTR_rankH->ts);
     #endif
 
     int r = BLOCKCOUNT_RED_HANDLE_LB + (irefine%2); //reserved for block counts
@@ -290,11 +290,11 @@ _OCR_TASK_FNC_( FNC_updateBlockCounts )
 
     #ifdef PRINTBLOCKSTATS
     if( PTR_rankH->seqRank == 0 ) {
-        PRINTF( "Active block stats before refinement ilevel %d id_l %d\n", PTR_rankH->ilevel, PTR_rankH->myRank );
+        ocrPrintf( "Active block stats before refinement ilevel %d id_l %d\n", PTR_rankH->ilevel, PTR_rankH->myRank );
         for (j = 0; j <= PTR_rankH->cur_max_level; j++)
-            PRINTF("ts %d irefine %d level %d #blocks %d\n", PTR_rankH->ts, irefine, j, PTR_rankH->num_blocks[j] );
+            ocrPrintf("ts %d irefine %d level %d #blocks %d\n", PTR_rankH->ts, irefine, j, PTR_rankH->num_blocks[j] );
 
-        PRINTF("\n" );
+        ocrPrintf("\n" );
     }
     #endif
 
@@ -907,7 +907,7 @@ _OCR_TASK_FNC_( FNC_refineLoop ) //Make sure irefine is set to '0' the first tim
     myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
 
-    ASSERT( bp->number >= 0 );
+    ocrAssert( bp->number >= 0 );
 
     if( irefine < num_refine_step ) {
 

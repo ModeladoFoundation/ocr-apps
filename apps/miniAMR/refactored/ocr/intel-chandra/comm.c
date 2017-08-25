@@ -209,7 +209,7 @@ _OCR_TASK_FNC_( commHaloNbrsEdt )
         else if( nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
-            PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
+            ocrPrintf("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
 
@@ -241,7 +241,7 @@ _OCR_TASK_FNC_( commHaloNbrsEdt )
         else if( nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
-            PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
+            ocrPrintf("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
     ocrAddDependence( packHalosOEVTS, unpackHalosEDT, _idep++, DB_MODE_NULL ); //TODO - is this really needed?
@@ -347,7 +347,7 @@ _OCR_TASK_FNC_( packHalosEdt )
         else if( bp->nei_level[i] == -2 ) { //BOUNDARY
         }
         else {
-            PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
+            ocrPrintf("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
 
@@ -483,7 +483,7 @@ _OCR_TASK_FNC_( unpackHalosEdt )
             apply_bc(PTR_rankH, i, istart, num_comm);
         }
         else {
-            PRINTF("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
+            ocrPrintf("SOMETHING WENT WRONG!! UNBALANCED refinement!\n");
         }
     }
 

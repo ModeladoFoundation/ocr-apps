@@ -21,22 +21,22 @@ u8 *myDbCreate(ocrGuid_t *db, u64 len) {
     iRet = ocrDbCreate(db, &ptr, len, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
     if (iRet != 0) {
         if (iRet == OCR_ENOMEM) {
-            PRINTF("ERROR: mainEdt(): ocrDbCreate() failed to "
+            ocrPrintf("ERROR: mainEdt(): ocrDbCreate() failed to "
                    "allocate %d byte block - OCR_ENOMEM !\n", len);
             return NULL;
         }
         if (iRet == OCR_EINVAL) {
-            PRINTF("ERROR: mainEdt(): ocrDbCreate() failed to "
+            ocrPrintf("ERROR: mainEdt(): ocrDbCreate() failed to "
                    "to allocate %d byte block - OCR_EINVAL !\n", len);
             return NULL;
         }
         if (iRet == OCR_EBUSY) {
-            PRINTF("ERROR: mainEdt(): ocrDbCreate() failed to "
+            ocrPrintf("ERROR: mainEdt(): ocrDbCreate() failed to "
                    "to allocate %d byte block - OCR_EBUSY !\n", len);
             // Could retry here...
             return NULL;
         }
-        PRINTF("ERROR: mainEdt(): ocrDbCreate() failed to "
+        ocrPrintf("ERROR: mainEdt(): ocrDbCreate() failed to "
                "to allocate %d byte block - status = %d !\n", len);
         return NULL;
     }

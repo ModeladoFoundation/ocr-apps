@@ -190,7 +190,7 @@ ocrDBK_t initEamPot(BasePotential** bpot, const char* dir, const char* file, con
 int eamForce1(SimFlat* s, u64 itimestep)
 {
    EamPotential* pot = (EamPotential*) s->pot;
-   ASSERT(pot);
+   ocrAssert(pot);
 
    real_t rCut2 = pot->cutoff*pot->cutoff;
 
@@ -289,7 +289,7 @@ int eamForce1(SimFlat* s, u64 itimestep)
 int eamForce2(SimFlat* s)
 {
    EamPotential* pot = (EamPotential*) s->pot;
-   ASSERT(pot);
+   ocrAssert(pot);
 
    real_t rCut2 = pot->cutoff*pot->cutoff;
 
@@ -346,13 +346,13 @@ int eamForce2(SimFlat* s)
 void eamPrint(BasePotential* pot)
 {
    EamPotential *eamPot = (EamPotential*) pot;
-   PRINTF( "  Potential type  : EAM\n");
-   PRINTF( "  Species name    : %s\n", eamPot->name);
-   PRINTF( "  Atomic number   : %d\n", eamPot->atomicNo);
-   PRINTF( "  Mass            : "FMT1" amu\n", eamPot->mass/amuToInternalMass); // print in amu
-   PRINTF( "  Lattice type    : %s\n", eamPot->latticeType);
-   PRINTF( "  Lattice spacing : "FMT1" Angstroms\n", eamPot->lat);
-   PRINTF( "  Cutoff          : "FMT1" Angstroms\n", eamPot->cutoff);
+   ocrPrintf( "  Potential type  : EAM\n");
+   ocrPrintf( "  Species name    : %s\n", eamPot->name);
+   ocrPrintf( "  Atomic number   : %d\n", eamPot->atomicNo);
+   ocrPrintf( "  Mass            : "FMT1" amu\n", eamPot->mass/amuToInternalMass); // print in amu
+   ocrPrintf( "  Lattice type    : %s\n", eamPot->latticeType);
+   ocrPrintf( "  Lattice spacing : "FMT1" Angstroms\n", eamPot->lat);
+   ocrPrintf( "  Cutoff          : "FMT1" Angstroms\n", eamPot->cutoff);
 }
 
 void eamDestroy(BasePotential** pPot)
@@ -387,10 +387,10 @@ void eamDestroy(BasePotential** pPot)
 void initInterpolationObject( InterpolationObject* table,
    int n, real_t x0, real_t dx, real_t* data)
 {
-   ASSERT(table);
+   ocrAssert(table);
 
    ocrDbCreate( &table->DBK_values, (void**) &table->values, (n+3)*sizeof(real_t), 0, NULL_HINT, NO_ALLOC );
-   ASSERT(table->values);
+   ocrAssert(table->values);
 
    table->values++;
    table->n = n;
@@ -864,7 +864,7 @@ void eamReadFuncfl(EamPotential* pot, const char* dir, const char* potName)
 
 void typeNotSupported(const char* callSite, const char* type)
 {
-   PRINTF("%s: Potential type %s not supported. Fatal Error.\n", callSite, type);
+   ocrPrintf("%s: Potential type %s not supported. Fatal Error.\n", callSite, type);
    ocrShutdown();
 }
 

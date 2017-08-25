@@ -97,7 +97,7 @@ ocrGuid_t haloNewChannelsRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t de
             memcpy( tmp, depv[0].ptr, sizeof(bundle_t) );
             ocrDbDestroy( depv[0].guid );
         }
-        else ASSERT(0); //WE SHOULD ONLY BE SEEING A DEPC OF 1 OR 4
+        else ocrAssert(0); //WE SHOULD ONLY BE SEEING A DEPC OF 1 OR 4
 
         return newDBK;
 }
@@ -130,7 +130,7 @@ ocrGuid_t haloRefineRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] 
         }
         return newDBK;
     }
-    else ASSERT(0);
+    else ocrAssert(0);
     return NULL_GUID;
 }
 
@@ -170,7 +170,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
         {
             if( PRM_block->neighborRefineLvls[i] == PRM_block->refLvl || PRM_block->neighborRefineLvls[i] == PRM_block->refLvl+1 )
             {
-                ASSERT( depv[i+1].ptr != NULL );
+                ocrAssert( depv[i+1].ptr != NULL );
                 bundle_t *tBundle = depv[i+1].ptr;
                 memcpy( &PRM_block->snd[(i*5)+1], &tBundle->channels[0], sizeof( ocrGuid_t ) * 4 );
                 memcpy( &PRM_block->rSnd[(i*5)+1], &tBundle->rChannels[0], sizeof( ocrGuid_t ) * 4 );
@@ -768,7 +768,7 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                 u64 sNum = 42;
                 if( childBlock->neighborRefineLvls[x] > childBlock->refLvl )
                 {
-                    //PRINTF("THIS IS OCCURING\n");
+                    //ocrPrintf("THIS IS OCCURING\n");
                     fflush(0);
                     switch(i)
                     {
@@ -918,8 +918,8 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                             bundleSet_t * bundleSet = depv[x+1].ptr;
                             if( (bundleSet->setHere[sNum] == true) )
                             {
-                                    ASSERT( !ocrGuidIsNull( subSets->channels[x][sNum][0] ) );
-                                    ASSERT( !ocrGuidIsNull( subSets->rChannels[x][sNum][0] ) );
+                                    ocrAssert( !ocrGuidIsNull( subSets->channels[x][sNum][0] ) );
+                                    ocrAssert( !ocrGuidIsNull( subSets->rChannels[x][sNum][0] ) );
                                     memcpy( &childBlock->rcv[(x*5) + 1], &subSets->channels[x][sNum][0], sizeof(ocrGuid_t)*4);
                                     memcpy( &childBlock->rRcv[(x*5) + 1], &subSets->rChannels[x][sNum][0], sizeof(ocrGuid_t)*4);
 
@@ -953,8 +953,8 @@ ocrGuid_t refineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
             }
             break;
         case MAY_REFINE:
-            PRINTF("block fell to refine while still in the MAY_REFINE state.\n");
-            ASSERT(0);
+            ocrPrintf("block fell to refine while still in the MAY_REFINE state.\n");
+            ocrAssert(0);
             break;
         default:
             break;
@@ -1021,7 +1021,7 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
         prms[2] = 1;
         prms[3] = PRM_block->timestep;
         #ifdef R_DEBUG
-        PRINTF("%ldrefineT%ld neighborRefineLvls[ ", PRM_block->id, PRM_block->timestep);
+        ocrPrintf("%ldrefineT%ld neighborRefineLvls[ ", PRM_block->id, PRM_block->timestep);
         #endif
         for( i = 0; i < 6; i++ )
         {
@@ -1032,7 +1032,7 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
                 ocrEdtCreate( &rcvGUID, rcvTML, 4, prms, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
                 ocrAddDependence( rcvOUT, refineGUID, i+1, DB_MODE_RW );
                 #ifdef R_DEBUG
-                PRINTF("%ld is refining because of neighbor %ld\n", PRM_block->id, i);
+                ocrPrintf("%ld is refining because of neighbor %ld\n", PRM_block->id, i);
                 #endif
                 bool willRef = false;
                 for( j = 0; j < 4; j++ )
@@ -1063,14 +1063,14 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
                 if( willRef )
                 {
                     #ifdef R_DEBUG
-                    PRINTF("%ld+ ", PRM_block->neighborRefineLvls[i]);
+                    ocrPrintf("%ld+ ", PRM_block->neighborRefineLvls[i]);
                     #endif
                     PRM_block->neighborRefineLvls[i]++;
                 }
                 #ifdef R_DEBUG
                 else
                 {
-                    PRINTF("%ld ", PRM_block->neighborRefineLvls[i]);
+                    ocrPrintf("%ld ", PRM_block->neighborRefineLvls[i]);
                 }
                 #endif
             }
@@ -1096,14 +1096,14 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
                 if( rState->neighborDisps[i*4] == WILL_REFINE )
                 {
                     #ifdef R_DEBUG
-                    PRINTF("%ld+ ", PRM_block->neighborRefineLvls[i]);
+                    ocrPrintf("%ld+ ", PRM_block->neighborRefineLvls[i]);
                     #endif
                     PRM_block->neighborRefineLvls[i]++;
                 }
                 #ifdef R_DEBUG
                 else
                 {
-                    PRINTF("%ld ", PRM_block->neighborRefineLvls[i]);
+                    ocrPrintf("%ld ", PRM_block->neighborRefineLvls[i]);
                 }
                 #endif
             }
@@ -1127,7 +1127,7 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
                     ocrAddDependence( PRM_block->rRcv[i*5], rcvGUID, 0, DB_MODE_RW );
                     catalog->numSets[i]++;
                     #ifdef R_DEBUG
-                    PRINTF("%ld+ ", PRM_block->neighborRefineLvls[i]);
+                    ocrPrintf("%ld+ ", PRM_block->neighborRefineLvls[i]);
                     #endif
                     PRM_block->neighborRefineLvls[i]++;
                 }
@@ -1135,33 +1135,33 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
                 {
                     ocrAddDependence( NULL_GUID, refineGUID, i+1, DB_MODE_RW );
                     #ifdef R_DEBUG
-                    PRINTF("%ld ", PRM_block->neighborRefineLvls[i]);
+                    ocrPrintf("%ld ", PRM_block->neighborRefineLvls[i]);
                     #endif
                 }
             }
         }
         #ifdef R_DEBUG
-        PRINTF("] myLvl:%ld\n", PRM_block->refLvl);
+        ocrPrintf("] myLvl:%ld\n", PRM_block->refLvl);
         fflush(0);
 
-        PRINTF("%ldrefineT%ld neighborIds[ ", PRM_block->id, PRM_block->timestep);
+        ocrPrintf("%ldrefineT%ld neighborIds[ ", PRM_block->id, PRM_block->timestep);
         for( i = 0; i < 6; i++ )
         {
             if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
             {
-                PRINTF("%ld ", PRM_block->neighborIds[i*4]);
+                ocrPrintf("%ld ", PRM_block->neighborIds[i*4]);
             }
             else
             {
-                PRINTF("{ ");
+                ocrPrintf("{ ");
                 for( j = 0; j < 4; j++ )
                 {
-                    PRINTF("%ld ", PRM_block->neighborIds[(i*4)+j]);
+                    ocrPrintf("%ld ", PRM_block->neighborIds[(i*4)+j]);
                 }
-                PRINTF("} ");
+                ocrPrintf("} ");
             }
         }
-        PRINTF("]\n");
+        ocrPrintf("]\n");
         fflush(0);
         #endif
     }
@@ -1178,8 +1178,8 @@ ocrGuid_t establishNewConnections( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep
                 {
                     if( rState->neighborDisps[(i*4)+(j)] == WILL_REFINE )
                     {
-                        PRINTF("This state should not be allowed.\n");
-                        ASSERT(0);
+                        ocrPrintf("This state should not be allowed.\n");
+                        ocrAssert(0);
                     }
                 }
                 ocrAddDependence( NULL_GUID, refineGUID, i+1, DB_MODE_RW );
@@ -1384,7 +1384,7 @@ ocrGuid_t communicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t 
 
                             ocrDbCreate( &intentDBK, (void **)&tmp, sizeof(intent_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
                             tmp->intent = rState->disposition;
-                            ASSERT( !ocrGuidIsNull(intentDBK) );
+                            ocrAssert( !ocrGuidIsNull(intentDBK) );
                             ocrDbRelease( intentDBK );
                             ocrEventSatisfy( PRM_block->rSnd[offs + j], intentDBK );
                         }
@@ -1401,7 +1401,7 @@ ocrGuid_t communicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t 
                                 ocrDbCreate( &intentDBK, (void **)&tmp, sizeof(intent_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
                                 tmp->intent = rState->disposition;
 
-                                ASSERT( !ocrGuidIsNull(intentDBK) );
+                                ocrAssert( !ocrGuidIsNull(intentDBK) );
                                 ocrDbRelease( intentDBK );
                                 ocrEventSatisfy( PRM_block->rSnd[(i*5)+(j+1)], intentDBK );
                             }
@@ -1420,7 +1420,7 @@ ocrGuid_t communicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t 
                         ocrDbCreate( &intentDBK, (void **)&tmp, sizeof(intent_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
                         tmp->intent = rState->disposition;
 
-                        ASSERT( !ocrGuidIsNull(intentDBK) );
+                        ocrAssert( !ocrGuidIsNull(intentDBK) );
                         ocrDbRelease( intentDBK );
                         ocrEventSatisfy( PRM_block->rSnd[i*5], intentDBK );
                     }
@@ -1433,14 +1433,14 @@ ocrGuid_t communicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t 
                         ocrDbCreate( &intentDBK, (void **)&tmp, sizeof(intent_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
                         tmp->intent = rState->disposition;
 
-                        ASSERT( !ocrGuidIsNull(intentDBK) );
+                        ocrAssert( !ocrGuidIsNull(intentDBK) );
                         ocrDbRelease( intentDBK );
                         ocrEventSatisfy( PRM_block->rSnd[i*5], intentDBK );
                     }
                 }
                 break;
             default:
-                PRINTF("uhhh....\n");
+                ocrPrintf("uhhh....\n");
                 break;
         }
     }
@@ -1507,7 +1507,7 @@ ocrGuid_t communicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t 
                 }
                 break;
             default:
-                PRINTF("EDT %ld has a relation that is %ld. This is not allowed!\n", PRM_block->id, difference );
+                ocrPrintf("EDT %ld has a relation that is %ld. This is not allowed!\n", PRM_block->id, difference );
                 ocrShutdown();
                 return NULL_GUID;
         }
@@ -1567,7 +1567,7 @@ ocrGuid_t willRefineEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] 
     for( i = 0; i < 24; i++ ) rState->neighborDisps[i] = MAY_REFINE; //set all neighbor states to MAY_REFINE.
     if( decision && (PRM_block->refLvl < PRM_block->maxRefLvl) )
     {
-        //PRINTF("I WILL REFINE!\n");
+        //ocrPrintf("I WILL REFINE!\n");
         rState->disposition = WILL_REFINE;
     }
     else
@@ -1601,7 +1601,7 @@ ocrGuid_t refineControlEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
 {
     block_t * PRM_block = depv[0].ptr;
 
-    if(PRM_block->id==0) PRINTF("----------------------------------------------------------------------------------------------------------------\n");
+    if(PRM_block->id==0) ocrPrintf("----------------------------------------------------------------------------------------------------------------\n");
 
     ocrGuid_t intentGUID, rStateDBK;
     ocrGuid_t willRefineGUID, willRefineEVT;

@@ -39,7 +39,7 @@ Err_t make_labeledEvents(OA_DEBUG_ARGUMENT, Idz in_did, ocrGuid_t * in_haloLabel
 #       ifdef NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
         err = ocrGuidFromIndex( io_myEvent, in_haloLabeledGuids[in_did], in_myRank );
         if(err){
-            PRINTF("ERROR> TaskTYPE=%d TaskID="GUIDF" rank=%u: make_labeledEvents> Creation of my labeled Guid failed: err=%u.\n",
+            ocrPrintf("ERROR> TaskTYPE=%d TaskID="GUIDF" rank=%u: make_labeledEvents> Creation of my labeled Guid failed: err=%u.\n",
                    in_edtType, GUIDA(in_thisEDT), in_myRank, err);
             IFEB;
         }
@@ -50,7 +50,7 @@ Err_t make_labeledEvents(OA_DEBUG_ARGUMENT, Idz in_did, ocrGuid_t * in_haloLabel
                 //This is usually the expected behavior. --> Just ignore it.
                 err = 0;
             }else{
-                PRINTF("ERROR> TaskTYPE=%d TaskID="GUIDF" rank=%u make_labeledEvents> Creation of io_myEvent EVT failed: %d\n",
+                ocrPrintf("ERROR> TaskTYPE=%d TaskID="GUIDF" rank=%u make_labeledEvents> Creation of io_myEvent EVT failed: %d\n",
                        in_edtType, GUIDA(in_thisEDT), in_myRank, err);
                 IFEB;
             }
@@ -58,7 +58,7 @@ Err_t make_labeledEvents(OA_DEBUG_ARGUMENT, Idz in_did, ocrGuid_t * in_haloLabel
 
         err = ocrGuidFromIndex( io_neighborEvent, in_haloLabeledGuids[NEKbone_neighborCount - in_did], in_neighborRank );
         if(err){
-            PRINTF("ERROR> TaskTYPE=%d TaskID="GUIDF" rank=%u: make_labeledEvents> Creation of the neighbbor labeled Guid failed: err=%u.\n",
+            ocrPrintf("ERROR> TaskTYPE=%d TaskID="GUIDF" rank=%u: make_labeledEvents> Creation of the neighbbor labeled Guid failed: err=%u.\n",
                    in_edtType, GUIDA(in_thisEDT), in_myRank, err);
 
             IFEB;
@@ -70,7 +70,7 @@ Err_t make_labeledEvents(OA_DEBUG_ARGUMENT, Idz in_did, ocrGuid_t * in_haloLabel
                 //This is usually the expected behavior. --> Just ignore it.
                 err = 0;
             }else{
-                PRINTF("ERROR> TaskTYPE=%d TaskID="GUIDF" rank=%u make_labeledEvents> Creation of io_neighborEvent EVT (rank=%u) failed: %d\n",
+                ocrPrintf("ERROR> TaskTYPE=%d TaskID="GUIDF" rank=%u make_labeledEvents> Creation of io_neighborEvent EVT (rank=%u) failed: %d\n",
                        in_edtType, GUIDA(in_thisEDT), in_myRank, in_neighborRank, err);
                 IFEB;
             }
@@ -90,7 +90,7 @@ Err_t start_channelExchange(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
         err = copy_NEKOglobals(in_globals, o_globals);
         NEKOglobals_t * G = o_globals;
 
-        //PRINTF("DBG> TaskTYPE=%d TaskID="GUIDF" start_channelExchange channelCount=%d neighborEDT="GUIDF"\n",
+        //ocrPrintf("DBG> TaskTYPE=%d TaskID="GUIDF" start_channelExchange channelCount=%d neighborEDT="GUIDF"\n",
         //       in_edtType, GUIDA(in_thisEDT), (int)SLOTCNT_total_channelExchange, GUIDA(*io_futureselfEDT));
 
         unsigned int bor;
@@ -137,7 +137,7 @@ Err_t start_channelExchange(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
             ChannelStruct_t * envelopPtr = NULL;
             err = ocrDbCreate( &envelopGuid, (void**)&envelopPtr, sizeof(ChannelStruct_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC); IFEB;
 
-            //PRINTF("DBG140> TaskTYPE=%d TaskID="GUIDF" start_channelExchange myrank=%u did=%ld borRank=%u envelop="GUIDF"\n",
+            //ocrPrintf("DBG140> TaskTYPE=%d TaskID="GUIDF" start_channelExchange myrank=%u did=%ld borRank=%u envelop="GUIDF"\n",
             //       in_edtType, GUIDA(in_thisEDT), G->rankID, did, neighborRank, GUIDA(envelopGuid));
 
             err = copy_ChannelStruct(&G->myChannels[did], envelopPtr); IFEB;
@@ -155,7 +155,7 @@ Err_t start_channelExchange(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
             unsigned int actualSlot = SLOTCNT_offset0_channelExchange + destinationSlot;
             err = ocrAddDependence( myLabelEvt, *io_futureselfEDT, actualSlot, DB_MODE_RO); IFEB;
 
-            //PRINTF("DBG157> TaskTYPE=%d TaskID="GUIDF" start_channelExchange myrank=%u did=%ld borRank=%u destSlot=%u actualSlot=%u\n",
+            //ocrPrintf("DBG157> TaskTYPE=%d TaskID="GUIDF" start_channelExchange myrank=%u did=%ld borRank=%u destSlot=%u actualSlot=%u\n",
             //       in_edtType, GUIDA(in_thisEDT), G->rankID, did, neighborRank, destinationSlot, actualSlot);
 
         } IFEB;//for(bor=0;
@@ -175,7 +175,7 @@ Err_t start_channelExchange(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
             unsigned int actualSlot = SLOTCNT_offset0_channelExchange + destinationSlot;
             err = ocrAddDependence( NULL_GUID, *io_futureselfEDT, actualSlot, DB_MODE_RO); IFEB;
 
-            //PRINTF("DBG175> TaskTYPE=%d TaskID="GUIDF" start_channelExchange myrank=%u dir=%u destSlot=%u actualSlot=%u NULL_GUID\n",
+            //ocrPrintf("DBG175> TaskTYPE=%d TaskID="GUIDF" start_channelExchange myrank=%u dir=%u destSlot=%u actualSlot=%u NULL_GUID\n",
             //       in_edtType, GUIDA(in_thisEDT), G->rankID, dir, destinationSlot, actualSlot);
 
         }IFEB;
@@ -204,7 +204,7 @@ Err_t stop_channelExchange(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrEdt
 
             err = copy_ChannelStruct((ChannelStruct_t*)depvNeighborChannels[did].ptr, &G->neighborChannels[did]); IFEB;
 
-            //PRINTF("DBG204> TaskTYPE=%d TaskID="GUIDF" stop_channelExchange myrank=%d did=%ld borRank=%u envelop="GUIDF"\n",
+            //ocrPrintf("DBG204> TaskTYPE=%d TaskID="GUIDF" stop_channelExchange myrank=%d did=%ld borRank=%u envelop="GUIDF"\n",
             //       in_edtType, GUIDA(in_thisEDT), in_nekoTools->mpiRank, did, neighborRank, GUIDA(depvNeighborChannels[did].guid) );
 
             err = ocrDbDestroy(depvNeighborChannels[did].guid); IFEB; // Clean up used envelop DBK.
@@ -3073,7 +3073,7 @@ int halo_exchanges(Triplet in_Rlattice, Triplet in_Elattice, unsigned int in_pDO
         break;
     }
     if(err){
-        PRINTF("ERROR: halo_exchanges: %d\n", err);
+        ocrPrintf("ERROR: halo_exchanges: %d\n", err);
     }
     return err;
 }
@@ -3152,7 +3152,7 @@ Err_t start_halo_multiplicity(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
                 envelopPtr[k+1].value    = io_riValues[ii+k].value;
             }
 
-            //PRINTF("DBG3155> TaskTYPE=%d TaskID="GUIDF" start_halo_multiplicity myrank=%d dir=%ld borRank=%ld envelop="GUIDF"\n",
+            //ocrPrintf("DBG3155> TaskTYPE=%d TaskID="GUIDF" start_halo_multiplicity myrank=%d dir=%ld borRank=%ld envelop="GUIDF"\n",
             //       in_edtType, GUIDA(in_thisEDT), in_nekoTools->mpiRank, direction, neighborRank, GUIDA(envelopGuid) );
 
             err = ocrDbRelease( envelopGuid ); IFEB;
@@ -3193,7 +3193,7 @@ Err_t start_halo_multiplicity(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
             unsigned int actualSlot = SLOTCNT_offset0_channels4multiplicity + destinationSlot;
             err = ocrAddDependence( NULL_GUID, *io_destEDT, actualSlot, DB_MODE_RO); IFEB;
 
-            //PRINTF("DBG3196> TaskTYPE=%d TaskID="GUIDF" start_halo_multiplicity myrank=%d dir=%u actualSlot=%u NULL_GUID\n",
+            //ocrPrintf("DBG3196> TaskTYPE=%d TaskID="GUIDF" start_halo_multiplicity myrank=%d dir=%u actualSlot=%u NULL_GUID\n",
             //       in_edtType, GUIDA(in_thisEDT), in_nekoTools->mpiRank, dir, actualSlot);
 
         }IFEB;
@@ -3201,7 +3201,7 @@ Err_t start_halo_multiplicity(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
         break;
     }
     if(err){
-        PRINTF("ERROR: start_halo_multiplicity: %d\n", err);
+        ocrPrintf("ERROR: start_halo_multiplicity: %d\n", err);
     }
     return err;
 }
@@ -3219,7 +3219,7 @@ Err_t stop_halo_multiplicity(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrE
             if(in_nekoTools->dir_present[dir]){
                 //We do get stuff on this depv.
                 if(depvNeighborChannels[dir].ptr){
-                    //PRINTF("DBG3222> TaskTYPE=%d TaskID="GUIDF" stop_halo_multiplicity myrank=%d dir=%u envelop="GUIDF"  %p\n",
+                    //ocrPrintf("DBG3222> TaskTYPE=%d TaskID="GUIDF" stop_halo_multiplicity myrank=%d dir=%u envelop="GUIDF"  %p\n",
                     //       in_edtType, GUIDA(in_thisEDT), in_nekoTools->mpiRank, dir, GUIDA(depvNeighborChannels[dir].guid), depvNeighborChannels[dir].ptr);
                     IndexedValue_t * ivals = (IndexedValue_t *) depvNeighborChannels[dir].ptr;
 
@@ -3250,7 +3250,7 @@ Err_t stop_halo_multiplicity(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrE
         break;
     }
     if(err){
-        PRINTF("ERROR: stop_halo_multiplicity: %d\n", err);
+        ocrPrintf("ERROR: stop_halo_multiplicity: %d\n", err);
     }
     return err;
 }
@@ -3352,7 +3352,7 @@ Err_t start_halo_setf(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
             unsigned int actualSlot = SLOTCNT_offset0_channels4setf + destinationSlot;
             err = ocrAddDependence( NULL_GUID, *io_destEDT, actualSlot, DB_MODE_RO); IFEB;
 
-            //PRINTF("DBG> TaskTYPE=%d TaskID="GUIDF" start_halo_setf myrank=%u dir=%u destSlot=%u actualSlot=%u NULL_GUID\n",
+            //ocrPrintf("DBG> TaskTYPE=%d TaskID="GUIDF" start_halo_setf myrank=%u dir=%u destSlot=%u actualSlot=%u NULL_GUID\n",
             //       in_edtType, GUIDA(in_thisEDT), G->rankID, dir, destinationSlot, actualSlot);
 
         }IFEB;
@@ -3360,7 +3360,7 @@ Err_t start_halo_setf(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
         break;
     }
     if(err){
-        PRINTF("ERROR: start_halo_setf: %d\n", err);
+        ocrPrintf("ERROR: start_halo_setf: %d\n", err);
     }
     return err;
 }
@@ -3407,7 +3407,7 @@ Err_t stop_halo_setf(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrEdtDep_t 
         break;
     }
     if(err){
-        PRINTF("ERROR: stop_halo_setf: %d\n", err);
+        ocrPrintf("ERROR: stop_halo_setf: %d\n", err);
     }
     return err;
 }
@@ -3437,7 +3437,7 @@ Err_t start_halo_ai(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
         for(i=0; i<NEKbone_regionCount; ++i){
             dir_found[i]=-1; //-1 for unknown
         }
-        //PRINTF("DBG3428> rank=%d sz_riValues=%ld\n", in_nekoTools->mpiRank, sz_riValues);
+        //ocrPrintf("DBG3428> rank=%d sz_riValues=%ld\n", in_nekoTools->mpiRank, sz_riValues);
         for(i=0; i < sz_riValues; ++i){
             //Find the sub-block with the same rank
             const Idz neighborRank = io_riValues[i].rankID;
@@ -3471,12 +3471,12 @@ Err_t start_halo_ai(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
                 envelopPtr[k+1].value    = io_riValues[ii+k].value;
             }
 
-            //PRINTF("DBG3474> TaskTYPE=%d TaskID="GUIDF" start_halo_ai myrank=%d dir=%ld borRank=%ld envelop="GUIDF" content=%p count=%lu\n",
+            //ocrPrintf("DBG3474> TaskTYPE=%d TaskID="GUIDF" start_halo_ai myrank=%d dir=%ld borRank=%ld envelop="GUIDF" content=%p count=%lu\n",
             //       in_edtType, GUIDA(in_thisEDT), in_nekoTools->mpiRank, direction, neighborRank, GUIDA(envelopGuid), envelopPtr, length);
 
             err = ocrDbRelease( envelopGuid ); IFEB;
 
-            //PRINTF("DBG3428> rank=%d i=%ld length=%u direction=%ld\n", in_nekoTools->mpiRank, i, length, direction);
+            //ocrPrintf("DBG3428> rank=%d i=%ld length=%u direction=%ld\n", in_nekoTools->mpiRank, i, length, direction);
 
             //===== Connect the channel events
             err = ocrEventSatisfy( in_globals->neighborChannels[direction].c4axi, envelopGuid); IFEB;  //This sends value's envelop to the neighbors
@@ -3514,7 +3514,7 @@ Err_t start_halo_ai(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
             unsigned int actualSlot = SLOTCNT_offset0_channels4ax + destinationSlot;
             err = ocrAddDependence( NULL_GUID, *io_destEDT, actualSlot, DB_MODE_RO); IFEB;
 
-            //PRINTF("DBG3517> TaskTYPE=%d TaskID="GUIDF" start_halo_ai myrank=%d dir=%u actualSlot=%u NULL_GUID\n",
+            //ocrPrintf("DBG3517> TaskTYPE=%d TaskID="GUIDF" start_halo_ai myrank=%d dir=%u actualSlot=%u NULL_GUID\n",
             //       in_edtType, GUIDA(in_thisEDT), in_nekoTools->mpiRank, dir, actualSlot);
 
         }IFEB;
@@ -3522,7 +3522,7 @@ Err_t start_halo_ai(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools,
         break;
     }
     if(err){
-        PRINTF("ERROR: start_halo_ai: %d\n", err);
+        ocrPrintf("ERROR: start_halo_ai: %d\n", err);
     }
     return err;
 }
@@ -3544,13 +3544,13 @@ Err_t stop_halo_ai(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrEdtDep_t * 
 
                     Idz length = ivals[0].eleDofID;
                     NBN_REAL dlength = ivals[0].value; //Just to check.
-                    //PRINTF("DBG3543> TaskTYPE=%d TaskID="GUIDF" stop_halo_ai myrank=%d dir=%u envelop="GUIDF"  content=%p count=%ld\n",
+                    //ocrPrintf("DBG3543> TaskTYPE=%d TaskID="GUIDF" stop_halo_ai myrank=%d dir=%u envelop="GUIDF"  content=%p count=%ld\n",
                     //         in_edtType, GUIDA(in_thisEDT), in_nekoTools->mpiRank, dir, GUIDA(depvNeighborChannels[dir].guid), depvNeighborChannels[dir].ptr, length);
                     if("debug"){
                         Idz d = -1;
                         d = (Idz)(dlength + 0.5);
                         if( length != d){
-                            PRINTF("ERROR: stop_halo_ai: dir=%u length=%ld dlength=%24.14e\n", dir, length, dlength);
+                            ocrPrintf("ERROR: stop_halo_ai: dir=%u length=%ld dlength=%24.14e\n", dir, length, dlength);
                             err=__LINE__; break;
                         }
                     }
@@ -3559,7 +3559,7 @@ Err_t stop_halo_ai(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrEdtDep_t * 
 
                     Idz i;
                     for(i=0; i<length; ++i){
-                        //PRINTF("DBG3562> stop_halo_ai myrank=%d dir=%u envelop="GUIDF" i=%ld offset=%ld x=%24.14e\n",
+                        //ocrPrintf("DBG3562> stop_halo_ai myrank=%d dir=%u envelop="GUIDF" i=%ld offset=%ld x=%24.14e\n",
                         //       in_nekoTools->mpiRank,dir, GUIDA(depvNeighborChannels[dir].guid), i, ivals[i].eleDofID, ivals[i].value);
                         Idz offset = ivals[i].eleDofID;
                         NBN_REAL x = ivals[i].value;
@@ -3581,7 +3581,7 @@ Err_t stop_halo_ai(OA_DEBUG_ARGUMENT, NEKOtools_t * in_nekoTools, ocrEdtDep_t * 
         break;
     }
     if(err){
-        PRINTF("ERROR: stop_halo_ax: %d\n", err);
+        ocrPrintf("ERROR: stop_halo_ax: %d\n", err);
     }
     return err;
 }

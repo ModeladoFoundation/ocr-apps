@@ -127,7 +127,7 @@ printf("myrank %d level %d myx %d myy %d myz %d lx %d ly %d lz %d \n");
             for(j=-1;j<2;j++)
                 for(i=-1;i<2;i++) {
                     if(i==0 && j==0 && k==0) continue; //skip "center" of cube
-if(pbPTR->debug > 1) PRINTF("ind %d \n", ind);
+if(pbPTR->debug > 1) ocrPrintf("ind %d \n", ind);
                     if(ocrGuidIsNull(pbPTR->haloSendEVT[level][ind])) {
                         pbPTR->haloRecvEVT[level][ind] = NULL_GUID;
                         ind++;
@@ -139,7 +139,7 @@ if(pbPTR->debug > 1) PRINTF("ind %d \n", ind);
 
 //receive
                     index = 26*nrank*(nlevels-level) + 26*(myrank + k*npx*npx*expansion + j*npx*expansion + i*expansion) + 25-ind;
-PRINTF("I%d i%d j%d k%d ind%d index in %d \n", myrank, i, j, k, ind, index);
+ocrPrintf("I%d i%d j%d k%d ind%d index in %d \n", myrank, i, j, k, ind, index);
                     ocrGuidFromIndex(&(stickyEVT[level]), sbPTR->haloRangeGUID, index);
                     ocrEventCreate(&stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG);
                     pbPTR->haloRecvEVT[level][ind] = stickyEVT;
@@ -149,7 +149,7 @@ PRINTF("I%d i%d j%d k%d ind%d index in %d \n", myrank, i, j, k, ind, index);
         }
 
 
-for(i=0;i<26;i++) PRINTF("HI%d i %d sendEVT "GUIDF" recvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloSendEVT[level][i]), GUIDA(pbPTR->haloRecvEVT[level][i]));
+for(i=0;i<26;i++) ocrPrintf("HI%d i %d sendEVT "GUIDF" recvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->haloSendEVT[level][i]), GUIDA(pbPTR->haloRecvEVT[level][i]));
 
         if(boxsize != AGGLOMERATION_SIZE) return;
 
@@ -184,8 +184,8 @@ for(i=0;i<26;i++) PRINTF("HI%d i %d sendEVT "GUIDF" recvEVT "GUIDF" \n", myrank,
             }
 
     }
-for(i=0;i<7;i++) PRINTF("HI%d i %d coarseRecvEVT "GUIDF" refineSendEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->coarseRecvEVT[i]), GUIDA(pbPTR->refineSendEVT[i]));
-PRINTF("HI%d i %d coarseSendEVT "GUIDF" refineRecvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->coarseSendEVT), GUIDA(pbPTR->refineRecvEVT));
+for(i=0;i<7;i++) ocrPrintf("HI%d i %d coarseRecvEVT "GUIDF" refineSendEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->coarseRecvEVT[i]), GUIDA(pbPTR->refineSendEVT[i]));
+ocrPrintf("HI%d i %d coarseSendEVT "GUIDF" refineRecvEVT "GUIDF" \n", myrank, i, GUIDA(pbPTR->coarseSendEVT), GUIDA(pbPTR->refineRecvEVT));
 
 }
 

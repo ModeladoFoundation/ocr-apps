@@ -114,7 +114,7 @@ static inline int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGrid
     //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
     //
     int mapToPD = globalRankFromCoords_Cart3D(pd_x, pd_y, pd_z, PD_X, PD_Y, PD_Z);
-    //PRINTF("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+    //ocrPrintf("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
 
     return mapToPD;
 }
@@ -209,7 +209,7 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
         PRM_initEdt.id = i;
 
         int pd = getPolicyDomainID_Cart3D( i, edtGridDims, pdGridDims );
-        //PRINTF("id %d map PD %d\n", i, pd);
+        //ocrPrintf("id %d map PD %d\n", i, pd);
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 
@@ -284,7 +284,7 @@ _OCR_TASK_FNC_( PDinitEdt )
     for( i = edtGridDims_lb_x; i <= edtGridDims_ub_x ; ++i )
     {
         u64 myRank = globalRankFromCoords_Cart3D( i, j, k, edtGridDims[0], edtGridDims[1], edtGridDims[2] );
-        //PRINTF("id %d map PD %d\n", myRank, PD_id);
+        //ocrPrintf("id %d map PD %d\n", myRank, PD_id);
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_DISPERSE,  OCR_HINT_EDT_DISPERSE_NEAR );
 
         PRM_initEdt.id = myRank;
@@ -327,7 +327,7 @@ void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, o
     for( i = 0; i < nPDs; ++i )
     {
         int pd = i;
-        //PRINTF("id %d map PD %d\n", i, pd);
+        //ocrPrintf("id %d map PD %d\n", i, pd);
         ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
         ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 

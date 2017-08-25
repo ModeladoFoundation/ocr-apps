@@ -4,7 +4,7 @@
 
 ocrGuid_t appEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     // Use ocr-std.h for platform independence
-    PRINTF("Hello from EDT\n");
+    ocrPrintf("Hello from EDT\n");
     ocrShutdown(); // This is the last EDT to execute
     return NULL_GUID;
 }

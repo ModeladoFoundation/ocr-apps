@@ -11,7 +11,7 @@
 void logo(int version)
 {
     border_print();
-    PRINTF(
+    ocrPrintf(
     "                   __   __ ___________                 _                        \n"
     "                   \\ \\ / //  ___| ___ \\               | |                       \n"
     "                    \\ V / \\ `--.| |_/ / ___ _ __   ___| |__                     \n"
@@ -32,11 +32,11 @@ void center_print(const char *s, int width)
     int length = strlen(s);
     int i;
     for (i=0; i<=(width-length)/2; i++) {
-        PRINTF(" ");
+        ocrPrintf(" ");
 
     }
-    PRINTF("%s", s);
-    PRINTF("\n");
+    ocrPrintf("%s", s);
+    ocrPrintf("\n");
 }
 
 void print_results( Inputs in, int mype, double runtime, int nprocs,
@@ -53,24 +53,24 @@ void print_results( Inputs in, int mype, double runtime, int nprocs,
         border_print();
 
         // Print the results
-        PRINTF("Threads:     %d\n", in.nthreads);
+        ocrPrintf("Threads:     %d\n", in.nthreads);
         #ifdef MPI
-        PRINTF("MPI ranks:   %d\n", nprocs);
+        ocrPrintf("MPI ranks:   %d\n", nprocs);
         #endif
         #ifdef MPI
-        PRINTF("Lookups:     "); fancy_int(in.lookups);
-        PRINTF("Total Lookups/s:            ");
+        ocrPrintf("Lookups:     "); fancy_int(in.lookups);
+        ocrPrintf("Total Lookups/s:            ");
         fancy_int(total_lookups);
-        PRINTF("Avg Lookups/s per MPI rank: ");
+        ocrPrintf("Avg Lookups/s per MPI rank: ");
         fancy_int(total_lookups / nprocs);
         #else
-        PRINTF("Runtime:     %.3f seconds\n", runtime);
-        PRINTF("Lookups:     "); fancy_int(in.lookups);
-        PRINTF("Lookups/s:   "); fancy_int(lookups_per_sec);
+        ocrPrintf("Runtime:     %.3f seconds\n", runtime);
+        ocrPrintf("Lookups:     "); fancy_int(in.lookups);
+        ocrPrintf("Lookups/s:   "); fancy_int(lookups_per_sec);
         print_throughput_custom("Lookups", (unsigned long long) in.lookups, runtime, (double)lookups_per_sec);
         #endif
         #ifdef VERIFICATION
-        PRINTF("Verification checksum: %llu\n", vhash);
+        ocrPrintf("Verification checksum: %llu\n", vhash);
         #endif
         border_print();
 
@@ -85,23 +85,23 @@ void print_inputs(Inputs in, int nprocs, int version )
     center_print("INPUT SUMMARY", 79);
     border_print();
     #ifdef VERIFICATION
-    PRINTF("Verification Mode:            on\n");
+    ocrPrintf("Verification Mode:            on\n");
     #endif
-    PRINTF("Materials:                    %d\n", in.n_mats);
-    PRINTF("H-M Benchmark Size:           %s\n", in.HM);
-    PRINTF("Total Nuclides:               %ld\n", in.n_isotopes);
-    PRINTF("Gridpoints (per Nuclide):     ");
+    ocrPrintf("Materials:                    %d\n", in.n_mats);
+    ocrPrintf("H-M Benchmark Size:           %s\n", in.HM);
+    ocrPrintf("Total Nuclides:               %ld\n", in.n_isotopes);
+    ocrPrintf("Gridpoints (per Nuclide):     ");
     fancy_int(in.n_gridpoints);
-    PRINTF("Unionized Energy Gridpoints:  ");
+    ocrPrintf("Unionized Energy Gridpoints:  ");
     fancy_int(in.n_isotopes*in.n_gridpoints);
-    PRINTF("XS Lookups:                   "); fancy_int(in.lookups);
+    ocrPrintf("XS Lookups:                   "); fancy_int(in.lookups);
     #ifdef MPI
-    PRINTF("MPI Ranks:                    %d\n", nprocs);
-    PRINTF("OMP Threads per MPI Rank:     %d\n", in.nthreads);
-    PRINTF("Mem Usage per MPI Rank (MB):  "); fancy_int(mem_tot);
+    ocrPrintf("MPI Ranks:                    %d\n", nprocs);
+    ocrPrintf("OMP Threads per MPI Rank:     %d\n", in.nthreads);
+    ocrPrintf("Mem Usage per MPI Rank (MB):  "); fancy_int(mem_tot);
     #else
-    PRINTF("Threads:                      %d\n", in.nthreads);
-    PRINTF("Est. Memory Usage (MB):       "); fancy_int(mem_tot);
+    ocrPrintf("Threads:                      %d\n", in.nthreads);
+    ocrPrintf("Est. Memory Usage (MB):       "); fancy_int(mem_tot);
     #endif
     border_print();
     center_print("INITIALIZATION", 79);
@@ -110,7 +110,7 @@ void print_inputs(Inputs in, int nprocs, int version )
 
 void border_print(void)
 {
-    PRINTF(
+    ocrPrintf(
     "==================================================================="
     "=============\n");
 }
@@ -118,39 +118,39 @@ void border_print(void)
 // Prints comma separated integers - for ease of reading
 void fancy_int( long a )
 {
-    #if 0   //PRINTF doesn't support fancy format specifiers (e.g., %03ld for leading zeros)
+    #if 0   //ocrPrintf doesn't support fancy format specifiers (e.g., %03ld for leading zeros)
     if( a < 1000 )
-        PRINTF("%ld\n",a);
+        ocrPrintf("%ld\n",a);
 
     else if( a >= 1000 && a < 1000000 )
-        PRINTF("%ld,%03ld\n", a / 1000, a % 1000);
+        ocrPrintf("%ld,%03ld\n", a / 1000, a % 1000);
 
     else if( a >= 1000000 && a < 1000000000 )
-        PRINTF("%ld,%03ld,%03ld\n",a / 1000000,(a % 1000000) / 1000,a % 1000 );
+        ocrPrintf("%ld,%03ld,%03ld\n",a / 1000000,(a % 1000000) / 1000,a % 1000 );
 
     else if( a >= 1000000000 )
-        PRINTF("%ld,%03ld,%03ld,%03ld\n",
+        ocrPrintf("%ld,%03ld,%03ld,%03ld\n",
                a / 1000000000,
                (a % 1000000000) / 1000000,
                (a % 1000000) / 1000,
                a % 1000 );
     else
-        PRINTF("%ld\n",a);
+        ocrPrintf("%ld\n",a);
     #endif
 
-    PRINTF("%ld\n",a);
+    ocrPrintf("%ld\n",a);
 }
 
 void print_CLI_error(void)
 {
-    PRINTF("Usage: ./XSBench <options>\n");
-    PRINTF("Options include:\n");
-    PRINTF("  -t <threads>     Number of OpenMP threads to run\n");
-    PRINTF("  -s <size>        Size of H-M Benchmark to run (small, large, XL, XXL)\n");
-    PRINTF("  -g <gridpoints>  Number of gridpoints per nuclide (overrides -s defaults)\n");
-    PRINTF("  -l <lookups>     Number of Cross-section (XS) lookups\n");
-    PRINTF("Default is equivalent to: -s large -l 15000000\n");
-    PRINTF("See readme for full description of default run values\n");
+    ocrPrintf("Usage: ./XSBench <options>\n");
+    ocrPrintf("Options include:\n");
+    ocrPrintf("  -t <threads>     Number of OpenMP threads to run\n");
+    ocrPrintf("  -s <size>        Size of H-M Benchmark to run (small, large, XL, XXL)\n");
+    ocrPrintf("  -g <gridpoints>  Number of gridpoints per nuclide (overrides -s defaults)\n");
+    ocrPrintf("  -l <lookups>     Number of Cross-section (XS) lookups\n");
+    ocrPrintf("Default is equivalent to: -s large -l 15000000\n");
+    ocrPrintf("See readme for full description of default run values\n");
     ocrShutdown();
     //exit(4);
 }

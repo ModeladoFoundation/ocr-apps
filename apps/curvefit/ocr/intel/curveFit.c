@@ -63,7 +63,7 @@ double compute_error(double x1, double x2, double delta) {
 }
 
 void errorOut(char *s) {
-    PRINTF("Error: %s \n", s);
+    ocrPrintf("Error: %s \n", s);
     ocrShutdown();
 }
 
@@ -123,7 +123,7 @@ typedef struct {
 } wrapupPRM_t;
 
 ocrGuid_t wrapupEdt( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("SUCCESS - Shutting down OCR\n");
+    ocrPrintf("SUCCESS - Shutting down OCR\n");
     ocrShutdown();
 }
 
@@ -143,7 +143,7 @@ ocrGuid_t realMainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     double delta = PRM(realMain, delta);
     u64 maxX = PRM(realMain, maxX);
 
-    PRINTF("ARGS: nrank - %lu | tolerance - %f | delta - %f | max X value - %lu\n", nrank, tolerance, delta, maxX);
+    ocrPrintf("ARGS: nrank - %lu | tolerance - %f | delta - %f | max X value - %lu\n", nrank, tolerance, delta, maxX);
 
     curveFitPRM_t curveFitParamv;
     ocrGuid_t curveFitTemplate;
@@ -183,7 +183,7 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     realMainPRM_t * realMainPRM = &paramvout;
 
     void *mainArgv = depv[0].ptr;
-    u32 argc = getArgc(mainArgv);
+    u32 argc = ocrGetArgc(mainArgv);
 
     PRM(realMain, nrank) = DEFAULTnrank;
     PRM(realMain, tolerance) = DEFAULTtolerance;
@@ -195,10 +195,10 @@ ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     if(argc == 5){
         u32 i = 1;
-        PRM(realMain, nrank) = (u64) atoi(getArgv(mainArgv, i++));
-        PRM(realMain, tolerance) = (double) atof(getArgv(mainArgv, i++));
-        PRM(realMain, delta) = (double) atof(getArgv(mainArgv, i++));
-        PRM(realMain, maxX) = (u64) atoi(getArgv(mainArgv, i++));
+        PRM(realMain, nrank) = (u64) atoi(ocrGetArgv(mainArgv, i++));
+        PRM(realMain, tolerance) = (double) atof(ocrGetArgv(mainArgv, i++));
+        PRM(realMain, delta) = (double) atof(ocrGetArgv(mainArgv, i++));
+        PRM(realMain, maxX) = (u64) atoi(ocrGetArgv(mainArgv, i++));
 
         if(PRM(realMain, nrank) <= 0)
             errorOut("numRanks must be positive");

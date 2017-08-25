@@ -30,9 +30,9 @@
 
 #ifndef TG_ARCH
 void ocr_exit(void); // RAG ocr_exit() non-public
-#define xe_exit(a)  {if(a)PRINTF("\nxe_exit(%d)\n",a); RAG_FLUSH; ocrShutdown(); if(a)ocr_exit(); } // RAG ocr_exit() non-public
+#define xe_exit(a)  {if(a)ocrPrintf("\nxe_exit(%d)\n",a); RAG_FLUSH; ocrShutdown(); if(a)ocr_exit(); } // RAG ocr_exit() non-public
 #else
-#define xe_exit(a)  {if(a){ PRINTF("\nxe_exit(%d)\n",a); RAG_FLUSH; } ocrShutdown(); }
+#define xe_exit(a)  {if(a){ ocrPrintf("\nxe_exit(%d)\n",a); RAG_FLUSH; } ocrShutdown(); }
 #endif
 
 #ifdef TG_ARCH
@@ -42,8 +42,8 @@ do { \
 	__retval__ = ocrDbCreate(&(guid),(void *)&(addr),(len),DB_PROP_NONE,(hint),NO_ALLOC); \
 	rag_printf("OCR_DB_C %16.16lx \n",GUID_VALUE(guid));rag_flush; \
 	if (__retval__ != 0) { \
-		PRINTF("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
-	} /* else { PRINTF("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
+		ocrPrintf("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
+	} /* else { ocrPrintf("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
 } while(0)
 #else
 #define OCR_DB_CREATE(guid,addr,len,hint) \
@@ -52,8 +52,8 @@ do { \
 	__retval__ = ocrDbCreate(&(guid),&(addr),(len),DB_PROP_NONE,(hint),NO_ALLOC); \
 	rag_printf("OCR_DB_C "GUIDF" \n",GUIDA(guid));rag_flush; \
 	if (__retval__ != 0) { \
-		PRINTF("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
-	} /* else { PRINTF("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
+		ocrPrintf("ocrDbCreate ERROR ret_val=%d\n", __retval__); RAG_FLUSH; xe_exit(__retval__); \
+	} /* else { ocrPrintf("ocrDbDreate OKAY\n"); RAG_FLUSH; } */ \
 } while(0)
 #endif
 
@@ -63,7 +63,7 @@ do { \
 	rag_printf("OCR_DB_R "GUIDF" \n",GUIDA(guid));rag_flush; \
 	__retval__ = ocrDbRelease(guid); \
 	if (__retval__ != 0) { \
-		PRINTF("ocrDbRelease ERROR arg="GUIDF" %s:%d\n", GUIDA(guid), __FILE__, __LINE__); \
+		ocrPrintf("ocrDbRelease ERROR arg="GUIDF" %s:%d\n", GUIDA(guid), __FILE__, __LINE__); \
 		xe_exit(__retval__); \
 	} \
 } while(0)
@@ -78,7 +78,7 @@ do { \
 	rag_printf("OCR_DB_D "GUIDF" \n",GUIDA(guid));rag_flush; \
 	__retval__ = ocrDbDestroy((guid)); \
 	if (__retval__ != 0) { \
-		PRINTF("ocrDbDestroy ERROR arg="GUIDF" %s:%d\n", GUIDA(guid), __FILE__, __LINE__); \
+		ocrPrintf("ocrDbDestroy ERROR arg="GUIDF" %s:%d\n", GUIDA(guid), __FILE__, __LINE__); \
 		xe_exit(__retval__); \
 	} \
 } while(0)
@@ -93,7 +93,7 @@ do { \
   #ifdef NDEBUG
     #define assert(x)
   #else
-    #define assert(x) if(!(x)) {PRINTF("ASSERT () failed %s:%d\n",__FILE__, __LINE__); xe_exit(x); }
+    #define assert(x) if(!(x)) {ocrPrintf("ASSERT () failed %s:%d\n",__FILE__, __LINE__); xe_exit(x); }
   #endif
 #endif
 
@@ -226,7 +226,7 @@ static int blk_size(int n,int max_blk_size) {
 		}
 	}
 #ifdef TRACE
-	PRINTF("blk_size(%d,%d) returns = %d\n",n,max_blk_size,ret_val);
+	ocrPrintf("blk_size(%d,%d) returns = %d\n",n,max_blk_size,ret_val);
 #endif
 	return ret_val;
 }

@@ -43,11 +43,11 @@
 #include <cmath>
 
 //----------------------------------------------------------------------------
-//                            REQUIRE & ASSERT -- Preconditions
+//                            REQUIRE & ocrAssert -- Preconditions
 //----------------------------------------------------------------------------
 
-#ifdef ASSERT2
-#undef ASSERT2
+#ifdef ocrAssert2
+#undef ocrAssert2
 #endif
 
 #ifdef REQUIRE2
@@ -93,12 +93,12 @@ if (!(x)) { \
   MPI_Abort( MPI_COMM_WORLD, 1 );\
 }
 #define REQUIRE2(x, msg) DBC_ASSERTION(x, msg, "Precondition violated")
-#define ASSERT2(x, msg) DBC_ASSERTION(x, msg, "Assertion violated")
+#define ocrAssert2(x, msg) DBC_ASSERTION(x, msg, "Assertion violated")
 #define VERIFY2(x, msg) DBC_ASSERTION(x, msg, "Verification failed");
 
 //----------- Define one-argument forms
-#ifdef ASSERT
-#undef ASSERT
+#ifdef ocrAssert
+#undef ocrAssert
 #endif
 
 #ifdef REQUIRE
@@ -109,7 +109,7 @@ if (!(x)) { \
 #undef VERIFY
 #endif
 
-#define ASSERT(x) ASSERT2(x, #x)
+#define ocrAssert(x) ocrAssert2(x, #x)
 #define REQUIRE(x) REQUIRE2(x, #x)
 #define VERIFY(x) VERIFY2(x, #x)
 

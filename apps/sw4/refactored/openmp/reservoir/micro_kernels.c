@@ -149,10 +149,10 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     int i;
     void *argsPtr = depv[0].ptr;
 
-    u64 argc = getArgc(argsPtr);
+    u64 argc = ocrGetArgc(argsPtr);
     char **argv = malloc(argc * sizeof(*argv));
     for (i = 0; i < argc; ++i) {
-        argv[i] = getArgv(argsPtr, i);
+        argv[i] = ocrGetArgv(argsPtr, i);
     }
     process_arguments(argc, argv);
     free(argv);

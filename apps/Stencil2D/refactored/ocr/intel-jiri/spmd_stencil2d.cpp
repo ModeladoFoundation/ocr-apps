@@ -209,9 +209,9 @@ void print_in(worker_config& wcfg, DTYPE* in)
 {
 	for (s64 j = wcfg.jstart - RADIUS; j <= wcfg.jend + RADIUS; j++) {
 		for (s64 i = wcfg.istart - RADIUS; i <= wcfg.iend + RADIUS; i++) {
-			PRINTF(FSTR ", ", IN(i, j));
+			ocrPrintf(FSTR ", ", IN(i, j));
 		}
-		PRINTF("\n");
+		ocrPrintf("\n");
 	}
 }
 
@@ -219,9 +219,9 @@ void print_out(worker_config& wcfg, DTYPE* out)
 {
 	for (s64 j = MAX(wcfg.jstart, RADIUS); j <= MIN(wcfg.cfg.n - RADIUS - 1, wcfg.jend); j++) {
 		for (s64 i = MAX(wcfg.istart, RADIUS); i <= MIN(wcfg.cfg.n - RADIUS - 1, wcfg.iend); i++) {
-			PRINTF(FSTR ", ", OUT(i, j));
+			ocrPrintf(FSTR ", ", OUT(i, j));
 		}
-		PRINTF("\n");
+		ocrPrintf("\n");
 	}
 }
 
@@ -254,7 +254,7 @@ ocrGuid_t workerInitEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 	wcfg.width = wcfg.iend - wcfg.istart + 1;
 	if (wcfg.width == 0) {
-		PRINTF("ERROR: rank %d has no work to do\n", (int)wcfg.my_ID);
+		ocrPrintf("ERROR: rank %d has no work to do\n", (int)wcfg.my_ID);
 		error = 1;
 	}
 	assert(!error);
@@ -272,13 +272,13 @@ ocrGuid_t workerInitEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 	wcfg.height = wcfg.jend - wcfg.jstart + 1;
 	if (wcfg.height == 0) {
-		PRINTF("ERROR: rank %d has no work to do\n", (int)wcfg.my_ID);
+		ocrPrintf("ERROR: rank %d has no work to do\n", (int)wcfg.my_ID);
 		error = 1;
 	}
 	assert(!error);
 
 	if (wcfg.width < RADIUS || wcfg.height < RADIUS) {
-		PRINTF("ERROR: rank %d has work tile smaller then stencil radius\n",
+		ocrPrintf("ERROR: rank %d has work tile smaller then stencil radius\n",
 			(int)wcfg.my_ID);
 		error = 1;
 	}
@@ -286,7 +286,7 @@ ocrGuid_t workerInitEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 	u64 total_length_in = (wcfg.width + 2 * RADIUS)*(wcfg.height + 2 * RADIUS) * sizeof(DTYPE);
 	if (total_length_in / (wcfg.height + 2 * RADIUS) != (wcfg.width + 2 * RADIUS) * sizeof(DTYPE)) {
-		PRINTF("ERROR: Space for %d x %d input array cannot be represented\n",
+		ocrPrintf("ERROR: Space for %d x %d input array cannot be represented\n",
 			(int)wcfg.width + 2 * RADIUS, (int)wcfg.height + 2 * RADIUS);
 		error = 1;
 	}
@@ -340,7 +340,7 @@ ocrGuid_t workerEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
 	worker_config& wcfg = *(worker_config*)paramv;
 	config& cfg = wcfg.cfg;
-	//PRINTF("iteration %d worker %d,%d\n", (int)cfg.iteration, (int)wcfg.my_IDx, (int)wcfg.my_IDy);
+	//ocrPrintf("iteration %d worker %d,%d\n", (int)cfg.iteration, (int)wcfg.my_IDx, (int)wcfg.my_IDy);
 	DTYPE* in = (DTYPE*)depv[INDEX_OF_IN].ptr;
 	DTYPE* out = (DTYPE*)depv[INDEX_OF_OUT].ptr;
 	DTYPE* top_buf_in = (DTYPE*)depv[INDEX_OF_TOP].ptr;
@@ -457,8 +457,8 @@ ocrGuid_t checkEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 	DTYPE norm = *(DTYPE*)depv[0].ptr;
 	ocrDbDestroy(depv[0].guid);
-	PRINTF("\n");
-	//PRINTF("norm is " FSTR "\n", norm);
+	ocrPrintf("\n");
+	//ocrPrintf("norm is " FSTR "\n", norm);
 	DTYPE reference_norm;
 	DTYPE f_active_points = (DTYPE)(cfg.n - 2 * RADIUS)*(DTYPE)(cfg.n - 2 * RADIUS);
 	norm /= f_active_points;
@@ -469,17 +469,17 @@ ocrGuid_t checkEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 		reference_norm = (DTYPE) 0.0;
 	}
 	if (ABS(norm - reference_norm) > EPSILON) {
-		PRINTF("ERROR: L1 norm = " FSTR ", Reference L1 norm = " FSTR "\n", norm, reference_norm);
+		ocrPrintf("ERROR: L1 norm = " FSTR ", Reference L1 norm = " FSTR "\n", norm, reference_norm);
 	}
 	else {
-		PRINTF("Solution validates\n");
-		PRINTF("Reference L1 norm = " FSTR ", L1 norm = " FSTR "\n", reference_norm, norm);
+		ocrPrintf("Solution validates\n");
+		ocrPrintf("Reference L1 norm = " FSTR ", L1 norm = " FSTR "\n", reference_norm, norm);
 	}
 	/* flops/stencil: 2 flops (fma) for each point in the stencil,
 	plus one flop for the update of the input of the array        */
 	DTYPE flops = (DTYPE)(2 * (4 * RADIUS + 1) + 1) * f_active_points;
 	double avgtime = elapsed / cfg.iterations;
-	PRINTF("Rate (MFlops/s): " FSTR "  Avg time (s): %f\n", 1.0E-06 * flops / avgtime, avgtime);
+	ocrPrintf("Rate (MFlops/s): " FSTR "  Avg time (s): %f\n", 1.0E-06 * flops / avgtime, avgtime);
 	spmdRankFinalize(NULL_GUID, false);
 	return NULL_GUID;
 }
@@ -497,43 +497,43 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 	u64 nsquare;
 	u64 Num_procs;
 #ifndef STAR
-	PRINTF("ERROR: Compact stencil not supported\n");
+	ocrPrintf("ERROR: Compact stencil not supported\n");
 	error = 1;
 	goto ENDOFTESTS;
 #endif
 
-	if (getArgc(depv[0].ptr) != 4) {
-		PRINTF("Usage: %s <array dimension> <number of ranks> <# iterations> \n",
-			getArgv(depv[0].ptr,0));
+	if (ocrGetArgc(depv[0].ptr) != 4) {
+		ocrPrintf("Usage: %s <array dimension> <number of ranks> <# iterations> \n",
+			ocrGetArgv(depv[0].ptr,0));
 		error = 1;
 		goto ENDOFTESTS;
 	}
 
-	cfg.iterations = atoi(getArgv(depv[0].ptr, 3));
+	cfg.iterations = atoi(ocrGetArgv(depv[0].ptr, 3));
 	if (cfg.iterations < 1) {
-		PRINTF("ERROR: iterations must be >= 1 : %d \n", cfg.iterations);
+		ocrPrintf("ERROR: iterations must be >= 1 : %d \n", cfg.iterations);
 		error = 1;
 		goto ENDOFTESTS;
 	}
 
-	cfg.n = atoi(getArgv(depv[0].ptr, 1));
+	cfg.n = atoi(ocrGetArgv(depv[0].ptr, 1));
 	nsquare = cfg.n * cfg.n;
-	Num_procs = atoi(getArgv(depv[0].ptr, 2));
+	Num_procs = atoi(ocrGetArgv(depv[0].ptr, 2));
 	if (nsquare < Num_procs) {
-		PRINTF("ERROR: grid size %d must be at least # ranks: %ld\n",
+		ocrPrintf("ERROR: grid size %d must be at least # ranks: %ld\n",
 			nsquare, Num_procs);
 		error = 1;
 		goto ENDOFTESTS;
 	}
 
 	if (RADIUS < 0) {
-		PRINTF("ERROR: Stencil radius %d should be non-negative\n", RADIUS);
+		ocrPrintf("ERROR: Stencil radius %d should be non-negative\n", RADIUS);
 		error = 1;
 		goto ENDOFTESTS;
 	}
 
 	if (2 * RADIUS + 1 > cfg.n) {
-		PRINTF("ERROR: Stencil radius %d exceeds grid size %d\n", RADIUS, cfg.n);
+		ocrPrintf("ERROR: Stencil radius %d exceeds grid size %d\n", RADIUS, cfg.n);
 		error = 1;
 		goto ENDOFTESTS;
 	}
@@ -553,18 +553,18 @@ ENDOFTESTS:;
 		}
 	}
 	cfg.iteration = 0;
-	PRINTF("OCR SPMD stencil execution on 2D grid\n");
-	PRINTF("Number of ranks        = %d\n", (int)Num_procs);
-	PRINTF("Grid size              = %d\n", (int)cfg.n);
-	PRINTF("Radius of stencil      = %d\n", (int)RADIUS);
-	PRINTF("Tiles in x/y-direction = %d/%d\n", (int)cfg.Num_procsx, (int)cfg.Num_procsy);
-	PRINTF("Type of stencil        = star\n");
+	ocrPrintf("OCR SPMD stencil execution on 2D grid\n");
+	ocrPrintf("Number of ranks        = %d\n", (int)Num_procs);
+	ocrPrintf("Grid size              = %d\n", (int)cfg.n);
+	ocrPrintf("Radius of stencil      = %d\n", (int)RADIUS);
+	ocrPrintf("Tiles in x/y-direction = %d/%d\n", (int)cfg.Num_procsx, (int)cfg.Num_procsy);
+	ocrPrintf("Type of stencil        = star\n");
 #ifdef DOUBLE
-	PRINTF("Data type              = double precision\n");
+	ocrPrintf("Data type              = double precision\n");
 #else
-	PRINTF("Data type              = single precision\n");
+	ocrPrintf("Data type              = single precision\n");
 #endif
-	PRINTF("Number of iterations   = %d\n", (int)cfg.iterations);
+	ocrPrintf("Number of iterations   = %d\n", (int)cfg.iterations);
 
 	ocrGuid_t local_aff;
 	ocrAffinityGetCurrent(&local_aff);

@@ -59,7 +59,7 @@ u64 reductionsizeof(reductionOperator_t operator) {
     if(operator == REDUCTION_U4_BITAND) return(4);
     if(operator == REDUCTION_U4_BITOR) return(4);
     if(operator == REDUCTION_U4_BITXOR) return(4);
-    PRINTF("UNSUPPORTED reductionOperator\n");
+    ocrPrintf("UNSUPPORTED reductionOperator\n");
     ocrShutdown();
     return (u64)-1; // Let's keep the compiler happy
 }
@@ -234,7 +234,7 @@ void reductionOperation(u64 length, void * a, void * b, reductionOperator_t oper
             return;
     }
 
-    PRINTF("unsupported operator type %d \n", operator);
+    ocrPrintf("unsupported operator type %d \n", operator);
     ocrShutdown();
     return;
 }

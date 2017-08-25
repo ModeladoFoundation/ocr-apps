@@ -472,12 +472,12 @@ void printThings(SimFlat* s, int iStep, double elapsedTime)
     {
         timestamp( "Starting simulation\n");
 
-        PRINTF(
+        ocrPrintf(
          "#                                                                                         Performance\n"
          "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
     }
 
-    PRINTF(" %6d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
+    ocrPrintf(" %6d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
             iStep, time, eTotal, eU, eK, Temp, timePerAtom, s->atoms->nGlobal);
 
     if(iStep==s->nSteps)
@@ -491,11 +491,11 @@ void initValidate(Validate* val, SimFlat* sim)
 
    if (sim->PTR_rankH->myRank == 0)
    {
-      PRINTF("\n");
+      ocrPrintf("\n");
       printSeparator();
-      PRINTF("Initial energy : %14.12f, atom count : %d \n",
+      ocrPrintf("Initial energy : %14.12f, atom count : %d \n",
             val->eTot0, val->nAtoms0);
-      PRINTF("\n");
+      ocrPrintf("\n");
    }
 }
 
@@ -507,23 +507,23 @@ void validateResult(const Validate* val, SimFlat* sim)
 
       int nAtomsDelta = (sim->atoms->nGlobal - val->nAtoms0);
 
-      PRINTF("\n");
-      PRINTF("\n");
-      PRINTF("Simulation Validation:\n");
+      ocrPrintf("\n");
+      ocrPrintf("\n");
+      ocrPrintf("Simulation Validation:\n");
 
-      PRINTF("  Initial energy  : %14.12f\n", val->eTot0);
-      PRINTF("  Final energy    : %14.12f\n", eFinal);
-      PRINTF("  eFinal/eInitial : %f\n", eFinal/val->eTot0);
+      ocrPrintf("  Initial energy  : %14.12f\n", val->eTot0);
+      ocrPrintf("  Final energy    : %14.12f\n", eFinal);
+      ocrPrintf("  eFinal/eInitial : %f\n", eFinal/val->eTot0);
       if ( nAtomsDelta == 0)
       {
-         PRINTF("  Final atom count : %d, no atoms lost\n",
+         ocrPrintf("  Final atom count : %d, no atoms lost\n",
                sim->atoms->nGlobal);
       }
       else
       {
-         PRINTF("#############################\n");
-         PRINTF("# WARNING: %6d atoms lost #\n", nAtomsDelta);
-         PRINTF("#############################\n");
+         ocrPrintf("#############################\n");
+         ocrPrintf("# WARNING: %6d atoms lost #\n", nAtomsDelta);
+         ocrPrintf("#############################\n");
       }
    }
 }

@@ -146,12 +146,12 @@ ocrGuid_t qsortTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 //Print validation feedback and quit.
 ocrGuid_t finishTask( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("Showing first 30 elements: \n");
+    ocrPrintf("Showing first 30 elements: \n");
     u64 i;
     u64 *data = depv[0].ptr;
     for(i = 0; i < 30; i++)
-        PRINTF("%lu \n", data[i]);
-    PRINTF("Sorting Finished. Shutting Down OCR\n");
+        ocrPrintf("%lu \n", data[i]);
+    ocrPrintf("Sorting Finished. Shutting Down OCR\n");
     ocrShutdown();
     return NULL_GUID;
 }

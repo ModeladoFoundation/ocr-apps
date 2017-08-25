@@ -54,9 +54,9 @@ ocrGuid_t stencilReportEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
 
     u64 i = 0;
 
-    //PRINTF("Rank %ld\n", privPTR->myrank);
+    //ocrPrintf("Rank %ld\n", privPTR->myrank);
 
-    for(i=0;i<privPTR->npoints;i++) PRINTF("S%ld i%d valu %f \n", privPTR->myrank, i, a[i]);
+    for(i=0;i<privPTR->npoints;i++) ocrPrintf("S%ld i%d valu %f \n", privPTR->myrank, i, a[i]);
 
     if( privPTR->myrank < privPTR->nrank - 1 )
         ocrEventSatisfy( privPTR->rightSendEVT, NULL_GUID );
@@ -216,7 +216,7 @@ ocrGuid_t stencilEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
         ocrDbRelease( private.guid );
         ocrAddDependence( private.guid, stencilEdtGUID, 0, DB_MODE_RW );
     }else{
-        //PRINTF("time %ld\n", privPTR->timestep++);
+        //ocrPrintf("time %ld\n", privPTR->timestep++);
         ocrGuid_t reportTML, reportGUID;
         ocrEdtTemplateCreate( &reportTML, stencilReportEdt, 0, 2 );
         ocrEdtCreate( &reportGUID, reportTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
@@ -243,7 +243,7 @@ ocrGuid_t stencilInitEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]
      * 3: rBuff
      */
 
-    //PRINTF( "StencilInitEDT %ld\n", paramv[0] );
+    //ocrPrintf( "StencilInitEDT %ld\n", paramv[0] );
 
     u64 _idep = 0;
     u64 myrank = paramv[0];
@@ -261,7 +261,7 @@ ocrGuid_t stencilInitEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]
     buffer_t * rBuffPTR = rBuff.ptr;
 
     if( ocrGuidIsNull( shared.guid ) ){
-        PRINTF("%ld null shared ptr\n", paramv[0] );
+        ocrPrintf("%ld null shared ptr\n", paramv[0] );
         return NULL_GUID;
     }
 
@@ -447,13 +447,13 @@ ocrGuid_t realMainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrHintInit( &HNT_db, OCR_HINT_DB_T );
 
     #ifdef ENABLE_EXTENSION_AFFINITY
-    PRINTF( "Affinity API\n" );
+    ocrPrintf( "Affinity API\n" );
     s64 affinityCount;
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
 
-    PRINTF( "affinityCount, %ld\n", affinityCount );
+    ocrPrintf( "affinityCount, %ld\n", affinityCount );
     #else
-    PRINTF( "Not using affinity API\n" );
+    ocrPrintf( "Not using affinity API\n" );
     #endif
 
     for( i = 0; i < nrank; i++ ){
@@ -462,7 +462,7 @@ ocrGuid_t realMainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
         u64 bucket = (nrank/affinityCount) + 1;
         u64 pd = i / bucket;
 
-        PRINTF("pd: %ld\n", pd);
+        ocrPrintf("pd: %ld\n", pd);
         ocrAffinityGetAt( AFFINITY_PD, pd, &(currentAffinity) );
 
         ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue( currentAffinity ) );
@@ -480,7 +480,7 @@ ocrGuid_t realMainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
 ocrGuid_t wrapupEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    PRINTF("Stencil1D finished.\n");
+    ocrPrintf("Stencil1D finished.\n");
     ocrShutdown();
     return NULL_GUID;
 }
@@ -493,24 +493,24 @@ ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     realMainPRM_t realMainPRM;
 
     void * programArgv = depv[0].ptr;
-    u32 argc = getArgc(programArgv);
+    u32 argc = ocrGetArgc(programArgv);
 
     if(argc != 4) {
-        PRINTF("Using default runtime args\n");
+        ocrPrintf("Using default runtime args\n");
         nrank = 4;
         npoints = 10;
         maxt = 100;
     } else {
         i = 1;
-        nrank = (u32) atoi(getArgv(programArgv, i++));
-        npoints = (u32) atoi(getArgv(programArgv, i++));
-        maxt = (u32) atoi(getArgv(programArgv, i));
+        nrank = (u32) atoi(ocrGetArgv(programArgv, i++));
+        npoints = (u32) atoi(ocrGetArgv(programArgv, i++));
+        maxt = (u32) atoi(ocrGetArgv(programArgv, i));
     }
 
-    PRINTF("1D Stencil code with Channel Events.\n");
-    PRINTF("number of workers = %ld \n", nrank);
-    PRINTF("data on each worker = %ld \n", npoints);
-    PRINTF("number of timesteps = %ld \n", maxt);
+    ocrPrintf("1D Stencil code with Channel Events.\n");
+    ocrPrintf("number of workers = %ld \n", nrank);
+    ocrPrintf("data on each worker = %ld \n", npoints);
+    ocrPrintf("number of timesteps = %ld \n", maxt);
 
     realMainPRM.nrank = nrank;
     realMainPRM.npoints = npoints;
@@ -540,7 +540,7 @@ ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
 
-    PRINTF("Channel event extension not enabled!\n");
+    ocrPrintf("Channel event extension not enabled!\n");
 
     ocrShutdown();
     return NULL_GUID;

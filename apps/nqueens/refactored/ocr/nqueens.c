@@ -22,11 +22,11 @@ static inline void create_task( struct nqueens_args* args, ocrGuid_t* output )
     if( output ) {
         err  = ocrEdtCreate( &edt, findTemplate, paramc, paramv, 0, NULL,
                   EDT_PROP_FINISH|EDT_PROP_OEVT_VALID, NULL_HINT, output );
-        ASSERT( err == 0 );
+        ocrAssert( err == 0 );
     } else {
         err  = ocrEdtCreate( &edt, findTemplate, paramc, paramv, 0, NULL,
                   EDT_PROP_FINISH, NULL_HINT, output );
-        ASSERT( err == 0 );
+        ocrAssert( err == 0 );
     }
 }
 
@@ -85,13 +85,13 @@ void solve_nqueens( u32 n, u32 cutoff )
     get_time(&shutdown_args.start);
 
     err = ocrEventCreate( &outEvent, OCR_EVENT_ONCE_T, EVT_PROP_NONE );
-    ASSERT( err == 0 );
+    ocrAssert( err == 0 );
 
     err = ocrEdtCreate( &shutdownEdt, shutdownTemplate,
                   sizeof(shutdown_args)/sizeof(u64)+1, (u64*)&shutdown_args,
                   1, &outEvent,
                   EDT_PROP_NONE, NULL_HINT, NULL );
-    ASSERT( err == 0 );
+    ocrAssert( err == 0 );
 
     create_task( &app_args, &outEvent );
 }
@@ -103,16 +103,16 @@ ocrGuid_t shutdown( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     u32 found = get_solution_number();
 
     struct shutdown_args* args = (struct shutdown_args*)paramv;
-    PRINTF( "%d-queens; %dx%d; sols: %d\n",
+    ocrPrintf( "%d-queens; %dx%d; sols: %d\n",
             args->n, args->n, args->n, found );
     summary_throughput_timer(&args->start,&stop,1);
 
     u8 err;
     err = ocrEdtTemplateDestroy( findTemplate );
-    ASSERT( err == 0 );
+    ocrAssert( err == 0 );
 
     err = ocrEdtTemplateDestroy( shutdownTemplate );
-    ASSERT( err == 0 );
+    ocrAssert( err == 0 );
 
     ocrShutdown();
 
@@ -121,24 +121,24 @@ ocrGuid_t shutdown( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
 ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    if( getArgc(depv[0].ptr) != 3 ) {
-        PRINTF("Usage %s size cutoff", getArgv(depv[0].ptr,0) );
+    if( ocrGetArgc(depv[0].ptr) != 3 ) {
+        ocrPrintf("Usage %s size cutoff", ocrGetArgv(depv[0].ptr,0) );
         ocrAbort(EXIT_FAILURE);
     }
 
-    u32 n = atoi( getArgv(depv[0].ptr,1) );
-    u32 cutoff = atoi( getArgv(depv[0].ptr,2) );
-    ASSERT( 0 < n && n < 31 );
-    ASSERT( cutoff < n );
+    u32 n = atoi( ocrGetArgv(depv[0].ptr,1) );
+    u32 cutoff = atoi( ocrGetArgv(depv[0].ptr,2) );
+    ocrAssert( 0 < n && n < 31 );
+    ocrAssert( cutoff < n );
 
     u8 err;
     err = ocrEdtTemplateCreate( &findTemplate, findSolutionsEdt,
                           sizeof(struct nqueens_args)/sizeof(u64)+1, 0 );
-    ASSERT( err == 0 );
+    ocrAssert( err == 0 );
 
     err = ocrEdtTemplateCreate( &shutdownTemplate, shutdown,
                           sizeof(struct shutdown_args)/sizeof(u64)+1, 1 );
-    ASSERT( err == 0 );
+    ocrAssert( err == 0 );
 
     solve_nqueens( n, cutoff );
     return NULL_GUID;

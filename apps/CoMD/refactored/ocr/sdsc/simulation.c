@@ -49,25 +49,25 @@ void validate_result(simulation* sim)
 {
   real_t energy = (sim->e_potential + sim->e_kinetic) / sim->bxs.atoms;
 
-  PRINTF("\n\n");
-  PRINTF("Simulation Validation:\n");
-  PRINTF("  Initial energy  : %14.12f\n", sim->energy0);
-  PRINTF("  Final energy    : %14.12f\n", energy);
-  PRINTF("  eFinal/eInitial : %f\n", energy/sim->energy0);
+  ocrPrintf("\n\n");
+  ocrPrintf("Simulation Validation:\n");
+  ocrPrintf("  Initial energy  : %14.12f\n", sim->energy0);
+  ocrPrintf("  Final energy    : %14.12f\n", energy);
+  ocrPrintf("  eFinal/eInitial : %f\n", energy/sim->energy0);
 
   int atoms_diff = sim->bxs.atoms - sim->atoms0;
   if(atoms_diff == 0)
-    PRINTF("  Final atom count : %d, no atoms lost\n", sim->bxs.atoms);
+    ocrPrintf("  Final atom count : %d, no atoms lost\n", sim->bxs.atoms);
   else {
-    PRINTF("#############################\n");
-    PRINTF("# WARNING: %6d atoms lost #\n", atoms_diff);
-    PRINTF("#############################\n");
+    ocrPrintf("#############################\n");
+    ocrPrintf("# WARNING: %6d atoms lost #\n", atoms_diff);
+    ocrPrintf("#############################\n");
   }
 }
 
 void print_status_header()
 {
-  PRINTF(
+  ocrPrintf(
   "#                                                                                         Performance\n"
   "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
 }
@@ -81,28 +81,28 @@ void print_status(simulation* sim, double time)
    real_t temp = e_k * kB_eV_1_5;
 
    double time_per_atom = 1.0e6*time/(double)((sim->period > step ? sim->period : 1)*atoms);
-   PRINTF(" %6d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
+   ocrPrintf(" %6d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
           step, step*sim->dt, energy, e_u, e_k, temp, time_per_atom, atoms);
 }
 
 void print_simulation(simulation* sim)
 {
-   PRINTF("Simulation data: \n");
-   PRINTF("  Total atoms        : %d\n", sim->bxs.atoms);
-   PRINTF("  Min bounds  : [ %14.10f, %14.10f, %14.10f ]\n",
+   ocrPrintf("Simulation data: \n");
+   ocrPrintf("  Total atoms        : %d\n", sim->bxs.atoms);
+   ocrPrintf("  Min bounds  : [ %14.10f, %14.10f, %14.10f ]\n",
           sim->bxs.local_min[0], sim->bxs.local_min[1], sim->bxs.local_min[2]);
-   PRINTF("  Max bounds  : [ %14.10f, %14.10f, %14.10f ]\n\n",
+   ocrPrintf("  Max bounds  : [ %14.10f, %14.10f, %14.10f ]\n\n",
           sim->bxs.local_max[0], sim->bxs.local_max[1], sim->bxs.local_max[2]);
-   PRINTF("  Boxes        : %6d,%6d,%6d = %8d\n",
+   ocrPrintf("  Boxes        : %6d,%6d,%6d = %8d\n",
           sim->bxs.grid[0], sim->bxs.grid[1], sim->bxs.grid[2], sim->bxs.boxes_num);
-   PRINTF("  Box size           : [ %14.10f, %14.10f, %14.10f ]\n",
+   ocrPrintf("  Box size           : [ %14.10f, %14.10f, %14.10f ]\n",
           sim->bxs.box_size[0], sim->bxs.box_size[1], sim->bxs.box_size[2]);
-   PRINTF("  Box factor         : [ %14.10f, %14.10f, %14.10f ] \n",
+   ocrPrintf("  Box factor         : [ %14.10f, %14.10f, %14.10f ] \n",
           sim->bxs.box_size[0]/sim->pot.cutoff,
           sim->bxs.box_size[1]/sim->pot.cutoff,
           sim->bxs.box_size[2]/sim->pot.cutoff);
-   PRINTF("  Max Link Cell Occupancy: %d of %d\n\n", sim->bxs.max_occupancy, MAXATOMS);
-   PRINTF("Potential data: \n");
+   ocrPrintf("  Max Link Cell Occupancy: %d of %d\n\n", sim->bxs.max_occupancy, MAXATOMS);
+   ocrPrintf("Potential data: \n");
    sim->pot.print(&sim->pot);
 }
 
@@ -117,13 +117,13 @@ u8 sanity_checks(command* cmd, double cutoff, double lattice_const, char lattice
   u8 failure = 0;
   if(sizex < minx || sizey < miny || sizez < minz) {
     failure |= 2;
-    PRINTF("\nSimulation too small.\n"
+    ocrPrintf("\nSimulation too small.\n"
            "  Increase the number of unit cells to make the simulation\n"
            "  at least (%3.2f, %3.2f. %3.2f) Ansgstroms in size\n", minx, miny, minz);
   }
   if (strcasecmp(lattice_type, "FCC") != 0) {
      failure |= 4;
-     PRINTF("\nOnly FCC Lattice type supported, not %s. Fatal Error.\n", lattice_type);
+     ocrPrintf("\nOnly FCC Lattice type supported, not %s. Fatal Error.\n", lattice_type);
   }
   return failure;
 }

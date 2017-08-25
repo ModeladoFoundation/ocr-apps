@@ -17,9 +17,9 @@ static inline void timestamp( const char* msg )
   time_t t = time( NULL );
   char* time_string = ctime( &t );
   time_string[24] = '\0';
-  PRINTF( "%s: ", time_string );
+  ocrPrintf( "%s: ", time_string );
 #endif
-  PRINTF( "%s\n", msg );
+  ocrPrintf( "%s\n", msg );
 }
 
 ocrGuid_t period_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
@@ -42,12 +42,12 @@ ocrGuid_t FNC_preInit( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     command_t* cmd_p = depv[2].ptr;
     simulationH_t* simH_p = depv[3].ptr;
 
-    u64 argc = getArgc( PTR_cmdLineArgs );
+    u64 argc = ocrGetArgc( PTR_cmdLineArgs );
     ocrGuid_t argv_g;
     char** argv;
     ocrDbCreate( &argv_g, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
     for( u32 a = 0; a < argc; ++a )
-      argv[a] = getArgv( PTR_cmdLineArgs,a );
+      argv[a] = ocrGetArgv( PTR_cmdLineArgs,a );
 
 #ifndef TG_ARCH
     memset( timers_p, 0, sizeof(mdtimer_t)*number_of_timers );
@@ -198,10 +198,10 @@ void print_status( simulationH_t* simH_p, mass_t* mass, double time )
   real_t energy = (simH_p->e_potential + simH_p->e_kinetic) / simH_p->atoms;
   if( simH_p->step==0 ) {
     simH_p->energy0 = energy;
-    PRINTF( "\nInitial energy : %f, atom count : %u\n\n", energy, simH_p->atoms0 );
+    ocrPrintf( "\nInitial energy : %f, atom count : %u\n\n", energy, simH_p->atoms0 );
     timestamp( "Starting simulation\n");
-    PRINTF( "#                                                                                         Performance\n");
-    PRINTF( "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
+    ocrPrintf( "#                                                                                         Performance\n");
+    ocrPrintf( "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
   }
 
   real_t e_k = simH_p->e_kinetic / simH_p->atoms;
@@ -212,7 +212,7 @@ void print_status( simulationH_t* simH_p, mass_t* mass, double time )
   if( simH_p->step == 0 ) nEval = 1;
 
   double time_per_atom = 1.0e6*time/(double)(nEval*simH_p->atoms);
-  PRINTF( "%7d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
+  ocrPrintf( "%7d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
          simH_p->step, simH_p->step*simH_p->dt, energy, e_u, e_k, temp, time_per_atom, simH_p->atoms );
 }
 
@@ -227,18 +227,18 @@ ocrGuid_t end_edt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
   timestamp( "Ending simulation\n");
 
   real_t energy = (simH_p->e_potential + simH_p->e_kinetic) / simH_p->atoms;
-  PRINTF( "\nSimulation Validation:\n");
-  PRINTF( "  Initial energy  : %14.12f\n", simH_p->energy0 );
-  PRINTF( "  Final energy    : %14.12f\n", energy );
-  PRINTF( "  eFinal/eInitial : %f\n", energy/simH_p->energy0 );
+  ocrPrintf( "\nSimulation Validation:\n");
+  ocrPrintf( "  Initial energy  : %14.12f\n", simH_p->energy0 );
+  ocrPrintf( "  Final energy    : %14.12f\n", energy );
+  ocrPrintf( "  eFinal/eInitial : %f\n", energy/simH_p->energy0 );
 
   int atoms_diff = simH_p->atoms - simH_p->atoms0;
   if( atoms_diff == 0 )
-    PRINTF( "  Final atom count : %d, no atoms lost\n", simH_p->atoms );
+    ocrPrintf( "  Final atom count : %d, no atoms lost\n", simH_p->atoms );
   else {
-    PRINTF( "#############################\n");
-    PRINTF( "# WARNING: %6d atoms lost #\n", atoms_diff );
-    PRINTF( "#############################\n");
+    ocrPrintf( "#############################\n");
+    ocrPrintf( "# WARNING: %6d atoms lost #\n", atoms_diff );
+    ocrPrintf( "#############################\n");
   }
 
   print_timers( timer_p, simH_p->atoms, simH_p->steps );

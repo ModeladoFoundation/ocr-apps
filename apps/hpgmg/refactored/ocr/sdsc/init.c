@@ -30,9 +30,9 @@ int IterativeSolver_NumVectors(){
 void init_all(mg_type* mg_ptr, int box_dim, int boxes_in_i, int boundary_condition, int level) {
 
 #ifdef ENABLE_EXTENSION_AFFINITY
-  PRINTF("Using affinity API\n");
+  ocrPrintf("Using affinity API\n");
 #else
-  PRINTF("NOTE: Not using affinity API\n");
+  ocrPrintf("NOTE: Not using affinity API\n");
 #endif
 
   level_type* fine_ptr = create_level(mg_ptr, box_dim, boxes_in_i, boundary_condition, 0);
@@ -40,12 +40,12 @@ void init_all(mg_type* mg_ptr, int box_dim, int boxes_in_i, int boundary_conditi
 
   int minCoarseDim = 1;
 #ifdef USE_HELMHOLTZ
-//  PRINTF("  Creating Helmholtz (a=2.0, b=1.0) test problem\n");
+//  ocrPrintf("  Creating Helmholtz (a=2.0, b=1.0) test problem\n");
   initialize_problem(fine_ptr, 2.0, 1.0);
   rebuild_operator(fine_ptr,NULL, 2.0, 1.0);
   mg_build(mg_ptr, fine_ptr, 2.0, 1.0, minCoarseDim);
 #else
-//  PRINTF("  Creating Poisson (a=0.0, b=1.0) test problem\n");
+//  ocrPrintf("  Creating Poisson (a=0.0, b=1.0) test problem\n");
   initialize_problem(fine_ptr, 0.0, 1.0);
   rebuild_operator(fine_ptr,NULL, 0.0, 1.0);
   mg_build(mg_ptr, fine_ptr, 0.0, 1.0, minCoarseDim);
@@ -62,7 +62,7 @@ level_type* create_level(mg_type* mg, int box_dim, int boxes_in_i, int boundary_
   u32 levelSize = sizeof(level_type) + sizeof(ocrGuid_t)*totalBoxes + sizeof(ocrGuid_t)*totalBoxes*6 /* ToDo: Manu: not sure why this is needed */ + totalBoxes*sizeof(double); // need to add fine and coarse related guids
 
 
-  PRINTF("attempting to create a %d^3 level using a %d^3 grid of %d^3 boxes ...\n",box_dim*boxes_in_i,boxes_in_i,box_dim);
+  ocrPrintf("attempting to create a %d^3 level using a %d^3 grid of %d^3 boxes ...\n",box_dim*boxes_in_i,boxes_in_i,box_dim);
 
   // create level and populate mg and level related info
   ocrGuid_t levelGuid;
@@ -71,7 +71,7 @@ level_type* create_level(mg_type* mg, int box_dim, int boxes_in_i, int boundary_
   mg->levels[level] = levelGuid;
 
 #if DEBUG
-  PRINTF("level %u: guid %u, box_dim %u\n", level, mg->levels[level], box_dim);
+  ocrPrintf("level %u: guid %u, box_dim %u\n", level, mg->levels[level], box_dim);
 #endif
 
   // not sure when to populate mg->max_levels, current_level, vcycle_level
@@ -119,9 +119,9 @@ level_type* create_level(mg_type* mg, int box_dim, int boxes_in_i, int boundary_
   // printing all boxguids
 #if DEBUG
   ocrGuid_t *t =  (ocrGuid_t *)(((char*)levelPtr)+ levelPtr->boxes);
-  PRINTF("----------\n");
+  ocrPrintf("----------\n");
   for (i=0;i<totalBoxes;i++)
-    PRINTF("%u\n", *(t+i));
+    ocrPrintf("%u\n", *(t+i));
 #endif
 
   initialize_valid_region(levelPtr);
@@ -217,7 +217,7 @@ box_type* create_box(level_type* lPtr, int num_vecs, int box_dim, int num_ghosts
     bzero((char*)boxPtr + lPtr->u, (lPtr->volume)*sizeof(double));
 
 #if DEBUG
-    PRINTF("constant_box_gui = %u\n", lPtr->constant_box_guid);
+    ocrPrintf("constant_box_gui = %u\n", lPtr->constant_box_guid);
 #endif
   }
 
@@ -261,7 +261,7 @@ void initialize_problem(level_type* level, double a, double b) {
     int dim_k =  level->box_dim;
 
 #if DEBUG
-    PRINTF("box%d, dims = (%d, %d, %d)\n", level->temp[box]->global_box_id,dim_i, dim_j, dim_k);
+    ocrPrintf("box%d, dims = (%d, %d, %d)\n", level->temp[box]->global_box_id,dim_i, dim_j, dim_k);
 #endif
 
     for(k=0;k<=dim_k;k++) {
@@ -303,10 +303,10 @@ void initialize_problem(level_type* level, double a, double b) {
 
   if(level->boundary_condition == BC_PERIODIC) {
     double average_value_of_f = mean(level,level->f);
-    if(average_value_of_f!=0.0) PRINTF("WARNING... Periodic boundary conditions, but f does not sum to zero... mean(f)=%f\n", average_value_of_f);
+    if(average_value_of_f!=0.0) ocrPrintf("WARNING... Periodic boundary conditions, but f does not sum to zero... mean(f)=%f\n", average_value_of_f);
     if((a==0.0) || (level->alpha_is_zero==1) ) {
       double average_value_of_u = mean(level,level->u_true);
-      PRINTF(" average value of u = %20.12f... shifting u to ensure it sums to zero...\n",average_value_of_u);
+      ocrPrintf(" average value of u = %20.12f... shifting u to ensure it sums to zero...\n",average_value_of_u);
       shift_vector(level,level->u_true,level->u_true,-average_value_of_u);
       shift_vector(level,level->f,level->f,-average_value_of_f);
     }
@@ -383,7 +383,7 @@ void evaluateU(double x, double y, double z, double *U, double *Ux, double *Uy, 
 
 void rebuild_operator(level_type* level, level_type* fromLevel, double a, double b) {
 
-  PRINTF(" rebuilding operator for level...  h=%e  ",level->h);
+  ocrPrintf(" rebuilding operator for level...  h=%e  ",level->h);
 
 
   // form restriction of alpha[], beta_*[] coefficients from fromLevel
@@ -448,7 +448,7 @@ void rebuild_operator(level_type* level, level_type* fromLevel, double a, double
     beta_k =  (double*)(((char*)level->temp[box])+ level->beta_k) + NUM_GHOSTS * (1+level->jStride+level->kStride);
     int bi;
     for (bi = 0; bi < 6; bi++) {
-//         PRINTF("box %d, Nbox %d\n", box, nbrs[bi]);
+//         ocrPrintf("box %d, Nbox %d\n", box, nbrs[bi]);
       if (nbrs[bi] < 0 || nbrs[bi] >= level->num_boxes)
         continue;
       else {
@@ -527,12 +527,12 @@ sum1 = sum2 = 0;
       dominant_eigenvalue = box_eigenvalue;
     }
 
-//PRINTF("sum1 = %10f, sum2 = %10f\n", sum1, sum2);
+//ocrPrintf("sum1 = %10f, sum2 = %10f\n", sum1, sum2);
 
   }
 
 
-  PRINTF("eigenvalue_max < %f\n",dominant_eigenvalue);
+  ocrPrintf("eigenvalue_max < %f\n",dominant_eigenvalue);
   level->dominant_eigenvalue_of_DinvA = dominant_eigenvalue;
 
 /*
@@ -591,7 +591,7 @@ void mg_build(mg_type* all_grids, level_type* fine_grid, double a, double b, int
     coarse_dim = coarse_dim / 2;
   }
 
-  PRINTF("mg_build: maxLevels: %d, %d\n", level,coarse_dim);
+  ocrPrintf("mg_build: maxLevels: %d, %d\n", level,coarse_dim);
   if(level<maxLevels)maxLevels=level;
 
        dim_i[0] = fine_grid->dim.i;
@@ -627,7 +627,7 @@ void mg_build(mg_type* all_grids, level_type* fine_grid, double a, double b, int
     int fine_boxes_in_i = boxes_in_i[level-1];
     int stencil_radius  = box_ghosts[level-1]; // FIX tune the number of ghost zones...
 #if DEBUG
-    PRINTF("fine_dim: %u, fine_dim_i: %u, fine_boxes_in_i: %u, stencil_radius: %u\n", fine_box_dim, fine_dim_i, fine_boxes_in_i, stencil_radius);
+    ocrPrintf("fine_dim: %u, fine_dim_i: %u, fine_boxes_in_i: %u, stencil_radius: %u\n", fine_box_dim, fine_dim_i, fine_boxes_in_i, stencil_radius);
 #endif
     if( (fine_box_dim % 2 == 0) && (fine_box_dim > MG_AGGLOMERATION_START) ){ // Boxes are too big to agglomerate
            dim_i[level] = fine_dim_i/2;

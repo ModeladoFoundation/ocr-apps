@@ -178,7 +178,7 @@ ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
    void * dummy;
 
    char ** argv__mainEdt = ((char **) (myDeps->dep_argv.ptr));
-   u32 argc = getArgc( argv__mainEdt );
+   u32 argc = ocrGetArgc( argv__mainEdt );
 
    u64 numberOfPes = 1;
    int npxSeen = 0;
@@ -190,29 +190,29 @@ ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 // Process the command line only to the extent necessary to figure out how many "ranks" will be utilized, and how many objects to model.
 
    for (i = 1; i < argc; i++) {
-      if (!strcmp(getArgv(argv__mainEdt, i), "--npx")) {
+      if (!strcmp(ocrGetArgv(argv__mainEdt, i), "--npx")) {
          i++;
-         numberOfPes *= atoi(getArgv(argv__mainEdt, i));
+         numberOfPes *= atoi(ocrGetArgv(argv__mainEdt, i));
          if (npxSeen++) {
             printf ("--npx command-line argument should only appear once (or not at all, in which case it will default to 1.)\n");fflush(stdout);
             ocrShutdown();
          }
-      } else if (!strcmp(getArgv(argv__mainEdt, i), "--npy")) {
+      } else if (!strcmp(ocrGetArgv(argv__mainEdt, i), "--npy")) {
          i++;
-         numberOfPes *= atoi(getArgv(argv__mainEdt, i));
+         numberOfPes *= atoi(ocrGetArgv(argv__mainEdt, i));
          if (npySeen++) {
             printf ("--npy command-line argument should only appear once (or not at all, in which case it will default to 1.)\n");fflush(stdout);
             ocrShutdown();
          }
-      } else if (!strcmp(getArgv(argv__mainEdt, i), "--npz")) {
+      } else if (!strcmp(ocrGetArgv(argv__mainEdt, i), "--npz")) {
          i++;
-         numberOfPes *= atoi(getArgv(argv__mainEdt, i));
+         numberOfPes *= atoi(ocrGetArgv(argv__mainEdt, i));
          if (npzSeen++) {
             printf ("--npz command-line argument should only appear once (or not at all, in which case it will default to 1.)\n");fflush(stdout);
             ocrShutdown();
          }
-      } else if (!strcmp(getArgv(argv__mainEdt, i), "--num_objects")) {
-         numberOfObjects = atoi(getArgv(argv__mainEdt, ++i));
+      } else if (!strcmp(ocrGetArgv(argv__mainEdt, i), "--num_objects")) {
+         numberOfObjects = atoi(ocrGetArgv(argv__mainEdt, ++i));
       }
    }
 
@@ -383,7 +383,7 @@ ocrGuid_t referenceVersionsMainEdt ( u32 paramc, u64 * paramv, u32 depc, ocrEdtD
 
       ocrGuid_t dbProgramArgv      = myDeps->dep_argv.guid;
       programArgv                  = myDeps->dep_argv.ptr;
-      programArgc                  = getArgc(programArgv);
+      programArgc                  = ocrGetArgc(programArgv);
 
       scratch_objects              = myDeps->dep_scratch_objects.ptr;
       dbmeta__scratch_objects.guid = myDeps->dep_scratch_objects.guid;
@@ -766,8 +766,8 @@ int main(int argc, char** argv_arg)
    Dbmeta_t    dbmeta__glbl;
    int tmp_my_pe, tmp_num_pes;
    int i, j;
-   #undef  getArgv
-   #define getArgv(junk, index)(programArgv[index])
+   #undef  ocrGetArgv
+   #define ocrGetArgv(junk, index)(programArgv[index])
    int ierr;
    ierr = MPI_Init(&argc, &argv_arg);
    ierr = MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_ARE_FATAL);
@@ -897,102 +897,102 @@ void driver__soup_to_nuts(Globals_t * const glbl, int const tmp_my_pe)
    /* set initial values */
    if (!my_pe) {
       for (i = 1; i < programArgc; i++) {
-         if (!strcmp(getArgv(programArgv, i), "--max_blocks"))
-            max_num_blocks = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--target_active"))
-            target_active = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--target_max"))
-            target_max = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--target_min"))
-            target_min = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--num_refine"))
-            num_refine = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--block_change"))
-            block_change = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--uniform_refine"))
-            uniform_refine = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--nx"))
-            x_block_size = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--ny"))
-            y_block_size = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--nz"))
-            z_block_size = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--num_vars"))
-            num_vars = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--comm_vars"))
-            comm_vars = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--init_x"))
-            init_block_x = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--init_y"))
-            init_block_y = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--init_z"))
-            init_block_z = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--reorder"))
-            reorder = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--npx"))
-            npx = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--npy"))
-            npy = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--npz"))
-            npz = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--inbalance"))
-            inbalance = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--lb_opt"))
-            lb_opt = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--refine_freq"))
-            refine_freq = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--report_diffusion"))
-            report_diffusion = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--error_tol"))
-            error_tol = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--num_tsteps"))
-            num_tsteps = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--stages_per_ts"))
-            stages_per_ts = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--checksum_freq"))
-            checksum_freq = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--stencil"))
-            stencil = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--permute"))
+         if (!strcmp(ocrGetArgv(programArgv, i), "--max_blocks"))
+            max_num_blocks = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--target_active"))
+            target_active = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--target_max"))
+            target_max = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--target_min"))
+            target_min = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--num_refine"))
+            num_refine = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--block_change"))
+            block_change = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--uniform_refine"))
+            uniform_refine = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--nx"))
+            x_block_size = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--ny"))
+            y_block_size = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--nz"))
+            z_block_size = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--num_vars"))
+            num_vars = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--comm_vars"))
+            comm_vars = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--init_x"))
+            init_block_x = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--init_y"))
+            init_block_y = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--init_z"))
+            init_block_z = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--reorder"))
+            reorder = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--npx"))
+            npx = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--npy"))
+            npy = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--npz"))
+            npz = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--inbalance"))
+            inbalance = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--lb_opt"))
+            lb_opt = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--refine_freq"))
+            refine_freq = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--report_diffusion"))
+            report_diffusion = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--error_tol"))
+            error_tol = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--num_tsteps"))
+            num_tsteps = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--stages_per_ts"))
+            stages_per_ts = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--checksum_freq"))
+            checksum_freq = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--stencil"))
+            stencil = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--permute"))
             permute = 1;
-         else if (!strcmp(getArgv(programArgv, i), "--report_perf"))
-            report_perf = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--plot_freq"))
-            plot_freq = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--code"))
-            code = atoi(getArgv(programArgv, ++i));
-         else if (!strcmp(getArgv(programArgv, i), "--blocking_send"))
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--report_perf"))
+            report_perf = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--plot_freq"))
+            plot_freq = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--code"))
+            code = atoi(ocrGetArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--blocking_send"))
             nonblocking = 0;
-         else if (!strcmp(getArgv(programArgv, i), "--refine_ghost"))
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--refine_ghost"))
             refine_ghost = 1;
-         else if (!strcmp(getArgv(programArgv, i), "--num_objects")) {
-            num_objects = atoi(getArgv(programArgv, ++i));
+         else if (!strcmp(ocrGetArgv(programArgv, i), "--num_objects")) {
+            num_objects = atoi(ocrGetArgv(programArgv, ++i));
 #ifndef BUILD_OCR_VERSION
             gasket__ma_malloc(glbl, &dbmeta__scratch_objects, (void *) &scratch_objects, num_objects*sizeof(Object_t), __FILE__, __LINE__);
             SUSPEND__RESUME_IN_CONTINUATION_EDT(;) // For the OCR version, this causes the above malloc(s) to be "seasoned", by passing control to a continuation EDT.
 #endif
             object_num = 0;
-         } else if (!strcmp(getArgv(programArgv, i), "--object")) {
+         } else if (!strcmp(ocrGetArgv(programArgv, i), "--object")) {
             if (object_num >= num_objects) {
                printf("object number greater than num_objects\n"); fflush(stdout);
                exit(-1);
             }
-            scratch_objects[object_num].type = atoi(getArgv(programArgv, ++i));
-            scratch_objects[object_num].bounce = atoi(getArgv(programArgv, ++i));
-            scratch_objects[object_num].cen[0] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].cen[1] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].cen[2] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].move[0] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].move[1] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].move[2] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].size[0] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].size[1] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].size[2] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].inc[0] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].inc[1] = atof(getArgv(programArgv, ++i));
-            scratch_objects[object_num].inc[2] = atof(getArgv(programArgv, ++i));
+            scratch_objects[object_num].type = atoi(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].bounce = atoi(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].cen[0] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].cen[1] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].cen[2] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].move[0] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].move[1] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].move[2] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].size[0] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].size[1] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].size[2] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].inc[0] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].inc[1] = atof(ocrGetArgv(programArgv, ++i));
+            scratch_objects[object_num].inc[2] = atof(ocrGetArgv(programArgv, ++i));
             object_num++;
-         } else if (!strcmp(getArgv(programArgv, i), "--help")) {
+         } else if (!strcmp(ocrGetArgv(programArgv, i), "--help")) {
             print_help_message(glbl);
 #ifdef BUILD_OCR_VERSION
             ocrShutdown();
@@ -1000,7 +1000,7 @@ void driver__soup_to_nuts(Globals_t * const glbl, int const tmp_my_pe)
             MPI_Abort(MPI_COMM_WORLD, -1);
 #endif
          } else {
-            printf("** Error ** Unknown input parameter %s\n", getArgv(programArgv, i)); fflush(stdout);
+            printf("** Error ** Unknown input parameter %s\n", ocrGetArgv(programArgv, i)); fflush(stdout);
             print_help_message(glbl);
 #ifdef BUILD_OCR_VERSION
             ocrShutdown();

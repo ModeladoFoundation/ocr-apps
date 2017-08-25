@@ -84,7 +84,7 @@ typedef struct{
 extern double wtime(void);
 
 void bomb(char * s) {
-    PRINTF("BOMB %s \n", s);
+    ocrPrintf("BOMB %s \n", s);
     ocrShutdown();
     return;
 }
@@ -195,11 +195,11 @@ printf("start time %f end time %f diff %f \n", *timerPTR, time, time-*timerPTR);
             time = time - *timerPTR;
 
             double avgtime = time/t;
-            if(ARRAY(n-1,k-1) == (t+1)*(n+m-2)) PRINTF("PASS checksum = %f   \n", ARRAY(n-1,k-1));
-              else PRINTF("FAIL  checksum = %f  should be %d \n", ARRAY(n-1,k-1), (t+1)*(n+m-2));
+            if(ARRAY(n-1,k-1) == (t+1)*(n+m-2)) ocrPrintf("PASS checksum = %f   \n", ARRAY(n-1,k-1));
+              else ocrPrintf("FAIL  checksum = %f  should be %d \n", ARRAY(n-1,k-1), (t+1)*(n+m-2));
             double flops = 1.0e-06*2*((double) (m-1))*(n-1)/avgtime;
             if(gf>1) flops = -flops;
-            PRINTF("Rate (MFlops/s): %f Avg time (s): %f\n", flops, avgtime);
+            ocrPrintf("Rate (MFlops/s): %f Avg time (s): %f\n", flops, avgtime);
             ocrShutdown();
             }
         return NULL_GUID;
@@ -607,10 +607,10 @@ ocrGuid_t mainEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[]){
 
 
     void * programArgv = depv[0].ptr;
-    u32 argc = getArgc(programArgv);
+    u32 argc = ocrGetArgc(programArgv);
 
 
-PRINTF("argc %d \n", argc);
+ocrPrintf("argc %d \n", argc);
     if((argc != 1) && (argc != 5) && (argc != 6)) {
         bomb("arg count should be 0 (use defaults), 4 (p, m, n, iterations) or 5 (optional group factor) \n");
         return NULL_GUID;
@@ -623,24 +623,24 @@ PRINTF("argc %d \n", argc);
     u64 gf = GF;
 
     if(argc > 4) {
-       p =  atoi(getArgv(programArgv, 1));
+       p =  atoi(ocrGetArgv(programArgv, 1));
        if(p<=0) bomb("p must be positive");
-       m =  atoi(getArgv(programArgv, 2));
+       m =  atoi(ocrGetArgv(programArgv, 2));
        if(m<=0) bomb("m must be positive");
-       n =  atoi(getArgv(programArgv, 3));
+       n =  atoi(ocrGetArgv(programArgv, 3));
        if(n<=0) bomb("n must be positive");
-       t =  atoi(getArgv(programArgv, 4));
+       t =  atoi(ocrGetArgv(programArgv, 4));
        if(t<=0) bomb("t must be positive");
-       if(argc == 6) gf =  atoi(getArgv(programArgv, 5));
+       if(argc == 6) gf =  atoi(ocrGetArgv(programArgv, 5));
        if(gf<=0) bomb("gf must be positive");
     }
 
-    PRINTF("number of workers   %d \n", p);
-    PRINTF("number of columns   %d \n", m);
-    PRINTF("number of rows      %d \n", n);
-    PRINTF("number of timesteps %d \n", t);
-    PRINTF("grouping factor     %d", gf);
-    if(gf == 1) PRINTF("\n"); else PRINTF(" (Cheating)\n");
+    ocrPrintf("number of workers   %d \n", p);
+    ocrPrintf("number of columns   %d \n", m);
+    ocrPrintf("number of rows      %d \n", n);
+    ocrPrintf("number of timesteps %d \n", t);
+    ocrPrintf("grouping factor     %d", gf);
+    if(gf == 1) ocrPrintf("\n"); else ocrPrintf(" (Cheating)\n");
 
     ocrGuid_t realMainTML, realMainEDT, sharedDBK, timerDBK;
 //create realMain

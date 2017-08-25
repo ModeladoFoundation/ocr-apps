@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
                 fileNameIn = optarg;
                 break;
             case 'd':
-                //PRINTF("Option d: printStatOut with value '%s'\n", optarg);
+                //ocrPrintf("Option d: printStatOut with value '%s'\n", optarg);
                 printStatOut = (int) atoi(optarg);
                 break;
             default:

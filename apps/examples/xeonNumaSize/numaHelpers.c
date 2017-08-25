@@ -16,12 +16,12 @@
 int showCpuAndNode() {
     int curCpu = sched_getcpu();
     if (curCpu == -1) {
-        PRINTF("  Call to sched_getcpu() failed returning %d [%s]\n",
+        ocrPrintf("  Call to sched_getcpu() failed returning %d [%s]\n",
                errno, strerror(errno));
         return -1;
     }
     int curNode = numa_node_of_cpu(curCpu);
-    PRINTF("  Running on cpu %d, node %d\n", curCpu, curNode);
+    ocrPrintf("  Running on cpu %d, node %d\n", curCpu, curNode);
     return 0;
 }
 
@@ -33,14 +33,14 @@ int showCpuAndNode() {
 int moveToNode(int newNode) {
     int iRet = numa_run_on_node(newNode);
     if (iRet != 0) {
-        PRINTF("ERROR: Call to numa_run_on_node(%d) failed returning %d\n",
+        ocrPrintf("ERROR: Call to numa_run_on_node(%d) failed returning %d\n",
                newNode, iRet);
         return -1;
     }
     // Need to call twice to force change to occur now.
     iRet = numa_run_on_node(newNode);
     if (iRet != 0) {
-        PRINTF("ERROR:  Call to numa_run_on_node(%d) failed returning %d\n",
+        ocrPrintf("ERROR:  Call to numa_run_on_node(%d) failed returning %d\n",
                newNode, iRet);
         return -1;
     }
@@ -61,7 +61,7 @@ int moveToCpu(int newCpu) {
 
     iRet = sched_setaffinity(0, sizeof(affinityMask), &affinityMask);
     if (iRet != 0) {
-        PRINTF("ERROR: Call to sched_setaffinity() failed! %d '%s'\n",
+        ocrPrintf("ERROR: Call to sched_setaffinity() failed! %d '%s'\n",
                errno, strerror(errno));
         return -1;
     }
@@ -76,13 +76,13 @@ int moveToCpu(int newCpu) {
 int getCurrentNumaNode() {
    int curCpu = sched_getcpu();
     if (curCpu == -1) {
-        PRINTF("ERROR: getCurrentNumaNode(): Call to sched_getcpu() failed "
+        ocrPrintf("ERROR: getCurrentNumaNode(): Call to sched_getcpu() failed "
                "returning %d [%s]\n", errno, strerror(errno));
         return -1;
     }
     int curNode = numa_node_of_cpu(curCpu);
     if (curNode < 0) {
-        PRINTF("ERROR: getCurrentNumaNode(): Failed to get node for cpu %d\n",
+        ocrPrintf("ERROR: getCurrentNumaNode(): Failed to get node for cpu %d\n",
                curCpu);
         return -1;
     }
@@ -100,7 +100,7 @@ int findMyMcdram() {
     int maxNode = numa_max_node();
     int numMemNodes = numa_num_task_nodes();
     if ((maxNode +1) != numMemNodes) {
-        PRINTF("ERROR:  findMyMcdram(): there are %d nodes, but this program "
+        ocrPrintf("ERROR:  findMyMcdram(): there are %d nodes, but this program "
                "can only use %d of them!\n", maxNode+1, numMemNodes);
         return -1;
     }
@@ -123,7 +123,7 @@ int findMyMcdram() {
             continue;
         // Skip any nodes that have CPUs on them
         if (numa_node_to_cpus(node, cpuMask) != 0) {
-            PRINTF("ERROR: findMyMcdram() was unable to fill cpuMask for "
+            ocrPrintf("ERROR: findMyMcdram() was unable to fill cpuMask for "
                    "node %d\n", node);
             return -1;
         }
@@ -134,7 +134,7 @@ int findMyMcdram() {
 
         int distance = numa_distance(curNode, node);
         if (distance == 0) {
-            PRINTF("WARNING: findMyMcdram() was unable to find distance "
+            ocrPrintf("WARNING: findMyMcdram() was unable to find distance "
                    "between NUMA nodes %d and %d. Continuing...\n",
                    curNode, node);
             continue;
@@ -151,11 +151,11 @@ int findMyMcdram() {
         mcdramNode = node;
     }
     if (mcdramNode == -1) {
-        PRINTF("ERROR: findMyMcdram() failed to find MCDRAM NUMA node!\n");
+        ocrPrintf("ERROR: findMyMcdram() failed to find MCDRAM NUMA node!\n");
         return -1;
     }
     if (numAtThisDistance > 1)
-        PRINTF("WARNING: findMyMcdram() Found %d NUMA nodes at minimum "
+        ocrPrintf("WARNING: findMyMcdram() Found %d NUMA nodes at minimum "
                "distance of %d, selecting %d as the MCDRAM node.\n",
                numAtThisDistance, minDist, mcdramNode);
 
@@ -178,9 +178,9 @@ void *allocateInLocalDram(size_t size, int debug) {
 
     void *mem = numa_alloc_onnode(size, curNode);
     if (debug) {
-        PRINTF("DEBUG: allocateInLocalDram(%lu) allocate NUMA node %d\n",
+        ocrPrintf("DEBUG: allocateInLocalDram(%lu) allocate NUMA node %d\n",
                size, curNode);
-        PRINTF("DEBUG: allocateInLocalDram(%lu) returns address %p\n",
+        ocrPrintf("DEBUG: allocateInLocalDram(%lu) returns address %p\n",
                size, mem);
     }
     return mem;
@@ -203,9 +203,9 @@ void *allocateInLocalMcdram(size_t size, int debug) {
     void *mem = numa_alloc_onnode(size, mcdramNode);
     if (debug) {
         int curNode = getCurrentNumaNode();
-        PRINTF("DEBUG: allocateInLocalMcdram(%lu) curNode=%d, allocate node=%d\n",
+        ocrPrintf("DEBUG: allocateInLocalMcdram(%lu) curNode=%d, allocate node=%d\n",
                size, curNode, mcdramNode);
-        PRINTF("DEBUG: allocateInLocalMcdram(%lu) returns address %p\n",
+        ocrPrintf("DEBUG: allocateInLocalMcdram(%lu) returns address %p\n",
                size, mem);
     }
     return mem;

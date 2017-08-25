@@ -18,9 +18,9 @@
 #define DEBUG 0
 
 #if DEBUG
-#define VERBOSEP(s) PRINTF(s)
-#define VERBOSEPA(s,v) PRINTF(s,v)
-#define VERBOSEPAA(s,v,w) PRINTF(s,v,w)
+#define VERBOSEP(s) ocrPrintf(s)
+#define VERBOSEPA(s,v) ocrPrintf(s,v)
+#define VERBOSEPAA(s,v,w) ocrPrintf(s,v,w)
 #else
 #define VERBOSEP(s)
 #define VERBOSEPA(s,v)

@@ -86,12 +86,12 @@ depv
         return NULL_GUID;
     case 1:
 //consume rtr
-        if(mynode==0) PRINTF("time %d rtr %f \n", timestep, SB->sum);
+        if(mynode==0) ocrPrintf("time %d rtr %f \n", timestep, SB->sum);
         if(timestep==0) SB->rtr0 = SB->sum;
            else if(SB->sum/SB->rtr0 < 1e-13 || timestep == T) {
-             for(i=0;i<M;i++) PRINTF("CG%d T%d  %d value %f \n", mynode, timestep, i, cgdata->x[i]);
+             for(i=0;i<M;i++) ocrPrintf("CG%d T%d  %d value %f \n", mynode, timestep, i, cgdata->x[i]);
              if(mynode == 0 && M==300 && N==20 && T==100) {
-                if(fabs(cgdata->x[0] - .999794) < 1e-5) PRINTF("PASS\n"); else PRINTF("FAIL difference %f is too large\n", cgdata->x[0] - .999794); }
+                if(fabs(cgdata->x[0] - .999794) < 1e-5) ocrPrintf("PASS\n"); else ocrPrintf("FAIL difference %f is too large\n", cgdata->x[0] - .999794); }
              return NULL_GUID;
         }
 //preconditioning
@@ -245,10 +245,10 @@ launches realmain (wrapup waits until realmain is done)
     u64 i;
     u64 *dummy;
     ocrGuid_t realMain, GSsharedBlock, userSharedBlock, realMainTemplate, output, wrapup, wrapupTemplate;
-    PRINTF("Preconditioned driver\n");
-    PRINTF("Number of timesteps is %d \n", T);
-    PRINTF("Number of workers is %d \n", N);
-    PRINTF("Rows per worker %d \n", M);
+    ocrPrintf("Preconditioned driver\n");
+    ocrPrintf("Number of timesteps is %d \n", T);
+    ocrPrintf("Number of workers is %d \n", N);
+    ocrPrintf("Rows per worker %d \n", M);
     ocrEdtTemplateCreate(&wrapupTemplate, wrapupEdt, 0, 1);
     ocrEdtTemplateCreate(&realMainTemplate, realMainEdt, 0, 2);
     ocrEdtCreate(&realMain, realMainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, &output);

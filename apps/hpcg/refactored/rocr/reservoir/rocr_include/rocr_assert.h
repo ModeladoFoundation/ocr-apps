@@ -33,14 +33,14 @@
 #define assert_msg(expr, msg, ...)\
     do {\
         if (!(expr)) {\
-            PRINTF("%s:%d ", __FILE__, __LINE__);\
-            PRINTF(msg, ##__VA_ARGS__);\
-            ASSERT(expr);\
+            ocrPrintf("%s:%d ", __FILE__, __LINE__);\
+            ocrPrintf(msg, ##__VA_ARGS__);\
+            ocrAssert(expr);\
             ocrAbort(1);\
         }\
     } while (0)
 
-#define dbg(msg, ...) PRINTF(msg, ##__VA_ARGS__)
+#define dbg(msg, ...) ocrPrintf(msg, ##__VA_ARGS__)
 
 #else // NDEBUG
 
