@@ -2049,7 +2049,7 @@ if(sbPTR->debug > 0)
     params.EVENT_REDUCTION.nbDatum       = 1;
     params.EVENT_REDUCTION.arity         = 2;
     params.EVENT_REDUCTION.op            = REDOP_F8_ADD;
-    params.EVENT_REDUCTION.type          = REDOP_ALLREDUCE;
+    params.EVENT_REDUCTION.type          = COL_ALLREDUCE;
     params.EVENT_REDUCTION.reuseDbPerGen = true;
     ocrEventCreateParams(&sbPTR->redEvtGuid, OCR_EVENT_REDUCTION_T, GUID_PROP_IS_LABELED, &params);
 
@@ -2062,7 +2062,7 @@ if(sbPTR->debug > 0)
     paramsTimerEvt.EVENT_REDUCTION.nbDatum       = 1;
     paramsTimerEvt.EVENT_REDUCTION.arity         = 2;
     paramsTimerEvt.EVENT_REDUCTION.op            = REDOP_F8_ADD;
-    paramsTimerEvt.EVENT_REDUCTION.type          = REDOP_ALLREDUCE; // should be REDOP_REDUCE - not supported
+    paramsTimerEvt.EVENT_REDUCTION.type          = COL_ALLREDUCE; // should be COL_REDUCE - not supported
     paramsTimerEvt.EVENT_REDUCTION.reuseDbPerGen = true;
     ocrEventCreateParams(&sbPTR->redEvtTimerGuid, OCR_EVENT_REDUCTION_T, GUID_PROP_IS_LABELED, &paramsTimerEvt);
 
