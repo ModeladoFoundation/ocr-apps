@@ -27,12 +27,14 @@
 #include <math.h>
 #include <mpi.h>
 
+
 #include "block.h"
 #include "comm.h"
 #include "timer.h"
 #include "proto.h"
 
 // Generate check sum for a variable over all active blocks.
+#ifndef USE_OCR
 double check_sum(int var)
 {
    int n, in, i, j, k;
@@ -65,4 +67,23 @@ double check_sum(int var)
    total_red++;
 
    return gsum;
+}
+#else
+
+//checksumming loop goes here.
+//
+
+void check_sum( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t *depv )
+{
+
+
+
+    return;
+}
+
+ocrGuid_t check_sum_reduce( u32 paramc, u64 * paramv, u32 dpec, ocrEdtDep_t *depv )
+{
+
+
+    return PARTIAL_SUM_GUID;
 }

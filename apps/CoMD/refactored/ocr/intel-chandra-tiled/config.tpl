@@ -1,24 +1,3 @@
-# ==========================================================================================================
-#
-# RMD Strawman ("Sunshine++") configuration file for F_SIM
-#
-# This file demonstrates how to set various parameters for the simulator to exercise with.
-#
-# Parameters have scoping rules - closer to actual specific agents in the block over-ride global settings.
-#
-# For example, the "verbose" flag may be over-ridden by later stages of configuration.  The global setting
-# is least-binding, while the per-unit setting is most binding.  So if a specific agent setting says "be
-# verbose", then it does not matter what other settings indicated.
-#
-# ==========================================================================================================
-#
-# Enumerate the list of machines to be used in distributed simulation runs
-#
-
-# ==========================================================================================================
-# Set up the basic parameters for a top-level single board of Sunshine to simulate - counts of objects and sizes.
-
-[environment]
    WORKLOAD_INSTALL = .
    WORKLOAD_EXEC = .
 
@@ -44,11 +23,10 @@
    nvm_size      = 128                          # size in MB per MC for external NVM
 
    cluster_count = 1                            # number of on-die clusters per socket
-
    fw_img_fname  = $(TG_INSTALL)/lib/fw.img          # file to load
    ce_img_fname  = $(WORKLOAD_INSTALL)/tgkrnl        # file to load
-   xe_img_fname  = $(WORKLOAD_INSTALL)/comd-ocrd        # file to load
-   bin_img_fname = $(WORKLOAD_INSTALL)/comd-ocrd.blob  # file to load
+   xe_img_fname  = $(WORKLOAD_INSTALL)/$(TARGET)        # file to load
+   bin_img_fname = $(WORKLOAD_INSTALL)/$(TARGET).blob  # file to load
 
 [ipmGlobal]
    verbose       = false
@@ -91,7 +69,7 @@
    cache_lineSZ  = 64                          # line size in bytes for cache module
    cache_policy  = 0x5                         # policy for the cache; at this time, only mode "0x5" (wite-back, write-allocate) is supported!
 
-   logfilebase   = comd-ocrd.log                  # what is the BASE path+filename to write log files to, default is STDERR
+   logfilebase   = $(TARGET).log                  # what is the BASE path+filename to write log files to, default is STDERR
 
 [sl2Global]
    verbose       = false
@@ -104,14 +82,12 @@
    logfile_redir = 0                           # ignore normal logfile routines; redirect all output for these to STDOUT if set to non-zero value
    cache_defined = 1                           # create a cache module for this agent class
    verbose       = false
-   trace         = 0x210000000UL # 0x8 #0x320000ULL                  # per bit definitions in ss/common/include/tg-trace.h
-#   trace         = 0x0 # 0x8 #0x320000ULL                  # per bit definitions in ss/common/include/tg-trace.h
+   trace         = 0 # 0x320000ULL                  # per bit definitions in ss/common/include/tg-trace.h
    enabled       = 1
 
 [XEglobal]
    cache_defined = 1                           # create a cache module for this agent class
-   trace         = 0x210000000UL #0xE                  # per bit definitions in ss/common/include/tg-trace.h
-#   trace         = 0x0 #0xE                  # per bit definitions in ss/common/include/tg-trace.h
+   trace         = 0 # 0x6                  # per bit definitions in ss/common/include/tg-trace.h
    verbose       = false
    enabled       = 1
 
@@ -122,5 +98,3 @@
 [NLNIglobal]
    verbose       = false
    trace         = 0                            # level and types of trace info to log in output (0 = off)
-
-

@@ -40,7 +40,7 @@
 //Define one, or all, of the followings in order to use halo exchanges; otherwise comment out.
 #define NKEBONE_USE_CHANNEL_FOR_HALO_MULTIPLICITY
 #define NKEBONE_USE_CHANNEL_FOR_HALO_SETF
-//#define NKEBONE_USE_CHANNEL_FOR_HALO_AI
+#define NKEBONE_USE_CHANNEL_FOR_HALO_AI
 
 #ifdef NKEBONE_USE_CHANNEL_FOR_HALO_MULTIPLICITY
 #   define NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
@@ -176,8 +176,8 @@ typedef struct ChannelStruct
 Err_t copy_ChannelStruct(ChannelStruct_t * in_from, ChannelStruct_t * o_target);
 
 // In the original Nekbone code, these variables have the following correspondence:
-//      pDOF       --> nx1, ny1, nz1    Note that nx1 == ny1 == nz1 is always true.
-//      pDOF3DperR       --> nx1*ny1*nz1*nelt
+//      pDOF        --> nx1, ny1, nz1    Note that nx1 == ny1 == nz1 is always true.
+//      pDOF3DperR  --> nx1*ny1*nz1*nelt
 //      rankID      --> nid
 //
 typedef struct NEKOglobals {

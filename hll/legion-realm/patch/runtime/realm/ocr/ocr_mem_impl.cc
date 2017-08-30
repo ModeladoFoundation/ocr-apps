@@ -1,4 +1,4 @@
-/* Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 #if USE_OCR_LAYER
 
 #include "ocr_mem_impl.h"
-
-#include "extensions/ocr-legacy.h"
 
 namespace Realm {
 
@@ -50,7 +48,7 @@ namespace Realm {
     ocrEventSatisfy(*((ocrGuid_t *)depv[0].ptr), ret_db_guid);
 
     //block the thread until memory destructor satisfies the event
-    ocrLegacyBlockProgress(data->block_evt_guid, NULL, NULL, NULL, LEGACY_PROP_NONE);
+    OCRUtil::ocrLegacyBlock(data->block_evt_guid);
 
     //cleanup the event
     ocrEventDestroy(data->block_evt_guid);
@@ -65,7 +63,7 @@ namespace Realm {
     // allocate our own space
     // enforce alignment on the whole memory range
     //base_orig = new char[_size + ALIGNMENT - 1];
-
+#if 0
     ocrGuid_t ret_evt_guid, ret_db_guid, ocr_realm_alloc_db_edt_t, ocr_realm_alloc_db_edt;
     ocrEdtTemplateCreate(&ocr_realm_alloc_db_edt_t, ocr_realm_alloc_db_func, 1, 1);
 
@@ -96,6 +94,10 @@ namespace Realm {
     ocrEventDestroy(ret_evt_guid);
     ocrDbDestroy(db_guid);
     ocrDbDestroy(ret_db_guid);
+#endif
+
+    size_t align_size = _size + ALIGNMENT - 1;
+    ocrDbCreate(& ocr_db_guid, (void **)(& base_orig), align_size, DB_PROP_NONE, NULL_HINT, NO_ALLOC);
 
     size_t ofs = reinterpret_cast<size_t>(base_orig) % ALIGNMENT;
     if(ofs > 0) {
@@ -112,7 +114,7 @@ namespace Realm {
   {
       //delete[] base_orig;
       //unblock the task that created the data block
-      ocrEventSatisfy(ocr_evt_guid, NULL_GUID);
+      //ocrEventSatisfy(ocr_evt_guid, NULL_GUID);
       //cleanup the memory buffer data block
       ocrDbDestroy(ocr_db_guid);
   }

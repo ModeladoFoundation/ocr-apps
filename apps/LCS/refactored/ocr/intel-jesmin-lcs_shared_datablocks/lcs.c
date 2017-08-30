@@ -165,7 +165,7 @@ ocrGuid_t recLCSEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]){
     if(n<=base)
     {
 
-		//PRINTF("Calling basecase N: %lu, base: %lu, xi: %lu, xj: %lu, n: %lu \n", p->N, base, p->xi, p->xj, p->n);
+		//ocrPrintf("Calling basecase N: %lu, base: %lu, xi: %lu, xj: %lu, n: %lu \n", p->N, base, p->xi, p->xj, p->n);
 
 		// First get the data blocks you need by using their guids
         //inline serial_lcs_1D(long* X, int *S, int *T, long int xi, long int xj, long int n)
@@ -217,7 +217,7 @@ ocrGuid_t recLCSEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]){
 
         long nn = n >> 1;
 
-		//PRINTF("Working on size: %lu\n", nn);
+		//ocrPrintf("Working on size: %lu\n", nn);
 
 		//---------------------------Call for x11-------------------------------------------
 		LCS_task_params p1;
@@ -325,11 +325,11 @@ ocrGuid_t shutDownEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	long true_value = (long)paramv[1];
 
 	long end = cilk_getticks();
-	PRINTF("runtime: %f\n",cilk_ticks_to_seconds(end-(long)paramv[2]));
+	ocrPrintf("runtime: %f\n",cilk_ticks_to_seconds(end-(long)paramv[2]));
 
 	assert(true_value==score[paramv[0]]);
 
-    PRINTF("\nShutting down OCR runtime\n");
+    ocrPrintf("\nShutting down OCR runtime\n");
 
 	ocrShutdown(); // This is the last EDT to execute, terminate
     return NULL_GUID;
@@ -354,7 +354,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 	// Collect command line arguments.
     ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
     void * PTR_cmdLineArgs = depv[0].ptr;
-	u32 argc = getArgc(PTR_cmdLineArgs);
+	u32 argc = ocrGetArgc(PTR_cmdLineArgs);
 
 	// Input params and default values.
     long N = 1024; // string length
@@ -363,22 +363,22 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
 	if(argc<1)
 	{
-		PRINTF("USAGE: please run the program as follows:\n"
+		ocrPrintf("USAGE: please run the program as follows:\n"
 		     "executable input_string_length number_of_cores basecase\n");
 		exit(1);
 	}
 
 	if(argc > 1)
 	{
-		N = (long) atol(getArgv(PTR_cmdLineArgs, 1));
+		N = (long) atol(ocrGetArgv(PTR_cmdLineArgs, 1));
 	}
 	if(argc > 2)
 	{
-		base = (long) atol(getArgv(PTR_cmdLineArgs, 2));
+		base = (long) atol(ocrGetArgv(PTR_cmdLineArgs, 2));
 	}
 	if(argc > 3)
 	{
-		num_workers = (s64) atol(getArgv(PTR_cmdLineArgs, 3));
+		num_workers = (s64) atol(ocrGetArgv(PTR_cmdLineArgs, 3));
 	}
 
 
@@ -388,8 +388,8 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 	// Actual allocation size
 
 
-    PRINTF("\n");
-    PRINTF("Running LCS.\nStrings len: %ld # workers: %d, basecase: %ld\n", N, num_workers, base);
+    ocrPrintf("\n");
+    ocrPrintf("Running LCS.\nStrings len: %ld # workers: %d, basecase: %ld\n", N, num_workers, base);
 
     s64 Nplus1 = N + 1;
 	#ifdef CHECK_RESULTS
@@ -460,25 +460,25 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
 	long true_value;
 	#ifdef CHECK_RESULTS
-	//PRINTF("\n_S: ");
+	//ocrPrintf("\n_S: ");
 	for(int i = 0; i <Nplus1; i++)
     {
 	    _S[i] = S[i];
-		//PRINTF("%ld ", _S[i]);
+		//ocrPrintf("%ld ", _S[i]);
 
 	}
-    //PRINTF("\n_T: ");
+    //ocrPrintf("\n_T: ");
 	for(int i = 0; i <Nplus1; i++)
     {
 	    _T[i]=T[i];
-		//PRINTF("%ld ", _T[i]);
+		//ocrPrintf("%ld ", _T[i]);
 
 	}
-	//PRINTF("\n");
+	//ocrPrintf("\n");
 
 	serial_lcs(score, _S, _T, 1, 1, N);
 
-	//PRINTF("Sane value: %ld \n", score[N]);
+	//ocrPrintf("Sane value: %ld \n", score[N]);
 	true_value = score[N];
 
 	free(_S);

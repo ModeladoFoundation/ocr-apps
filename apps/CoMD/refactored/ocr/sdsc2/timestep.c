@@ -17,7 +17,7 @@ static ocrGuid_t exchange_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
 //depv: timer, sim, mass, DBK_linkCellGuidsH, DBK_atomDataGuidsH
 ocrGuid_t period_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-  //PRINTF("%s\n",__func__);
+  //ocrPrintf("%s\n",__func__);
   PRM_period_edt_t* PTR_PRM_period_edt = (PRM_period_edt_t*) paramv;
 
   ocrGuid_t timer_g = depv[0].guid;
@@ -244,7 +244,7 @@ static inline void move_atom(u8 s, atomData_t* sPTR_atomData, atomData_t* dPTR_a
     copy_atom(sPTR_atomData->atoms,s,sPTR_atomData,sPTR_atomData,sPTR_linkCell,sPTR_linkCell);
   if(++dPTR_atomData->atoms>dPTR_linkCell->max_occupancy)
     dPTR_linkCell->max_occupancy = dPTR_atomData->atoms;
-  ASSERT(dPTR_atomData->atoms<=MAXATOMS);
+  ocrAssert(dPTR_atomData->atoms<=MAXATOMS);
 }
 
 //depv: DBK_atomDataH0, DBK_linkCellH0, DBK_atomDataH1, DBK_linkCellH1

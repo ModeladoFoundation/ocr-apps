@@ -67,7 +67,7 @@ CFLAGS := -DDOUBLE --ompss
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS_OMPSS := -L$(NANOS_HOME)/lib -lnanos6
-LDFLAGS := -ltimer $(EXTRALDFLAGS)
+LDFLAGS := -ltimer
 
 # Targets:
 #   - all:     Build the application.

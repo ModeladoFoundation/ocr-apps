@@ -4,7 +4,7 @@
 void ConsumerTask(s32 expected, ocxxr::Datablock<s32> actual) {
     PRINTF("Consumer %" PRIu32 " got value %" PRIu32 ".\n", expected,
            actual.data());
-    ASSERT(expected == actual.data());
+    assert(expected == actual.data());
     if (expected == 0) {
         PRINTF("Shutting down...\n");
         ocxxr::Shutdown();

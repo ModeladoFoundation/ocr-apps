@@ -14,7 +14,7 @@ esac
 
 PROFILER_LIST=("noProf") # "minimalProf" "detailedProf")
 SCALINGTYPE_LIST=("weakscaling") # "strongscaling")
-SIZE_LIST_STENCIL2D=("small" "medium")
+SIZE_LIST=("small" "medium")
 TASKFACTOR_LIST=(1 2)  #4 seems to be hanging with OCR
 ARCH_LIST=("x86" "x86-mpi")
 SCHEDULER_LIST=("workstealing") #  "static")

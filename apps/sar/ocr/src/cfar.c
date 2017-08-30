@@ -10,7 +10,7 @@ ocrGuid_t post_CFAR_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdt
 	int retval;
     postCFARPRM_t *postCFARParamvIn  = (postCFARPRM_t *)paramv;
 #ifdef TRACE_LVL_2
-PRINTF("//// enter post_CFAR_edt\n");RAG_FLUSH;
+ocrPrintf("//// enter post_CFAR_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==1);
 #ifdef TG_ARCH
@@ -19,7 +19,7 @@ PRINTF("//// enter post_CFAR_edt\n");RAG_FLUSH;
        FILE *pOutFile = postCFARParamvIn->pOutFile;
 #endif
 #ifdef TRACE_LVL_2
-PRINTF("//// pOutFile = %lx\n",pOutFile);RAG_FLUSH;
+ocrPrintf("//// pOutFile = %lx\n",pOutFile);RAG_FLUSH;
 #endif
 	assert(depc==3);
 RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,0);
@@ -36,25 +36,25 @@ RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,1);
 	qsort(Y, Nd, sizeof(struct detects), compare_detects);
 #else
 #ifdef TRACE_LVL_2
-PRINTF("//// SKIPPING Sort of the detections\n");RAG_FLUSH;
+ocrPrintf("//// SKIPPING Sort of the detections\n");RAG_FLUSH;
 #endif
 #endif
 
 #ifdef TRACE_LVL_2
-PRINTF("//// Output to file %d detects\n",Nd);RAG_FLUSH;
+ocrPrintf("//// Output to file %d detects\n",Nd);RAG_FLUSH;
 #endif
 	for(int m=0; m<Nd; m++) {
 #ifndef TG_ARCH
 		fprintf(pOutFile,"(x=%7.2f m, y=%7.2f m, p=%4.2f)\n", Y[m].x, Y[m].y, Y[m].p); // RAG -- Chaged to match latest code from Dan Campell
 #else
-		PRINTF("(x=0x%x m, y=0x%x m, p=0x%x)\n",
+		ocrPrintf("(x=0x%x m, y=0x%x m, p=0x%x)\n",
 			 *(uint32_t *)&Y[m].x, *(uint32_t *)&Y[m].y, *(uint32_t *)&Y[m].p);
 #endif
 	} // for m
 
 	bsm_free(p_Nd,Nd_dbg);
 #ifdef TRACE_LVL_2
-PRINTF("//// leave post_CFAR_edt\n");RAG_FLUSH;
+ocrPrintf("//// leave post_CFAR_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -63,7 +63,7 @@ ocrGuid_t CFAR_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t
 	int retval;
     CFARPRM_t *CFARParamvIn = (CFARPRM_t *)paramv;
 #ifdef TRACE_LVL_2
-PRINTF("//// enter CFAR_edt\n");RAG_FLUSH;
+ocrPrintf("//// enter CFAR_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==PRMNUM(CFAR));
 	ocrGuid_t post_CFAR_scg = CFARParamvIn->post_CFAR_scg;
@@ -85,7 +85,7 @@ RAG_REF_MACRO_BSM( struct detects *,Y,NULL,NULL,Y_dbg,3);
 		Y, Y_dbg, post_CFAR_scg);
 
 #ifdef TRACE_LVL_2
-PRINTF("//// leave CFAR_edt\n");RAG_FLUSH;
+ocrPrintf("//// leave CFAR_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -115,7 +115,7 @@ ocrGuid_t cfar_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEd
 	int retval;
     CFARAsyncPRM_t *CFARAsyncParamvIn = (CFARAsyncPRM_t *)paramv;
 #ifdef TRACE_LVL_3
-PRINTF("////// enter cfar_async_edt\n");RAG_FLUSH;
+ocrPrintf("////// enter cfar_async_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==PRMNUM(CFARAsync));
     struct corners_t *corners = &(CFARAsyncParamvIn->corners);
@@ -140,20 +140,20 @@ RAG_REF_MACRO_BSM( int *,p_Nd,NULL,NULL,Nd_dbg,4);
 	// CUT's correlation value must be below Tcorr to be eligible for detection
 
 #ifdef TRACE_LVL_3
-PRINTF("////// cfar_async m1 m2 n1 n2 %d %d %d %d\n",m1,m2,n1,n2);RAG_FLUSH;
+ocrPrintf("////// cfar_async m1 m2 n1 n2 %d %d %d %d\n",m1,m2,n1,n2);RAG_FLUSH;
 #endif
 
 	ocrGuid_t pLocal_dbg;
         pLocal = (float **)spad_malloc(&pLocal_dbg,(cfar_params->Ncfar)*sizeof(float*)
 						  +(cfar_params->Ncfar)*(cfar_params->Ncfar)*sizeof(float));
         if(pLocal == NULL) {
-            PRINTF("Error allocating edge vector for local correlation map.\n");RAG_FLUSH;
+            ocrPrintf("Error allocating edge vector for local correlation map.\n");RAG_FLUSH;
             xe_exit(1);
         }
 
 	float * pLocal_data_ptr = (float *)&pLocal[cfar_params->Ncfar];
         if (pLocal_data_ptr == NULL) {
-            PRINTF("Error allocating data memory for local correlation map.\n");RAG_FLUSH;
+            ocrPrintf("Error allocating data memory for local correlation map.\n");RAG_FLUSH;
             xe_exit(1);
         }
         for(int m=0; m<cfar_params->Ncfar; m++)
@@ -173,7 +173,7 @@ PRINTF("////// cfar_async m1 m2 n1 n2 %d %d %d %d\n",m1,m2,n1,n2);RAG_FLUSH;
                 } // for i
 
 #ifdef DEBUG_LVL_2
-PRINTF("////// Create guard window\n");RAG_FLUSH;
+ocrPrintf("////// Create guard window\n");RAG_FLUSH;
 #endif
                 for(int i=(cfar_params->Ncfar-1)/2-(cfar_params->Nguard-1)/2; i<=(cfar_params->Ncfar-1)/2+(cfar_params->Nguard-1)/2; i++) {
                     for(int j=(cfar_params->Ncfar-1)/2-(cfar_params->Nguard-1)/2; j<=(cfar_params->Ncfar-1)/2+(cfar_params->Nguard-1)/2; j++) {
@@ -182,7 +182,7 @@ PRINTF("////// Create guard window\n");RAG_FLUSH;
                 } // for i
 
 #ifdef DEBUG_LVL_3
-PRINTF("////// Calculate threshold\n");RAG_FLUSH;
+ocrPrintf("////// Calculate threshold\n");RAG_FLUSH;
 #endif
 #ifdef RAG_PURE_FLOAT
                 T = (int)floorf(cfar_params->Tcfar/100.0f*(cfar_params->Ncfar*cfar_params->Ncfar-cfar_params->Nguard*cfar_params->Nguard));
@@ -193,7 +193,7 @@ PRINTF("////// Calculate threshold\n");RAG_FLUSH;
                 CUT = corr_map[mIndex][nIndex].p;
 
 #ifdef DEBUG_LVL_2
-PRINTF("////// Ensure CUT's correlation value is below the correlation threshold\n");RAG_FLUSH;
+ocrPrintf("////// Ensure CUT's correlation value is below the correlation threshold\n");RAG_FLUSH;
 #endif
                 if(CUT < Tcorr) {
                     for(int i=cnt=0; i<cfar_params->Ncfar; i++) {
@@ -212,7 +212,7 @@ PRINTF("////// Ensure CUT's correlation value is below the correlation threshold
 			    Y[nd].p = CUT;
 
 #ifdef DEBUG_LVL_2
-PRINTF("detect %d x = 0x%x y = 0x%x p = 0x%x (%d,%d)\n",nd,*(uint32_t *)&Y[nd].x,*(uint32_t *)&Y[nd].y,*(uint32_t *)&Y[nd].p,*(int32_t *)&corr_map[mIndex][nIndex].x,*(int32_t *)&corr_map[mIndex][nIndex].y);RAG_FLUSH;
+ocrPrintf("detect %d x = 0x%x y = 0x%x p = 0x%x (%d,%d)\n",nd,*(uint32_t *)&Y[nd].x,*(uint32_t *)&Y[nd].y,*(uint32_t *)&Y[nd].p,*(int32_t *)&corr_map[mIndex][nIndex].x,*(int32_t *)&corr_map[mIndex][nIndex].y);RAG_FLUSH;
 #endif
                     } // if cnt
                 } // if CUT
@@ -222,7 +222,7 @@ PRINTF("detect %d x = 0x%x y = 0x%x p = 0x%x (%d,%d)\n",nd,*(uint32_t *)&Y[nd].x
         spad_free(pLocal,pLocal_dbg);
 
 #ifdef TRACE_LVL_3
-PRINTF("////// leave cfar_async_edt\n");RAG_FLUSH;
+ocrPrintf("////// leave cfar_async_edt\n");RAG_FLUSH;
 #endif
     return NULL_GUID;
 }
@@ -236,12 +236,12 @@ void CFAR(
 	int Mwins, Nwins;
 
 #ifdef TRACE_LVL_2
-PRINTF("//// enter CFAR\n");RAG_FLUSH;
+ocrPrintf("//// enter CFAR\n");RAG_FLUSH;
 #endif
 	Mwins = image_params->Iy - image_params->Ncor - cfar_params->Ncfar + 2;
 	Nwins = image_params->Ix - image_params->Ncor - cfar_params->Ncfar + 2;
 #ifdef TRACE_LVL_2
-PRINTF("//// Mwins == %d and Nwins == %d, Ncfar == %d, Ncor == %d\n",Mwins,Nwins,cfar_params->Ncfar,image_params->Ncor);RAG_FLUSH;
+ocrPrintf("//// Mwins == %d and Nwins == %d, Ncfar == %d, Ncor == %d\n",Mwins,Nwins,cfar_params->Ncfar,image_params->Ncor);RAG_FLUSH;
 #endif
 
 	ocrGuid_t Nd_dbg;
@@ -258,13 +258,13 @@ PRINTF("//// Mwins == %d and Nwins == %d, Ncfar == %d, Ncor == %d\n",Mwins,Nwins
 #endif
 
 #ifdef TRACE_LVL_2
-PRINTF("//// satisfy non event guids for post_CFAR_scg\n");RAG_FLUSH;
+ocrPrintf("//// satisfy non event guids for post_CFAR_scg\n");RAG_FLUSH;
 #endif
 RAG_DEF_MACRO_PASS(post_CFAR_scg,NULL,NULL,NULL,NULL,Y_dbg,0);
 RAG_DEF_MACRO_PASS(post_CFAR_scg,NULL,NULL,NULL,NULL,Nd_dbg,1);
 
 #ifdef TRACE_LVL_2
-PRINTF("//// create a template for cfar_async function\n");RAG_FLUSH;
+ocrPrintf("//// create a template for cfar_async function\n");RAG_FLUSH;
 #endif
 	ocrGuid_t cfar_async_clg;
 	retval = ocrEdtTemplateCreate(
@@ -293,7 +293,7 @@ PRINTF("//// create a template for cfar_async function\n");RAG_FLUSH;
 			async_corners.n2   = n+CFAR_ASYNC_BLOCK_SIZE_N;
 #endif
 #ifdef TRACE_LVL_2
-PRINTF("////// create an edt for cfar_async\n");RAG_FLUSH;
+ocrPrintf("////// create an edt for cfar_async\n");RAG_FLUSH;
 #endif
 			ocrGuid_t cfar_async_scg;
             CFARAsyncPRM_t cfarAsyncParamv;
@@ -319,7 +319,7 @@ RAG_DEF_MACRO_PASS(cfar_async_scg,NULL,NULL,NULL,NULL,Nd_dbg,4);
 	} // for m
 
 #ifdef TRACE_LVL_2
-PRINTF("//// leave CFAR\n");RAG_FLUSH;
+ocrPrintf("//// leave CFAR\n");RAG_FLUSH;
 #endif
 	return;
 }

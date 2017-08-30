@@ -2,7 +2,7 @@
 
 void ChildTask(ocxxr::Datablock<u32>) {
     PRINTF("Child task ran! (BAD!)\n");
-    ASSERT(false);
+    assert(false);
 }
 
 void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {

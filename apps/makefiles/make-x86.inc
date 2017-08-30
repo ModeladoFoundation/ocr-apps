@@ -42,6 +42,10 @@ ifeq ($(OCRRUN_ITAC), yes)
   CFLAGS += -fno-omit-frame-pointer
 endif
 
+ifeq ($(OCR_TYPE), x86-gasnet)
+  LDFLAGS += -L${GASNET_ROOT}/lib -lgasnet-${GASNET_CONDUIT}-${GASNET_TYPE} ${GASNET_EXTRA_LIBS}
+endif
+
 ifeq ($(OCR_ASAN), yes)
   ASAN_FLAGS := -g -fsanitize=address -fno-omit-frame-pointer
   CFLAGS += $(ASAN_FLAGS)
@@ -61,7 +65,7 @@ CONFIG_NUM_THREADS    ?= 4
 # Legacy support for COMM_LAYER flag
 CONFIG_COMM_LAYER     ?= $(COMM_LAYER)
 ifeq ($(strip $(CONFIG_COMM_LAYER)),)
-  ifeq ($(OCR_TYPE), x86-mpi)
+  ifeq ( ,$(filter-out x86-mpi x86-phi-mpi, $(OCR_TYPE)))
     CONFIG_COMM_LAYER     := mpi
   else ifeq ($(OCR_TYPE), x86-gasnet)
     CONFIG_COMM_LAYER     := gasnet
@@ -104,6 +108,13 @@ else
   CONFIG_GENERATE       := "INVALID USE OF CONFIG GENERATE"
 endif
 
+ifeq ($(OCR_TYPE), x86-phi)
+  CONFIG_AMEND          := ${OCR_INSTALL}/share/ocr/scripts/Configs/combine-configs.py
+  MCDRAM_CONFIG         := ${OCR_INSTALL}/share/ocr/config/x86-phi/knl_mcdram.cfg
+  NUM_CPU_NODES         := $(shell numactl -s|grep ^cpubind|sed 's/\ /\n/g'| wc -l)
+  NUMA_OFFSET           := $(shell echo $(NUM_CPU_NODES)-2|bc -l)
+endif
+
 GEN_CONFIG_FILE       := ${WORKLOAD_INSTALL}/generated.cfg
 
 ifeq ($(strip $(OCR_CONFIG)),)
@@ -129,6 +140,14 @@ ifeq ($(FORCE_CC), no)
       $(info Setting CC to mpicc)
       # default to mpicc if CC=cc (that's the default value from make)
       CC = mpicc
+    else ifeq ($(OCR_TYPE), x86-phi-mpi)
+      $(info Setting CC to mpiicc)
+      # default to mpiicc if CC=cc (that's the default value from make)
+      CC = mpiicc
+    else ifeq ($(OCR_TYPE), x86-phi)
+      $(info Setting CC to icc)
+      # default to icc if CC=cc (that's the default value from make)
+      CC = icc
     else
       # For other platforms, use gcc
       $(info Setting CC to gcc)
@@ -137,7 +156,7 @@ ifeq ($(FORCE_CC), no)
   endif # End of ifeq cc
 
   ifeq ($(CC), icc)
-    ifeq ($(OCR_TYPE), x86-mpi)
+    ifeq ( ,$(filter x86-mpi x86-phi-mpi, $(OCR_TYPE)))
       $(info Setting CC to mpiicc)
       CC = mpiicc
     endif
@@ -182,7 +201,7 @@ ifeq ($(ENABLE_VISUALIZER), yes)
   CONFIG_FLAGS_BASE := --guid COUNTED_MAP
 endif
 
-ifeq ( ,$(filter-out x86-mpi x86-gasnet, $(OCR_TYPE)))
+ifeq ( ,$(filter-out x86-mpi x86-gasnet x86-phi-mpi, $(OCR_TYPE)))
   CONFIG_FLAGS_BASE := --guid COUNTED_MAP
 endif
 
@@ -259,7 +278,7 @@ install_internal: preinstall $(CONFIG_GENERATE) | $(WORKLOAD_INSTALL)
 	@echo ""
 	@echo "####"
 	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or, manually (in bash):"
-	@echo "export OCR_INSTALL=${OCR_INSTALL} && export LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:\$$(LD_LIBRARY_PATH) "\
+	@echo "export OCR_INSTALL=${OCR_INSTALL} && export LD_LIBRARY_PATH=$(OCR_INSTALL)/lib:$(APPS_LIBS_INSTALL)/lib:\$${LD_LIBRARY_PATH} "\
 	"&& export OCR_CONFIG=${OCR_CONFIG} and run the executable $(TARGET) in $(WORKLOAD_INSTALL)"
 	@echo "####"
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET)
@@ -290,6 +309,11 @@ else
   debug_post_prerun: prerun
 endif
 
+# Rule to allow generating a cfg file with inhereted application's specific values
+.PHONY: run_config_generator
+run_config_generator:
+	$(ATI)$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(OCR_CONFIG) --target $(CONFIG_COMM_LAYER) $(CONFIG_FLAGS_BASE) $(CONFIG_FLAGS)
+
 .PHONY: run_internal
 run_internal: WORKLOAD_EXEC ?= $(WORKLOAD_INSTALL)
 
@@ -300,6 +324,11 @@ else
   run_internal: install debug_post_prerun $(CONFIG_GENERATE)
   ifeq ($(OCR_CONFIG), $(GEN_CONFIG_FILE))
 	$(ATI)$(CONFIG_GENERATE) --remove-destination --threads $(CONFIG_NUM_THREADS) --output $(GEN_CONFIG_FILE) --target $(CONFIG_COMM_LAYER) $(CONFIG_FLAGS_BASE) $(CONFIG_FLAGS)
+    ifeq ($(OCR_TYPE), x86-phi)
+# Add the extra allocator for MCDRAM and fix up the NUMA node number
+	$(ATI)$(CONFIG_AMEND) --file $(GEN_CONFIG_FILE) $(MCDRAM_CONFIG)
+	@sed -i 's/numa_node = 1/numa_node = $(NUMA_OFFSET)/' $(GEN_CONFIG_FILE)
+    endif # OCR_TYPE
   endif # OCR_CONFIG
 endif # RUN_MODE
 ifeq ($(HOSTNAME), bar1)

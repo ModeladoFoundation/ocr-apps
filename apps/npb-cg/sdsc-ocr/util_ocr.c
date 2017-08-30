@@ -43,12 +43,12 @@ double timer_read(timerdb_t* timerdb, u8 tr)
 
 void print_results(classdb_t* class, double t, double mops)
 {
-    PRINTF("CG Benchmark Completed\n");
-    PRINTF("Class           = %12c\n",  class->c);
-    PRINTF("Size            = %12lu\n", class->na);
-    PRINTF("Iterations      = %12u\n",  class->niter);
-    PRINTF("Time in seconds = %12.2f\n", t);
-    PRINTF("MFLOPS total    = %12.2f\n", mops);
+    ocrPrintf("CG Benchmark Completed\n");
+    ocrPrintf("Class           = %12c\n",  class->c);
+    ocrPrintf("Size            = %12lu\n", class->na);
+    ocrPrintf("Iterations      = %12u\n",  class->niter);
+    ocrPrintf("Time in seconds = %12.2f\n", t);
+    ocrPrintf("MFLOPS total    = %12.2f\n", mops);
 }
 
 void class_init(classdb_t** class, ocrGuid_t* guid, char c, u32 b)

@@ -9,13 +9,13 @@ void fork_eam_force(ocrGuid_t sim, simulation* sim_ptr, ocrGuid_t cont, ocrGuid_
 
 void eam_print(potential* p)
 {
-  PRINTF("  Potential type   : EAM\n");
-  PRINTF("  Species name     : %s\n", p->name);
-  PRINTF("  Atomic number    : %d\n", p->atomic_no);
-  PRINTF("  Mass             : %f amu\n", p->mass / amu2internal_mass); // print in amu
-  PRINTF("  Lattice Type     : %s\n", p->lattice_type);
-  PRINTF("  Lattice spacing  : %f Angstroms\n", p->lat);
-  PRINTF("  Cutoff           : %f Angstroms\n", p->cutoff);
+  ocrPrintf("  Potential type   : EAM\n");
+  ocrPrintf("  Species name     : %s\n", p->name);
+  ocrPrintf("  Atomic number    : %d\n", p->atomic_no);
+  ocrPrintf("  Mass             : %f amu\n", p->mass / amu2internal_mass); // print in amu
+  ocrPrintf("  Lattice Type     : %s\n", p->lattice_type);
+  ocrPrintf("  Lattice spacing  : %f Angstroms\n", p->lat);
+  ocrPrintf("  Cutoff           : %f Angstroms\n", p->cutoff);
 }
 
 static void init_interpolator(interpolator* i, u32 n, real_t x0, real_t dx, ocrGuid_t buffer, real_t* buffer_ptr)
@@ -43,7 +43,7 @@ static u8 eam_init_setfl(potential* pot, const char* pot_dir, char* pot_name)
 
   FILE* file = fopen(tmp, "r");
   if(file == NULL) {
-    PRINTF("potential file %s not found\n", tmp);
+    ocrPrintf("potential file %s not found\n", tmp);
     return 3;
   }
 
@@ -76,7 +76,7 @@ static u8 eam_init_setfl(potential* pot, const char* pot_dir, char* pot_name)
   sscanf(tmp, "%u", &elements);
 #endif
   if(elements != 1) {
-    PRINTF("found %u species, alloy currently not supported\n", elements);
+    ocrPrintf("found %u species, alloy currently not supported\n", elements);
     return 3;
   }
 
@@ -190,7 +190,7 @@ static u8 eam_init_funcfl(potential* pot, const char* pot_dir, char* pot_name)
 
   FILE* file = fopen(tmp, "r");
   if(file == NULL) {
-    PRINTF("potential file %s not found\n", tmp);
+    ocrPrintf("potential file %s not found\n", tmp);
     return 3;
   }
 
@@ -323,7 +323,7 @@ u8 init_eam(const char* pot_dir, char* pot_name, const char* pot_type, potential
   else if(strcmp(pot_type,"funcfl") == 0)
      insane = eam_init_funcfl(p, pot_dir, pot_name);
   else {
-    PRINTF("EAM Type not supported\n");
+    ocrPrintf("EAM Type not supported\n");
     return 1;
   }
   if(!insane) {

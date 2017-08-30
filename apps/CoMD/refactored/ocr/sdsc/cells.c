@@ -51,7 +51,7 @@ static void move_atom(box** bxs_ptr, u32 src, u32 a, u32 dst)
 {
   copy_atom(bxs_ptr[src], a, bxs_ptr[dst], bxs_ptr[dst]->atoms);
   ++bxs_ptr[dst]->atoms;
-  ASSERT(bxs_ptr[dst]->atoms < MAXATOMS);
+  ocrAssert(bxs_ptr[dst]->atoms < MAXATOMS);
   if(--bxs_ptr[src]->atoms)
     copy_atom(bxs_ptr[src], bxs_ptr[src]->atoms, bxs_ptr[src], a);
 }
@@ -79,7 +79,7 @@ static void move_atom2(box* src_ptr, u32 a, box* dst_ptr)
 {
   copy_atom(src_ptr, a, dst_ptr, dst_ptr->atoms);
   ++dst_ptr->atoms;
-  ASSERT(dst_ptr->atoms < MAXATOMS);
+  ocrAssert(dst_ptr->atoms < MAXATOMS);
   if(--src_ptr->atoms)
     copy_atom(src_ptr, src_ptr->atoms, src_ptr, a);
 }

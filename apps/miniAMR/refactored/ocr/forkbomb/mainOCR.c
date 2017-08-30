@@ -21,13 +21,13 @@ ocrGuid_t stencilEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     block_t PRM_block;
     memcpy( &PRM_block, paramv, sizeof(block_t) );
 
-    //PRINTF("StencilEdt!\n");
+    //ocrPrintf("StencilEdt!\n");
     /*PRM_stencilEdt_t * PRM_stencilEdt = (PRM_stencilEdt_t *)paramv;
 
     ocrGuid_t stencilTML, stencilGUID;
     comm_t * comms = (comm_t *)depv[0].ptr;
 
-    if( PRM_stencilEdt->id == 0 ) PRINTF("%d\n", PRM_stencilEdt->timestep);
+    if( PRM_stencilEdt->id == 0 ) ocrPrintf("%d\n", PRM_stencilEdt->timestep);
     if( PRM_stencilEdt->timestep < 100 ) {
         ocrEdtTemplateCreate( &stencilTML, stencilEdt, paramc, depc );
         PRM_stencilEdt->timestep++;
@@ -64,7 +64,7 @@ ocrGuid_t haloRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     if( depc == 4 ) {
         //combine the 4 values.
         //return the composite
-        //PRINTF("all four evts from neighbors have been satisfied!\n");
+        //ocrPrintf("all four evts from neighbors have been satisfied!\n");
     }
 
     return NULL_GUID;
@@ -83,7 +83,7 @@ ocrGuid_t haloSnd( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     }
     else if( paramc == ((sizeof(ocrGuid_t)/sizeof(u64))+1) * 4)
     {
-        PRINTF("SENDING 4 CHANNELS\n");
+        ocrPrintf("SENDING 4 CHANNELS\n");
         ocrGuid_t *sendChannels = (ocrGuid_t *)paramv;
         u64 i;
         for( i = 0; i < 4; i++ )
@@ -101,7 +101,7 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
     if( PRM_block.timestep < 1500 )
     {
-        if( PRM_block.id == 0 ) PRINTF("%ld\n", PRM_block.timestep);
+        if( PRM_block.id == 0 ) ocrPrintf("%ld\n", PRM_block.timestep);
         if( PRM_block.timestep % 50 == 0 )
         {
             PRM_block.timestep++;
@@ -110,7 +110,7 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
         } else {
             PRM_block.timestep++;
 
-            //PRINTF("%ld\n", PRM_block.id);
+            //ocrPrintf("%ld\n", PRM_block.id);
 
             ocrGuid_t stencilGUID, stencilOutEVT;
 
@@ -137,7 +137,7 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                 ocrGuid_t rcvGUID, rcvOUT;
                 if( PRM_block.comms.neighborRefineLvls[i] <= PRM_block.refLvl ) // I expect only one value from this neighbor channel.
                 {
-                    //if( PRM_block.refLvl > 0 ) PRINTF("sending neighbor to sibling.\n");
+                    //if( PRM_block.refLvl > 0 ) ocrPrintf("sending neighbor to sibling.\n");
                     ocrEdtCreate( &rcvGUID, PRM_block.haloRcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
                     ocrAddDependence( rcvOUT, stencilGUID, i+1, DB_MODE_RW );
                     ocrAddDependence( PRM_block.comms.rcv[i*5], rcvGUID, 0, DB_MODE_RW );
@@ -164,7 +164,7 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
                 else
                 {
                     u32 base = i*5;
-                    //PRINTF("%ld\n", PRM_block.id);
+                    //ocrPrintf("%ld\n", PRM_block.id);
                     ocrEdtCreate(&sndGUID, PRM_block.haloSndTML, pCount*4, (u64 *)&PRM_block.comms.snd[base+1], 0, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
                 }
             }*/
@@ -175,7 +175,7 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
         return NULL_GUID;
     }
 
-    PRINTF("BLOCK %ld finished.\n", PRM_block.id);
+    ocrPrintf("BLOCK %ld finished.\n", PRM_block.id);
 
     return NULL_GUID;
 }
@@ -384,82 +384,82 @@ ocrGuid_t mainEdt( u32 paramc, u64 paramv, u32 depc, ocrEdtDep_t depv[] )
     /* set initial values*/
 
     void * programArgv = depv[0].ptr;
-    u32 argc = getArgc(programArgv);
+    u32 argc = ocrGetArgc(programArgv);
 
     for( i = 1; i < argc; i++ ) {
         char *str;
-        str = getArgv(programArgv, i);
+        str = ocrGetArgv(programArgv, i);
 
         if (!strcmp(str, "--max_blocks"))
-            max_num_blocks = atoi( getArgv( programArgv ,++i) );
+            max_num_blocks = atoi( ocrGetArgv( programArgv ,++i) );
         else if (!strcmp(str, "--target_active"))
-            target_active = atoi( getArgv( programArgv, ++i ) );
+            target_active = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--target_max"))
-            target_max = atoi( getArgv( programArgv, ++i ) );
+            target_max = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--target_min"))
-            target_min = atoi( getArgv( programArgv, ++i ) );
+            target_min = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--num_refine"))
-            num_refine = atoi( getArgv( programArgv, ++i ) );
+            num_refine = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--block_change"))
-            block_change = atoi( getArgv( programArgv, ++i ) );
+            block_change = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--uniform_refine"))
-            uniform_refine = atoi( getArgv( programArgv, ++i ) );
+            uniform_refine = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--nx"))
-            x_block_size = atoi( getArgv( programArgv, ++i ) );
+            x_block_size = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--ny"))
-            y_block_size = atoi( getArgv( programArgv, ++i ) );
+            y_block_size = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--nz"))
-            z_block_size = atoi( getArgv( programArgv, ++i ) );
+            z_block_size = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--num_vars"))
-            num_vars = atoi( getArgv( programArgv, ++i ) );
+            num_vars = atoi( ocrGetArgv( programArgv, ++i ) );
         else if (!strcmp(str, "--comm_vars"))
-            comm_vars = atoi( getArgv( programArgv, ++i) );
+            comm_vars = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--init_x"))
-            init_block_x = atoi( getArgv( programArgv, ++i) );
+            init_block_x = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--init_y"))
-            init_block_y = atoi( getArgv( programArgv, ++i) );
+            init_block_y = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--init_z"))
-            init_block_z = atoi( getArgv( programArgv, ++i) );
+            init_block_z = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--reorder"))
-            reorder = atoi( getArgv( programArgv, ++i) );
+            reorder = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--npx"))
-            npx = atoi( getArgv( programArgv, ++i) );
+            npx = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--npy"))
-            npy = atoi( getArgv( programArgv, ++i) );
+            npy = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--npz"))
-            npz = atoi( getArgv( programArgv, ++i) );
+            npz = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--inbalance"))
-            inbalance = atoi( getArgv( programArgv, ++i) );
+            inbalance = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--lb_opt"))
-            lb_opt = atoi( getArgv( programArgv, ++i) );
+            lb_opt = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--refine_freq"))
-            refine_freq = atoi( getArgv( programArgv, ++i) );
+            refine_freq = atoi( ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--report_diffusion"))
-            report_diffusion = atoi(getArgv( programArgv, ++i) );
+            report_diffusion = atoi(ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--error_tol"))
-            error_tol = atoi(getArgv( programArgv, ++i) );
+            error_tol = atoi(ocrGetArgv( programArgv, ++i) );
         else if (!strcmp(str, "--num_tsteps"))
-            num_tsteps = atoi(getArgv(programArgv, ++i) );
+            num_tsteps = atoi(ocrGetArgv(programArgv, ++i) );
         else if (!strcmp(str, "--stages_per_ts"))
-            stages_per_ts = atoi(getArgv(programArgv, ++i) );
+            stages_per_ts = atoi(ocrGetArgv(programArgv, ++i) );
         else if (!strcmp(str, "--checksum_freq"))
-            checksum_freq = atoi(getArgv(programArgv, ++i) );
+            checksum_freq = atoi(ocrGetArgv(programArgv, ++i) );
         else if (!strcmp(str, "--stencil"))
-            stencil = atoi(getArgv(programArgv, ++i));
+            stencil = atoi(ocrGetArgv(programArgv, ++i));
         else if (!strcmp(str, "--permute"))
             permute = 1;
         else if (!strcmp(str, "--report_perf"))
-            report_perf = atoi(getArgv(programArgv, ++i));
+            report_perf = atoi(ocrGetArgv(programArgv, ++i));
         else if (!strcmp(str, "--plot_freq"))
-            plot_freq = atoi(getArgv(programArgv, ++i));
+            plot_freq = atoi(ocrGetArgv(programArgv, ++i));
         else if (!strcmp(str, "--code"))
-            code = atoi(getArgv(programArgv, ++i));
+            code = atoi(ocrGetArgv(programArgv, ++i));
         else if (!strcmp(str, "--blocking_send"))
             nonblocking = 0;
         else if (!strcmp(str, "--refine_ghost"))
             refine_ghost = 1;
         else if (!strcmp(str, "--num_objects"))
-            num_objects = atoi(getArgv(programArgv, ++i));
+            num_objects = atoi(ocrGetArgv(programArgv, ++i));
     }
 
       params[ 0] = max_num_blocks;

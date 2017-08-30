@@ -47,7 +47,7 @@ Err_t copy_Reduct_shared(Reduct_shared_t * in_from, Reduct_shared_t * o_target)
 }
 void  print_Reduct_shared(Reduct_shared_t * in)
 {
-    PRINTF("Reduct_shared>[myrank,nrank,ndata,reductRguid]= %lu %lu "GUIDF"\n",
+    ocrPrintf("Reduct_shared>[myrank,nrank,ndata,reductRguid]= %lu %lu "GUIDF"\n",
            in->nrank, in->ndata, GUIDA(in->reductionRangeGUID)
            );
 }
@@ -103,24 +103,24 @@ Err_t NEKO_ForkTransit_reduction(unsigned int in_rankID, Reduct_shared_t * io_sh
 
         if(0 == in_rankID){
 #           ifdef REDUCTION_CGSTEP0
-                PRINTF("INFO> Reduction in CGstep0_start       is active. Slot count used = %d.\n", (int)REDUC_SLOT_4CGstep0);
+                ocrPrintf("INFO> Reduction in CGstep0_start       is active. Slot count used = %d.\n", (int)REDUC_SLOT_4CGstep0);
 #           else
-                PRINTF("INFO> Reduction in CGstep0_start       is    off. Slot count used = %d.\n", (int)REDUC_SLOT_4CGstep0);
+                ocrPrintf("INFO> Reduction in CGstep0_start       is    off. Slot count used = %d.\n", (int)REDUC_SLOT_4CGstep0);
 #           endif
 #           ifdef REDUCTION_BETA
-                PRINTF("INFO> Reduction in nekbone_beta_start  is active. Slot count used = %d.\n", (int)REDUC_SLOT_4Beta);
+                ocrPrintf("INFO> Reduction in nekbone_beta_start  is active. Slot count used = %d.\n", (int)REDUC_SLOT_4Beta);
 #           else
-                PRINTF("INFO> Reduction in nekbone_beta_start  is    off. Slot count used = %d.\n", (int)REDUC_SLOT_4Beta);
+                ocrPrintf("INFO> Reduction in nekbone_beta_start  is    off. Slot count used = %d.\n", (int)REDUC_SLOT_4Beta);
 #           endif
 #           ifdef REDUCTION_ALPHA
-                PRINTF("INFO> Reduction in nekbone_alpha_start is active. Slot count used = %d.\n", (int)REDUC_SLOT_4Alpha);
+                ocrPrintf("INFO> Reduction in nekbone_alpha_start is active. Slot count used = %d.\n", (int)REDUC_SLOT_4Alpha);
 #           else
-                PRINTF("INFO> Reduction in nekbone_alpha_start is    off. Slot count used = %d.\n", (int)REDUC_SLOT_4Alpha);
+                ocrPrintf("INFO> Reduction in nekbone_alpha_start is    off. Slot count used = %d.\n", (int)REDUC_SLOT_4Alpha);
 #           endif
 #           ifdef REDUCTION_RTR
-                PRINTF("INFO> Reduction in nekbone_rtr_start   is active. Slot count used = %d.\n", (int)REDUC_SLOT_4Rtr);
+                ocrPrintf("INFO> Reduction in nekbone_rtr_start   is active. Slot count used = %d.\n", (int)REDUC_SLOT_4Rtr);
 #           else
-                PRINTF("INFO> Reduction in nekbone_rtr_start   is    off. Slot count used = %d.\n", (int)REDUC_SLOT_4Rtr);
+                ocrPrintf("INFO> Reduction in nekbone_rtr_start   is    off. Slot count used = %d.\n", (int)REDUC_SLOT_4Rtr);
 #           endif
         }
         break;

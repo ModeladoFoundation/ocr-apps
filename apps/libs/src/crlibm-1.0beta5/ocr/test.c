@@ -31,7 +31,7 @@ int main (int argc, char *argv[])
 
 #ifdef OCR
 #ifdef TG_ARCH
-  PRINTF("test's mainEDT enter\n");
+  ocrPrintf("test's mainEDT enter\n");
 #else
   printf("test's mainEDT enter\n");
 #endif
@@ -45,7 +45,7 @@ int main (int argc, char *argv[])
 #if 0
   result = pow_rn(arg1,arg2);
 #ifdef TG_ARCH
-  PRINTF("pow_rn(0x%16.16llx,%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&arg2,*(unsigned long long *)&result);
+  ocrPrintf("pow_rn(0x%16.16llx,%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&arg2,*(unsigned long long *)&result);
 #else
   printf("pow_rn(0x%16.16llx,%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&arg2,*(unsigned long long *)&result);
   printf("pow_rn(%25.16e,%25.16e)=%25.16e\n",arg1,arg2,result);
@@ -55,7 +55,7 @@ int main (int argc, char *argv[])
 #if 0
   result = log_rn(arg1);
 #ifdef TG_ARCH
-  PRINTF("log_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
+  ocrPrintf("log_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
 #else
   printf("log_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
   printf("log_rn(%25.16e)=%25.16e\n",arg1,result);
@@ -65,7 +65,7 @@ int main (int argc, char *argv[])
 #if 1
   result = sin_rn(arg1);
 #ifdef TG_ARCH
-  PRINTF("sin_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
+  ocrPrintf("sin_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
 #else
   printf("sin_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
   printf("sin_rn(%25.16e)=%25.16e\n",arg1,result);
@@ -75,7 +75,7 @@ int main (int argc, char *argv[])
 #if 1
   result = cos_rn(arg1);
 #ifdef TG_ARCH
-  PRINTF("cos_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
+  ocrPrintf("cos_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
 #else
   printf("cos_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
   printf("cos_rn(%25.16e)=%25.16e\n",arg1,result);
@@ -85,7 +85,7 @@ int main (int argc, char *argv[])
 #if 1
   result = tan_rn(arg1);
 #ifdef TG_ARCH
-  PRINTF("tan_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
+  ocrPrintf("tan_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
 #else
   printf("tan_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
   printf("tan_rn(%25.16e)=%25.16e\n",arg1,result);
@@ -95,7 +95,7 @@ int main (int argc, char *argv[])
 #if 1
   result = atan_rn(arg1);
 #ifdef TG_ARCH
-  PRINTF("atan_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
+  ocrPrintf("atan_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
 #else
   printf("atan_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg1,*(unsigned long long *)&result);
   printf("atan_rn(%25.16e)=%25.16e\n",arg1,result);
@@ -107,7 +107,7 @@ int main (int argc, char *argv[])
   arg2   = pow_rn(2.0,120.0);
   result = sin_rn(arg2);
 #ifdef TG_ARCH
-  PRINTF("sin_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg2,*(unsigned long long *)&result);
+  ocrPrintf("sin_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg2,*(unsigned long long *)&result);
 #else
   printf("sin_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg2,*(unsigned long long *)&result);
   printf("sin_rn(%25.16e)=%25.16e\n",arg2,result);
@@ -117,7 +117,7 @@ int main (int argc, char *argv[])
   arg2   = pow_rn(2.0,120.0);
   result = cos_rn(arg2);
 #ifdef TG_ARCH
-  PRINTF("cos_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg2,*(unsigned long long *)&result);
+  ocrPrintf("cos_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg2,*(unsigned long long *)&result);
 #else
   printf("cos_rn(0x%16.16llx)=0x%16.16llx\n",*(unsigned long long *)&arg2,*(unsigned long long *)&result);
   printf("cos_rn(%25.16e)=%25.16e\n",arg2,result);
@@ -126,7 +126,7 @@ int main (int argc, char *argv[])
 
   result = pow_rn(arg1,2.0) + pow_rn(arg2,2.0);
 #ifdef TG_ARCH
-  PRINTF("sin_rn^2+cos_rn^2=0x%16.16llx\n",*(unsigned long long *)&result);
+  ocrPrintf("sin_rn^2+cos_rn^2=0x%16.16llx\n",*(unsigned long long *)&result);
 #else
   printf("sin_rn^2+cos_rn^2=0x%16.16llx\n",*(unsigned long long *)&result);
   printf("sin_rn^2+cos_rn^2=%25.16e\n",result);

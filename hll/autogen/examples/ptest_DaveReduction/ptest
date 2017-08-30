@@ -29,6 +29,7 @@ fi
 
 #----- Compile and run
 rm -f z_output
+export NO_DEBUG=yes
 OCR_TYPE=x86-mpi make uninstall clean run &> z_log
 grep "ffjFinalEdt_fcn" z_log | grep -v "TIME" > z_output
 if [ ! -s "z_output" ]

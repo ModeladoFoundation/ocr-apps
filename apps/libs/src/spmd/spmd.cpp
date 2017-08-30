@@ -16,8 +16,12 @@
 #define SPMD_IMPLEMENTATION
 #include "spmd.h"
 
-//#define EDTPRINTF(X) PRINTF("%s", X)
+//#define EDTPRINTF(X) ocrPrintf("%s", X)
 #define EDTPRINTF(X)
+
+// SA: Uncomment this line to profile  SPMD's template creation
+// #define DPRINTF(...) PRINTF(__VA_ARGS__)
+#define DPRINTF(...)
 
 //#define STORE_DATA_IN_EVENT
 
@@ -695,6 +699,8 @@ u64 spmdSize()
 
 u8 spmd_ocrEdtTemplateCreate_internal(ocrGuid_t *guid, ocrEdt_t funcPtr, u32 paramc, u32 depc, const char* name)
 {
+        DPRINTF("API(INFO) [PD:0x0 W:0x0 EDT:0x0] ENTER spmd_ocrEdtTemplateCreate(*guid=%lx, funcPtr=%p, paramc=%d, depc=%d, name=%s)\n",
+		GUIDA(*guid), funcPtr, (s32)paramc, (s32)depc, name?name:"");
 	template_data* ptr;
 	ocrDbCreate(guid, (void**)&ptr, sizeof(template_data), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
 #ifdef ENABLE_EXTENSION_HETEROGENEOUS_FUNCTIONS
@@ -844,10 +850,10 @@ u8 spmdEdtSpawn(ocrGuid_t templateGuid, u64 count, u32 paramc, u64* paramv, u32 
 	comm->size = count;
 	comm->comm_guid = comm_guid;
 	if (ranksPerAffinity == 0) ranksPerAffinity = count / aff_count;
-	//PRINTF("aff count %d\n", (int)aff_count);
+	//ocrPrintf("aff count %d\n", (int)aff_count);
 	for (std::size_t i = 0; i < comm->size; ++i)
 	{
-		//PRINTF("%d: " GUIDF "\n", (int)i, GUIDA(affs[rank_to_aff_index(aff_count, ranksPerAffinity, i)]));
+		//ocrPrintf("%d: " GUIDF "\n", (int)i, GUIDA(affs[rank_to_aff_index(aff_count, ranksPerAffinity, i)]));
 		ocrGuid_t* ptr;
 		ocrDbCreate(&comm->comm_block(i), (void**)&ptr, sizeof(ocrGuid_t) + SPMD_MAX_RECORDS * sizeof(spmd_send_or_recv_record), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
 		ptr[0] = NULL_GUID;
@@ -889,10 +895,10 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 {
 	/*spmd_communicator tc;
 	tc.size = 15;
-	PRINTF("size: %d, depth: %d\n", (int)tc.size, (int)tc.reduce_depth());
+	ocrPrintf("size: %d, depth: %d\n", (int)tc.size, (int)tc.reduce_depth());
 	for (u64 i = 0; i < tc.size; ++i)
 	{
-		PRINTF("%d: level %d, left %d, right %d, up %d\n",(int)i,(int)tc.level(i, tc.reduce_depth()),(int)tc.reduce_children(i).first, (int)tc.reduce_children(i).second, (int)tc.reduce_parent(i));
+		ocrPrintf("%d: level %d, left %d, right %d, up %d\n",(int)i,(int)tc.level(i, tc.reduce_depth()),(int)tc.reduce_children(i).first, (int)tc.reduce_children(i).second, (int)tc.reduce_parent(i));
 		assert(i == 0 || i == tc.reduce_children(tc.reduce_parent(i)).first || i == tc.reduce_children(tc.reduce_parent(i)).second);
 	}*/
 

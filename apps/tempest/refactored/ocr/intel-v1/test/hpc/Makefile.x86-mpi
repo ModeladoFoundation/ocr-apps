@@ -67,7 +67,7 @@ ENABLE_VISUALIZER ?= no
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := DataContainerTest
+TARGET := SWTest2Ocxxr
 
 #DataContainerTest: $(TEMPESTLIBS)/libhardcoreatm.a $(TEMPESTLIBS)/libtempestbase.a
 
@@ -78,8 +78,9 @@ TARGET := DataContainerTest
 
 SRCS :=  $(TARGET).cpp
 OBJS := $(notdir $(SRCS:.cpp=.o))
-CFLAGS := -O0 -g -I${TEMPESTBASEDIR}/include
-LDFLAGS := -lpthread -lm -L$(TEMPESTLIBS) -lhardcoreatm -ltempestbase  -lnetcdf -lnetcdf_c++ -llapack -lblas
+CFLAGS := -O0 -g -DUSE_OCR -I${TEMPESTBASEDIR}/include
+CFLAGS += -I${APPS_ROOT}/../hll/ocxxr/include -std=c++11
+LDFLAGS := -lpthread -lm -L$(TEMPESTLIBS) -lhardcoreatm -ltempestbase -lnetcdf -lnetcdf_c++ -llapack -lblas
 
 # Targets:
 #   - all:     Build the application.

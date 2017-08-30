@@ -3,9 +3,9 @@
 
 [machine0]
     name="bar16-ib"
-    max_blocks=3
+    max_blocks=6
 
 [machine1]
     name="bar12-ib"
-    max_blocks=3
+    max_blocks=6
 

@@ -1,0 +1,48 @@
+#!/bin/bash -l
+#SBATCH -p TPLARG_QUEUE
+#SBATCH -N TPLARG_NODE_SCALING
+#SBATCH -t TPLARG_HOUR:TPLARG_MIN:00
+#SBATCH -J TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
+#SBATCH -o TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
+
+export OCR_INSTALL=TPLARG_OCR_INSTALL
+export RUN_MODE=runApp
+
+export REPO_TOP=TPLARG_REPO_TOP
+
+.  ${REPO_TOP}/ocr/ocr/scripts/xs-tools/jump_mpi_ws ${REPO_TOP}
+
+export XST_BATCH="yes"
+if [[ ${XST_BATCH} == "yes" ]]; then
+    if [[ ${SLURM_SUBMIT_DIR} != "" ]]; then
+        # arrange for logs to be under the submit folder
+        rundirName="rundir.TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN"
+        mkdir -p ${SLURM_SUBMIT_DIR}/${rundirName}
+        export LOGDIR="${SLURM_SUBMIT_DIR}/${rundirName}"
+    fi
+fi
+
+export OCRRUN_OPT_ENVKIND="SLURM"
+
+cd ${REPO_TOP}/apps/hll/autogen/examples/ptest_ReductionEvent
+
+export OCR_NUM_NODES="TPLARG_NODE_SCALING"
+export NODE_SCALING="TPLARG_NODE_SCALING"
+export CORE_SCALING="TPLARG_CORE_SCALING"
+export NB_RUN="TPLARG_NB_RUN"
+export WORKLOAD_INSTALL_ROOT="TPLARG_APP_INSTALL"
+export TARGET="TPLARG_APP_NAME"
+
+# Check for OCR profiler (yes = yes)
+if [[ "TPLARG_OCR_PROFILER" = "yes" ]]; then
+    echo "mkdir -p ${LOGDIR}/${OCR_TYPE}"
+    mkdir -p ${LOGDIR}/${OCR_TYPE}
+    echo "cp -R ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}/${TARGET} ${LOGDIR}/${OCR_TYPE}"
+    cp -R ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}/${TARGET} ${LOGDIR}/${OCR_TYPE}
+    export WORKLOAD_INSTALL_ROOT="${LOGDIR}"
+    echo "PROF: WORKLOAD_INSTALL_ROOT=${WORKLOAD_INSTALL_ROOT}"
+fi
+
+echo "OCR_INSTALL=>$OCR_INSTALL"
+
+. ./scripts/scaling.sh

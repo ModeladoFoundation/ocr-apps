@@ -126,7 +126,7 @@ int ** load_mats( rankDataH_t* PTR_rankDataH, int * num_nucs, long n_isotopes )
     /*
     for( int i = 0; i < 12; i++ )
         for( int j = 0; j < num_nucs[i]; j++ )
-            PRINTF("material %d - Nuclide %d: %d\n",
+            ocrPrintf("material %d - Nuclide %d: %d\n",
                    i, j, mats[i][j]);
     */
 
@@ -173,7 +173,7 @@ double ** load_concs( rankDataH_t* PTR_rankDataH, int * num_nucs )
     /*
     for( int i = 0; i < 12; i++ )
         for( int j = 0; j < num_nucs[i]; j++ )
-            PRINTF("concs[%d][%d] = %lf\n", i, j, concs[i][j] );
+            ocrPrintf("concs[%d][%d] = %lf\n", i, j, concs[i][j] );
     */
 
     return concs;

@@ -172,7 +172,7 @@ extern uint8_t junkDBBuffer[ROCR_JUNK_DB_SIZE];
         if (_rocr_found) {\
             ocrDbDestroy(_rocr_ctx->dbs[_rocr_i - 1].guid);\
         } else {\
-            PRINTF("WARNING: Trying to free a non-enumerated DB!\n");\
+            ocrPrintf("WARNING: Trying to free a non-enumerated DB!\n");\
         }\
     } while(0)
 

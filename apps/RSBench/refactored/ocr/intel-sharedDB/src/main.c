@@ -40,6 +40,7 @@ typedef struct
     ocrDBK_t DBK_sigTfactors;
     ocrDBK_t DBK_reductionVars;
     ocrDBK_t rpLoopReductionDBK;
+    ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
 } PRM_perThread_t;
 
 ocrGuid_t FNC_globalFinalize( EDT_ARGS )
@@ -120,27 +121,27 @@ void initSimulation(rankDataH_t* PTR_rankDataH, rankH_t* PTR_rankH, u64 mype)
     // Prepare Pole Paremeter Grids
     // =====================================================================
     // Allocate & fill energy grids
-    if( mype == 0 ) PRINTF("Generating resonance distributions...\n");
+    if( mype == 0 ) ocrPrintf("Generating resonance distributions...\n");
     int * n_poles = generate_n_poles( &PTR_rankDataH->DBK_n_poles, in );
 
     // Allocate & fill Window grids
-    if( mype == 0 ) PRINTF("Generating window distributions...\n");
+    if( mype == 0 ) ocrPrintf("Generating window distributions...\n");
     int * n_windows = generate_n_windows( &PTR_rankDataH->DBK_n_windows, in );
 
     // Get material data
-    if( mype == 0 ) PRINTF("Loading Hoogenboom-Martin material data...\n");
+    if( mype == 0 ) ocrPrintf("Loading Hoogenboom-Martin material data...\n");
     Materials M = get_materials( PTR_rankDataH, in );
 
     // Prepare full resonance grid
-    if( mype == 0 ) PRINTF("Generating resonance parameter grid...\n");
+    if( mype == 0 ) ocrPrintf("Generating resonance parameter grid...\n");
     Pole ** poles = generate_poles( &PTR_rankDataH->DBK_poles, &PTR_rankDataH->DBK_pole_ptrs, in, n_poles );
 
     // Prepare full Window grid
-    if( mype == 0 ) PRINTF("Generating window parameter grid...\n");
+    if( mype == 0 ) ocrPrintf("Generating window parameter grid...\n");
     Window ** windows = generate_window_params( &PTR_rankDataH->DBK_windows, &PTR_rankDataH->DBK_window_ptrs, in, n_windows, n_poles);
 
     //Prepare 0K Resonances
-    if( mype == 0 ) PRINTF("Generating 0K l_value data...\n");
+    if( mype == 0 ) ocrPrintf("Generating 0K l_value data...\n");
     double ** pseudo_K0RS = generate_pseudo_K0RS( &PTR_rankDataH->DBK_pseudo_K0RS, &PTR_rankDataH->DBK_pseudo_K0RS_ptrs, in );
 
     ocrDbRelease( PTR_rankDataH->DBK_n_poles );
@@ -160,7 +161,7 @@ void initSimulation(rankDataH_t* PTR_rankDataH, rankH_t* PTR_rankH, u64 mype)
     profile_stop( init_timer, &PTR_rankDataH->timers );
 
     double init_time = get_elapsed_time( init_timer, &PTR_rankDataH->timers );
-    if( mype == 0 ) PRINTF("Initialization Complete. (%.2f seconds)\n", init_time);
+    if( mype == 0 ) ocrPrintf("Initialization Complete. (%.2f seconds)\n", init_time);
 }
 
 ocrGuid_t iterationsPerThreadEdt( EDT_ARGS )
@@ -284,7 +285,7 @@ ocrGuid_t iterationsPerThreadEdt( EDT_ARGS )
     {
         // Status text
         if( INFO && mype == 0 && tid == 0 && i % 1000 == 0 )
-            PRINTF("\rCalculating XS's... (%.1f%% completed)",
+            ocrPrintf("\rCalculating XS's... (%.1f%% completed)",
                     (i / ( (double)in.lookups / (double) in.nthreads ))
                     / (double) in.nthreads * 100.0);
 
@@ -356,6 +357,15 @@ ocrGuid_t lookUpKernelPerThreadEdt( EDT_ARGS )
 
     ocrHint_t myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     ocrHint_t myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+#if defined(ENABLE_EXTENSION_AFFINITY) && defined(SINGLE_RUN_ACROSS_PD)
+    myDbkAffinityHNT = PTR_PRM_perThread->myDbkAffinityHNT;
+    myEdtAffinityHNT = PTR_PRM_perThread->myEdtAffinityHNT;
+#endif
+
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     Inputs* PTR_in = &(PTR_rankH->globalParamH.in);
     globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
@@ -378,7 +388,7 @@ ocrGuid_t lookUpKernelPerThreadEdt( EDT_ARGS )
             break;
 
         default:
-            PRINTF("Scheduler NOT supported\n");
+            ocrPrintf("Scheduler NOT supported\n");
             break;
     }
 
@@ -426,8 +436,13 @@ ocrGuid_t lookUpKernelPerThreadEdt( EDT_ARGS )
 
         ocrGuid_t lookUpKernelPerThreadEDT;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*) PTR_PRM_perThread, EDT_PARAM_DEF, NULL,
+                        EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL ); //lookUpKernelPerThreadEdt
+#else
         ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*) PTR_PRM_perThread, EDT_PARAM_DEF, NULL,
                         EDT_PROP_NONE, &myEdtAffinityHNT, NULL ); //lookUpKernelPerThreadEdt
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, lookUpKernelPerThreadEDT, _idep++, DB_MODE_RO );
@@ -454,6 +469,10 @@ ocrGuid_t lookUpKernelEdt( EDT_ARGS )
 
     ocrHint_t myDbkAffinityHNT = PTR_rankH->myDbkAffinityHNT;
     ocrHint_t myEdtAffinityHNT = PTR_rankH->myEdtAffinityHNT;
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     Inputs* PTR_in = &(PTR_rankH->globalParamH.in);
     globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
@@ -467,16 +486,27 @@ ocrGuid_t lookUpKernelEdt( EDT_ARGS )
 
     int mype = PTR_rankH->myRank;
 
+    //Query the number of policy domains (nodes) available for the run
+    //Map the SPMD EDTs onto the policy domains
+    u64 affinityCount=1;
+#if defined(ENABLE_EXTENSION_AFFINITY) && defined(SINGLE_RUN_ACROSS_PD)
+    ocrAffinityCount( AFFINITY_PD, &affinityCount );
+    if( mype == 0 ) ocrPrintf("Using affinity API: Count %"PRIu64"\n", affinityCount);
+#else
+    ocrPrintf("NOT Using affinity API\n");
+#endif
+    u64 PD_X = affinityCount;
+
     if( mype == 0 )
     {
-        PRINTF("\n");
+        ocrPrintf("\n");
         border_print();
         center_print("SIMULATION", 79);
         border_print();
 
-        PRINTF("Beginning Simulation.\n");
+        ocrPrintf("Beginning Simulation.\n");
         #ifndef STATUS
-        PRINTF("Calculating XS's...\n");
+        ocrPrintf("Calculating XS's...\n");
         #endif
     }
 
@@ -527,16 +557,37 @@ ocrGuid_t lookUpKernelEdt( EDT_ARGS )
 
         ocrDbRelease( rpLoopReductionDBK );
 
+        u64 pdGridDims[1] = { PD_X };
+        u64 edtGridDims[1] = { nthreads };
+
+        int pd = getPolicyDomainID_Cart1D( i, edtGridDims, pdGridDims );
+        DEBUG_PRINTF(("id %"PRIu64" map PD %"PRId32"\n", i, pd));
+
+#if defined(ENABLE_EXTENSION_AFFINITY) && defined(SINGLE_RUN_ACROSS_PD)
+        ocrGuid_t PDaffinityGuid;
+        ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
+        ocrSetHintValue( &myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+        ocrSetHintValue( &myDbkAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+#endif
+
         PRM_perThread.DBK_seed = DBK_seed;
         PRM_perThread.DBK_xs = DBK_xs;
         PRM_perThread.DBK_sigTfactors = DBK_sigTfactors;
         PRM_perThread.DBK_reductionVars = DBK_reductionVars;
         PRM_perThread.rpLoopReductionDBK = rpLoopReductionDBK;
+        PRM_perThread.rpLoopReductionDBK = rpLoopReductionDBK;
+        PRM_perThread.myEdtAffinityHNT = myEdtAffinityHNT;
+        PRM_perThread.myDbkAffinityHNT = myDbkAffinityHNT;
 
         ocrGuid_t lookUpKernelPerThreadEDT;
 
+#ifdef ENABLE_SPAWNING_HINT
         ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*)&PRM_perThread, EDT_PARAM_DEF, NULL,
-                        EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+                        EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL ); //lookUpKernelPerThreadEdt
+#else
+        ocrEdtCreate( &lookUpKernelPerThreadEDT, PTR_rankTemplateH->lookUpKernelPerThreadTML, EDT_PARAM_DEF, (u64*)&PRM_perThread, EDT_PARAM_DEF, NULL,
+                        EDT_PROP_NONE, &myEdtAffinityHNT, NULL );  //lookUpKernelPerThreadEdt
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, lookUpKernelPerThreadEDT, _idep++, DB_MODE_RO );
@@ -609,8 +660,8 @@ ocrGuid_t summaryEdt( EDT_ARGS )
 
     if( mype == 0)
     {
-        PRINTF("\n" );
-        PRINTF("Simulation complete.\n" );
+        ocrPrintf("\n" );
+        ocrPrintf("Simulation complete.\n" );
 
         // Print / Save Results and Exit
         print_results( *PTR_in, mype, *runtime, nprocs, *g_abrarov, *g_alls);
@@ -688,9 +739,17 @@ ocrGuid_t FNC_initSimulation( EDT_ARGS )
     ocrGuid_t lookUpKernelTML, lookUpKernelEDT, lookUpKernelOEVT, lookUpKernelOEVTS;
     ocrEdtTemplateCreate( &lookUpKernelTML, lookUpKernelEdt, 0, 2 );
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 32);
+    ocrEdtCreate( &lookUpKernelEDT, lookUpKernelTML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+#else
     ocrEdtCreate( &lookUpKernelEDT, lookUpKernelTML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+#endif
 
     ocrEdtTemplateDestroy( lookUpKernelTML );
 
@@ -763,9 +822,17 @@ ocrGuid_t FNC_xsbenchMain( EDT_ARGS )
     TS_initSimulation.FNC = FNC_initSimulation;
     ocrEdtTemplateCreate( &TS_initSimulation.TML, TS_initSimulation.FNC, _paramc, _depc );
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &TS_initSimulation.EDT, TS_initSimulation.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+#else
     ocrEdtCreate( &TS_initSimulation.EDT, TS_initSimulation.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+#endif
 
     ocrEdtTemplateDestroy( TS_initSimulation.TML );
 
@@ -808,9 +875,17 @@ ocrGuid_t channelSetupEdt( EDT_ARGS )
     TS_xsbenchMain.FNC = FNC_xsbenchMain;
     ocrEdtTemplateCreate( &TS_xsbenchMain.TML, TS_xsbenchMain.FNC, _paramc, _depc );
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &TS_xsbenchMain.EDT, TS_xsbenchMain.TML,
+                  EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL );
+#else
     ocrEdtCreate( &TS_xsbenchMain.EDT, TS_xsbenchMain.TML,
                   EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+#endif
 
     _idep = 0;
     ocrAddDependence( DBK_rankH, TS_xsbenchMain.EDT, _idep++, DB_MODE_RO );
@@ -860,8 +935,15 @@ ocrGuid_t initEdt( EDT_ARGS )
     PRM_channelSetupEdt.myRank = myRank;
 
     ocrEdtTemplateCreate( &channelSetupTML, channelSetupEdt, sizeof(PRM_channelSetupEdt_t)/sizeof(u64), 1 );
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &channelSetupEDT, channelSetupTML, EDT_PARAM_DEF, (u64*)&PRM_channelSetupEdt, EDT_PARAM_DEF, NULL, EDT_PROP_NONE,
+                    &myEdtAffinitySpawnHNT, NULL );
+#else
     ocrEdtCreate( &channelSetupEDT, channelSetupTML, EDT_PARAM_DEF, (u64*)&PRM_channelSetupEdt, EDT_PARAM_DEF, NULL, EDT_PROP_NONE,
                     &myEdtAffinityHNT, NULL );
+#endif
 
     ocrDbRelease(DBK_rankH);
 
@@ -872,7 +954,7 @@ ocrGuid_t initEdt( EDT_ARGS )
 
 ocrGuid_t wrapUpEdt( EDT_ARGS )
 {
-    PRINTF("Shutting down\n");
+    ocrPrintf("Shutting down\n");
     ocrShutdown();
     return NULL_GUID;
 }
@@ -884,14 +966,14 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
 
     void * PTR_cmdLineArgs = depv[0].ptr;
-    u32 argc = getArgc( PTR_cmdLineArgs );
+    u32 argc = ocrGetArgc( PTR_cmdLineArgs );
 
     //Pack the PTR_cmdLineArgs into the "cannonical" char** argv
     ocrGuid_t argv_g;
     char** argv;
     ocrDbCreate( &argv_g, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
     for( u32 a = 0; a < argc; ++a )
-       argv[a] = getArgv( PTR_cmdLineArgs, a );
+       argv[a] = ocrGetArgv( PTR_cmdLineArgs, a );
 
     int version = 13;
     // Process CLI Fields -- store in "Inputs" structure

@@ -35,16 +35,16 @@ ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    //ocrPrintf("%s\n", __func__);
     u32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
 
     void* PTR_cmdLineArgs = depv[0].ptr;
 
-    u32 argc = getArgc( PTR_cmdLineArgs );
+    u32 argc = ocrGetArgc( PTR_cmdLineArgs );
 
-    u64 N = atoi( getArgv( PTR_cmdLineArgs, 1 ) );
+    u64 N = atoi( ocrGetArgv( PTR_cmdLineArgs, 1 ) );
 
     ocrGuid_t DBK_reductionEventsH;
     ocrGuid_t* PTR_reductionEventsH;
@@ -104,11 +104,11 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 // { DBK_cmdLineArgs <RO>, DBK_reductionEventsH <RW> }
 ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    //ocrPrintf("%s\n", __func__);
     s32 _paramc, _depc, _idep;
 
     u64 N = paramv[0];
-    PRINTF("\nDoing scalar reduction across %d EDTs\n", N);
+    ocrPrintf("\nDoing scalar reduction across %d EDTs\n", N);
 
     ocrGuid_t DBK_reductionEventsH = depv[1].guid;
 
@@ -124,7 +124,7 @@ ocrGuid_t FNC_globalInit(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
 ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    //ocrPrintf("%s\n", __func__);
     u32 _paramc, _depc, _idep;
 
     ocrGuid_t DBK_reductionEventsH = depv[0].guid;
@@ -141,7 +141,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
     TS_rankPartialSumCompute.FNC = FNC_rankPartialSumCompute;
     ocrEdtTemplateCreate( &TS_rankPartialSumCompute.TML, TS_rankPartialSumCompute.FNC, _paramc, _depc );
 
-    //PRINTF("Timestep# %d NR = %d\n", itimestep, NR);
+    //ocrPrintf("Timestep# %d NR = %d\n", itimestep, NR);
     for( u64 I = 0; I < N; I++ )
     {
         PRM_rankPartialSumCompute_t.id = I;
@@ -165,7 +165,7 @@ ocrGuid_t FNC_globalCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[
 
 ocrGuid_t FNC_rankPartialSumCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    //ocrPrintf("%s\n", __func__);
     u32 _paramc, _depc, _idep;
 
     _idep = 0;
@@ -189,7 +189,7 @@ ocrGuid_t FNC_rankPartialSumCompute(u32 paramc, u64* paramv, u32 depc, ocrEdtDep
 
 ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("%s\n", __func__);
+    //ocrPrintf("%s\n", __func__);
 
     ocrGuid_t DBK_reductionEventsH = depv[0].guid;
     ocrGuid_t DBK_reduction_out = depv[1].guid;
@@ -200,11 +200,11 @@ ocrGuid_t FNC_globalFinalize(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     u64 N = paramv[0];
 
     if( PTR_reduction_out[0] == N*(N-1)*0.5 )
-        PRINTF("\nVERIFICATION passed!\n");
+        ocrPrintf("\nVERIFICATION passed!\n");
     else
-        PRINTF("\nVERIFICATION Failed!\n");
+        ocrPrintf("\nVERIFICATION Failed!\n");
 
-    PRINTF("RESULT = %f Expected = %f\n", PTR_reduction_out[0], N*(N-1)*0.5 );
+    ocrPrintf("RESULT = %f Expected = %f\n", PTR_reduction_out[0], N*(N-1)*0.5 );
 
     ocrDbDestroy( DBK_reductionEventsH );
 

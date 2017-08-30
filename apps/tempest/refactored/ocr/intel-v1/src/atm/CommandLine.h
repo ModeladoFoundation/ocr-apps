@@ -555,6 +555,48 @@ public:
 ///	<summary>
 ///		Begin the loop for command line parameters.
 ///	</summary>
+#ifdef USE_OCR
+#define ParseCommandLine(argc, args) \
+    for(int _command = 1; _command < argc; _command++) { \
+		bool _found = false; \
+		for(int _p = 0; _p < _vecParameters.size(); _p++) { \
+			if (_vecParameters[_p]->m_strName == args->argv(_command)) { \
+				_found = true; \
+				_vecParameters[_p]->Activate(); \
+				int _z; \
+				if (_vecParameters[_p]->GetValueCount() >= argc - _command) { \
+					Announce("Error: Insufficient values for option %s", \
+						args->argv(_command)); \
+					_errorCommandLine = true; \
+					_command = argc; \
+					break; \
+				} \
+				for (_z = 0; _z < _vecParameters[_p]->GetValueCount(); _z++) { \
+					if ((_command + _z + 1 < argc) && \
+						(strlen(args->argv(_command + _z + 1)) > 2) && \
+						(args->argv(_command + _z + 1)[0] == '-') && \
+						(args->argv(_command + _z + 1)[1] == '-') \
+					) break; \
+					_command++; \
+					_vecParameters[_p]->SetValue(_z, args->argv(_command)); \
+				} \
+				if ((_vecParameters[_p]->GetValueCount() >= 0) && \
+					(_z != _vecParameters[_p]->GetValueCount()) \
+				) { \
+					Announce("Error: Insufficient values for option %s", \
+						args->argv(_command)); \
+					_errorCommandLine = true; \
+					_command = argc; \
+					break; \
+				} \
+			} \
+		} \
+		if (!_found) { \
+			Announce("Warning: Invalid parameter \"%s\"", args->argv(_command)); \
+		} \
+	}
+
+#else
 #define ParseCommandLine(argc, argv) \
     for(int _command = 1; _command < argc; _command++) { \
 		bool _found = false; \
@@ -594,10 +636,20 @@ public:
 			Announce("Warning: Invalid parameter \"%s\"", argv[_command]); \
 		} \
 	}
-
+#endif
 ///	<summary>
 ///		Print usage information.
 ///	</summary>
+#ifdef USE_OCR
+#define PrintCommandLineUsage(args) \
+	if (_errorCommandLine) \
+		Announce("\nUsage: %s <Parameter List>", args->argv(0)); \
+	Announce("Parameters:"); \
+	for (int _p = 0; _p < _vecParameters.size(); _p++) \
+		_vecParameters[_p]->PrintUsage(); \
+	if (_errorCommandLine) \
+		exit(-1);
+#else
 #define PrintCommandLineUsage(argv) \
 	if (_errorCommandLine) \
 		Announce("\nUsage: %s <Parameter List>", argv[0]); \
@@ -606,15 +658,24 @@ public:
 		_vecParameters[_p]->PrintUsage(); \
 	if (_errorCommandLine) \
 		exit(-1);
+#endif
 
 ///	<summary>
 ///		End the definition of command line parameters.
 ///	</summary>
+#ifdef USE_OCR
+#define EndCommandLine(args) \
+	PrintCommandLineUsage(args); \
+	for (int _p = 0; _p < _vecParameters.size(); _p++) \
+		delete _vecParameters[_p]; \
+	}
+#else
 #define EndCommandLine(argv) \
 	PrintCommandLineUsage(argv); \
 	for (int _p = 0; _p < _vecParameters.size(); _p++) \
 		delete _vecParameters[_p]; \
 	}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 

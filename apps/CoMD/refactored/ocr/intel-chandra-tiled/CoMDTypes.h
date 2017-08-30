@@ -33,9 +33,9 @@ static inline void timestamp( const char* msg )
   time_t t = time( NULL );
   char* time_string = ctime( &t );
   time_string[24] = '\0';
-  PRINTF( "%s: ", time_string );
+  ocrPrintf( "%s: ", time_string );
 #endif
-  PRINTF( "%s\n", msg );
+  ocrPrintf( "%s\n", msg );
 }
 
 struct SimFlatSt;

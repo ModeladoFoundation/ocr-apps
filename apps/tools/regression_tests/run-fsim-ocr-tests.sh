@@ -37,27 +37,27 @@ for TEST in $TESTS; do
   case $TEST in
     OCRcholesky)
       export WORKLOAD_INSTALL="$APPS_ROOT/examples/cholesky/install/tg";
-      export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/localhost.cfg -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $WORKLOAD_INSTALL/config.cfg"
+      export FSIM_ARGS="-c $TG_INSTALL/fsim-configs/localhost.cfg -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $WORKLOAD_INSTALL/config.cfg"
       ;;
     OCRfib)
       export WORKLOAD_INSTALL="$APPS_ROOT/examples/fib/install/tg";
-      export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/localhost.cfg -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $WORKLOAD_INSTALL/config.cfg"
+      export FSIM_ARGS="-c $TG_INSTALL/fsim-configs/localhost.cfg -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $WORKLOAD_INSTALL/config.cfg"
       ;;
     OCRprintf)
       export WORKLOAD_INSTALL="$APPS_ROOT/examples/printf/install/tg";
-      export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/localhost.cfg -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $WORKLOAD_INSTALL/config.cfg"
+      export FSIM_ARGS="-c $TG_INSTALL/fsim-configs/localhost.cfg -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $WORKLOAD_INSTALL/config.cfg"
       ;;
     OCRsmith-waterman)
       export WORKLOAD_INSTALL="$APPS_ROOT/examples/smith-waterman/install/tg";
-      export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/localhost.cfg -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $WORKLOAD_INSTALL/config.cfg"
+      export FSIM_ARGS="-c $TG_INSTALL/fsim-configs/localhost.cfg -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $WORKLOAD_INSTALL/config.cfg"
       ;;
     irqstress)
       export WORKLOAD_INSTALL="$TG_INSTALL/workloads/irqstress";
-      export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/irqstress.cfg"
+      export FSIM_ARGS="-c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/irqstress.cfg"
       ;;
     mb-printf)
       export WORKLOAD_INSTALL="$TG_INSTALL/workloads/mb-printf";
-      export FSIM_ARGS="-s -c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/mb-printf.cfg"
+      export FSIM_ARGS="-c $TG_INSTALL/fsim-configs/dvfs-default.cfg -c $TG_INSTALL/fsim-configs/localhost.cfg -c $WORKLOAD_INSTALL/mb-printf.cfg"
       ;;
     *)
       echo "Invalid test name '$TEST'" 1>&2

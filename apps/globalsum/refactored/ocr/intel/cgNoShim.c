@@ -80,7 +80,7 @@ depv
     case 1:
 //consume rtr
         if(mynode == 0) {
-            PRINTF("iteration %d rtr %f \n", timestep, SB->sum);
+            ocrPrintf("iteration %d rtr %f \n", timestep, SB->sum);
             SB->rtr = SB->sum;
             if(timestep == 0) SB->rtr0 = SB->sum;
         }
@@ -88,9 +88,9 @@ depv
             if(timestep == 0) beta = 0;
                 else beta = SB->sum/SB->rtrold;
             if(SB->sum/SB->rtr0 < 1e-13 || timestep == T) {
-                for(i=0;i<M;i++) PRINTF("CG%d T%d  %d value %f \n", mynode, timestep, i, cgdata->x[i]);
+                for(i=0;i<M;i++) ocrPrintf("CG%d T%d  %d value %f \n", mynode, timestep, i, cgdata->x[i]);
                 if(mynode == 0 && M==300 && N==20 && T==100) {
-                  if(fabs(cgdata->x[0] - 0.462231) < 1e-5) PRINTF("PASS\n"); else PRINTF("FAIL difference %f is too large\n", cgdata->x[0] - .462231); }
+                  if(fabs(cgdata->x[0] - 0.462231) < 1e-5) ocrPrintf("PASS\n"); else ocrPrintf("FAIL difference %f is too large\n", cgdata->x[0] - .462231); }
                 return NULL_GUID;
             }
 //update r
@@ -215,10 +215,10 @@ launches realmain (wrapup waits until realmain is done)
     u64 i;
     u64 *dummy;
     ocrGuid_t realMain, GSsharedBlock, userSharedBlock, realMainTemplate, output, wrapup, wrapupTemplate;
-    PRINTF("conjugate gradient driver WITHOUT shim coming out of computing rtr\n");
-    PRINTF("Number of timesteps is %d \n", T);
-    PRINTF("Number of workers is %d \n", N);
-    PRINTF("Rows per worker %d \n", M);
+    ocrPrintf("conjugate gradient driver WITHOUT shim coming out of computing rtr\n");
+    ocrPrintf("Number of timesteps is %d \n", T);
+    ocrPrintf("Number of workers is %d \n", N);
+    ocrPrintf("Rows per worker %d \n", M);
     ocrEdtTemplateCreate(&wrapupTemplate, wrapupEdt, 0, 1);
     ocrEdtTemplateCreate(&realMainTemplate, realMainEdt, 0, 2);
     ocrEdtCreate(&realMain, realMainTemplate, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_FINISH, NULL_GUID, &output);

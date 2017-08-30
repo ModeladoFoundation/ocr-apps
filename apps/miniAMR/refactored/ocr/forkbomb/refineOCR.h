@@ -41,7 +41,7 @@ ocrGuid_t refineControlEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
     }
     else if( ( willRef % 20 == 0) && PRM_block.refLvl == PRM_block.maxRefLvl )
     {
-        PRINTF("%ld cannot refine more!\n", PRM_block.id);
+        ocrPrintf("%ld cannot refine more!\n", PRM_block.id);
     }
     else
     {

@@ -10,8 +10,8 @@
 #include "blas.h"
 
 #ifdef NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
-#   define ENABLE_EXTENSION_LABELING
-#   include<extensions/ocr-labeling.h>
+#   define ENABLE_EXTENSION_LABELING // For labeled GUIDs
+#   include "extensions/ocr-labeling.h" // For labeled GUIDs
 #endif
 
 #define XMEMSET(SRC, CHARC, SZ) {unsigned int xmIT; for(xmIT=0; xmIT<SZ; ++xmIT) *((char*)SRC+xmIT)=CHARC;}
@@ -48,9 +48,25 @@ Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv)
     while(!err){
 
 #       ifdef NEK_USE_ADVANCED_FUNCTIONS
-            PRINTF("INFO: NEK_USE_ADVANCED_FUNCTIONS is active.\n");
+            ocrPrintf("INFO: NEK_USE_ADVANCED_FUNCTIONS is active.\n");
 #       else
-            PRINTF("INFO: NEK_USE_ADVANCED_FUNCTIONS is off.\n");
+            ocrPrintf("INFO: NEK_USE_ADVANCED_FUNCTIONS is off.\n");
+#       endif
+
+#       ifdef NEKO_USE_TIMING
+            ocrPrintf("INFO: NEKO_USE_TIMING   is active.\n");
+#       else
+            ocrPrintf("INFO: NEKO_USE_TIMING   is off.\n");
+#       endif
+#       ifdef NEKO_PRINT_TIMING
+            ocrPrintf("INFO: NEKO_PRINT_TIMING is active.\n");
+#       else
+            ocrPrintf("INFO: NEKO_PRINT_TIMING is off.\n");
+#       endif
+#       ifdef NEKO_CG_TIMING
+            ocrPrintf("INFO: NEKO_CG_TIMING    is active.\n");
+#       else
+            ocrPrintf("INFO: NEKO_CG_TIMING    is off.\n");
 #       endif
 
         XMEMSET(io, 0, sizeof(NEKOstatics_t));
@@ -63,31 +79,31 @@ Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv)
         if(!in_programArgv){
                 err = __LINE__; IFEB;
         }else{
-            unsigned int argc = getArgc(in_programArgv);
+            unsigned int argc = ocrGetArgc(in_programArgv);
             if(8+1 != argc){ //+1 for argc at offset zero.
-                PRINTF("ERROR: 8 cmd line arguments are needed: Rx Ry Rz Ex Ey Ez pDOF CGcount.  Received: %u\n", argc);
+                ocrPrintf("ERROR: 8 cmd line arguments are needed: Rx Ry Rz Ex Ey Ez pDOF CGcount.  Received: %u\n", argc);
                 err = __LINE__; IFEB;
             }
 
             unsigned int k = 1;
-//            argRx = (unsigned int) atoi(getArgv(in_programArgv, k++));
-//            argRy = (unsigned int) atoi(getArgv(in_programArgv, k++));
-//            argRz = (unsigned int) atoi(getArgv(in_programArgv, k++));
-//            argEx = (unsigned int) atoi(getArgv(in_programArgv, k++));
-//            argEy = (unsigned int) atoi(getArgv(in_programArgv, k++));
-//            argEz = (unsigned int) atoi(getArgv(in_programArgv, k++));
-//            argPDOF_begin = (unsigned int) atoi(getArgv(in_programArgv, k++));
-//            argCGcount = (unsigned int) atoi(getArgv(in_programArgv, k++));
-            argRx = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
-            argRy = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
-            argRz = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
-            argEx = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
-            argEy = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
-            argEz = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
-            argPDOF_begin = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
-            argCGcount = (unsigned int) myAtoU(getArgv(in_programArgv, k++));
+//            argRx = (unsigned int) atoi(ocrGetArgv(in_programArgv, k++));
+//            argRy = (unsigned int) atoi(ocrGetArgv(in_programArgv, k++));
+//            argRz = (unsigned int) atoi(ocrGetArgv(in_programArgv, k++));
+//            argEx = (unsigned int) atoi(ocrGetArgv(in_programArgv, k++));
+//            argEy = (unsigned int) atoi(ocrGetArgv(in_programArgv, k++));
+//            argEz = (unsigned int) atoi(ocrGetArgv(in_programArgv, k++));
+//            argPDOF_begin = (unsigned int) atoi(ocrGetArgv(in_programArgv, k++));
+//            argCGcount = (unsigned int) atoi(ocrGetArgv(in_programArgv, k++));
+            argRx = (unsigned int) myAtoU(ocrGetArgv(in_programArgv, k++));
+            argRy = (unsigned int) myAtoU(ocrGetArgv(in_programArgv, k++));
+            argRz = (unsigned int) myAtoU(ocrGetArgv(in_programArgv, k++));
+            argEx = (unsigned int) myAtoU(ocrGetArgv(in_programArgv, k++));
+            argEy = (unsigned int) myAtoU(ocrGetArgv(in_programArgv, k++));
+            argEz = (unsigned int) myAtoU(ocrGetArgv(in_programArgv, k++));
+            argPDOF_begin = (unsigned int) myAtoU(ocrGetArgv(in_programArgv, k++));
+            argCGcount = (unsigned int) myAtoU(ocrGetArgv(in_programArgv, k++));
 
-            //PRINTF("DBG> init_NEKOstatics> ARGV= %u %u %u  %u %u %u  %u %u \n",
+            //ocrPrintf("DBG> init_NEKOstatics> ARGV= %u %u %u  %u %u %u  %u %u \n",
             //       argRx, argRy, argRz,  argEx, argEy, argEz, argPDOF_begin, argCGcount);
         }
 
@@ -177,9 +193,9 @@ Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv)
             err = ocrAffinityCount( AFFINITY_PD, &affinityCount ); IFEB;
             io->OCR_affinityCount = affinityCount;
             if(io->OCR_affinityCount < 0) {err = __LINE__; IFEB;}
-            PRINTF("INFO: Affinities are in use.\n");
+            ocrPrintf("INFO: Affinities are in use.\n");
 #       else
-            PRINTF("INFO: Affinities are not used.\n");
+            ocrPrintf("INFO: Affinities are not used.\n");
 #       endif // NEK_OCR_ENABLE_AFFINITIES
 
         //===== Setup for channel halo exchange
@@ -190,34 +206,34 @@ Err_t init_NEKOstatics(NEKOstatics_t * io, void * in_programArgv)
             }
 
 #           ifdef NKEBONE_USE_CHANNEL_FOR_HALO_MULTIPLICITY
-                PRINTF("INFO: Channel Halo exchanges in Multiplicity are active.\n");
+                ocrPrintf("INFO: Channel Halo exchanges in Multiplicity are active.\n");
 #           else
-                PRINTF("INFO: Channel Halo exchanges in Multiplicity are off.\n");
+                ocrPrintf("INFO: Channel Halo exchanges in Multiplicity are off.\n");
 #           endif
 #           ifdef NKEBONE_USE_CHANNEL_FOR_HALO_SETF
-                PRINTF("INFO: Channel Halo exchanges in SetF         are active.\n");
+                ocrPrintf("INFO: Channel Halo exchanges in SetF         are active.\n");
 #           else
-                PRINTF("INFO: Channel Halo exchanges in SetF         are off.\n");
+                ocrPrintf("INFO: Channel Halo exchanges in SetF         are off.\n");
 #           endif
 #           ifdef NKEBONE_USE_CHANNEL_FOR_HALO_AI
-                PRINTF("INFO: Channel Halo exchanges in AI           are active.\n");
+                ocrPrintf("INFO: Channel Halo exchanges in AI           are active.\n");
 #           else
-                PRINTF("INFO: Channel Halo exchanges in AI           are off.\n");
+                ocrPrintf("INFO: Channel Halo exchanges in AI           are off.\n");
 #           endif
 
 #           ifdef NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
                 for(i=0; i < NEKbone_regionCount; ++i){
                     err = ocrGuidRangeCreate( &io->haloLabeledGuids[i], io->Rtotal, GUID_USER_EVENT_STICKY); IFEB;
                     if( ocrGuidIsNull(io->haloLabeledGuids[i]) ){
-                        PRINTF("ERROR: Ledger creation in init_NEKOstatics failed: labeledGuid %u is NULL.\n", i);
+                        ocrPrintf("ERROR: Ledger creation in init_NEKOstatics failed: labeledGuid %u is NULL.\n", i);
                         err = __LINE__;
                         IFEB;
                     }
                 }IFEB;
 
-                PRINTF("INFO> Use of Channels for halo exchanges is active.\n");
+                ocrPrintf("INFO> Use of Channels for halo exchanges is active.\n");
 #           else
-                PRINTF("INFO> Use of Channels for halo exchanges is off.\n");
+                ocrPrintf("INFO> Use of Channels for halo exchanges is off.\n");
 #           endif
         }
 
@@ -244,12 +260,14 @@ Err_t destroy_NEKOstatics(NEKOstatics_t * io)
     Err_t err=0;
     while(!err){
         unsigned int i=0;
-        for(i=0; i<NEKbone_regionCount; ++i){
-            if( ! ocrGuidIsNull(io->haloLabeledGuids[i]) ){
-                err = ocrGuidMapDestroy(io->haloLabeledGuids[i]); IFEB;
-                GUID_ASSIGN_VALUE(io->haloLabeledGuids[i], NULL_GUID);
-            }
-        } IFEB;
+#       ifdef NKEBONE_USE_CHANNEL_FOR_HALO_EXCHANGES
+            for(i=0; i<NEKbone_regionCount; ++i){
+                if( ! ocrGuidIsNull(io->haloLabeledGuids[i]) ){
+                    err = ocrGuidMapDestroy(io->haloLabeledGuids[i]); IFEB;
+                    GUID_ASSIGN_VALUE(io->haloLabeledGuids[i], NULL_GUID);
+                }
+            } IFEB;
+#       endif
         err = clear_NEKOstatics(io);IFEB;
         break;
     }
@@ -265,24 +283,24 @@ Err_t copy_NEKOstatics(NEKOstatics_t * in_from, NEKOstatics_t * o_target)
 
 void  print_NEKOstatics(NEKOstatics_t * in)
 {
-    PRINTF("NEKOStatics: Rx,Ry,Rz,Rtotal= %u,%u,%u,%u ", in->Rx, in->Ry, in->Rz, in->Rtotal);
-    PRINTF("Ex,Ey,Ez,Etotal=%u,%u,%u,%u ", in->Ex, in->Ey, in->Ez, in->Etotal);
-    PRINTF("pDOF_begin,pDOF_end,pDOF_step= %u,%u,%u\n", in->pDOF_begin, in->pDOF_end, in->pDOF_step);
+    ocrPrintf("NEKOStatics: Rx,Ry,Rz,Rtotal= %u,%u,%u,%u ", in->Rx, in->Ry, in->Rz, in->Rtotal);
+    ocrPrintf("Ex,Ey,Ez,Etotal=%u,%u,%u,%u ", in->Ex, in->Ey, in->Ez, in->Etotal);
+    ocrPrintf("pDOF_begin,pDOF_end,pDOF_step= %u,%u,%u\n", in->pDOF_begin, in->pDOF_end, in->pDOF_step);
 
-    PRINTF("NEKOStatics: pDOF_max,pDOFmax2D,pDOFmax3D,pDOF3DperRmax = %u, %u, %u\n",
+    ocrPrintf("NEKOStatics: pDOF_max,pDOFmax2D,pDOFmax3D,pDOF3DperRmax = %u, %u, %u\n",
            in->pDOF_max, in->pDOFmax2D, in->pDOFmax3D, in->pDOF3DperRmax);
 
-    PRINTF("NEKOStatics: GlobalElementCount= %u\n", in->GlobalElementCount);
-    PRINTF("NEKOStatics: CGcount= %u\n", in->CGcount);
-    PRINTF("NEKOStatics: NeighborCount= %u\n", NEKbone_neighborCount);
-    PRINTF("NEKOStatics: ByteSizeOf1DOF= %u\n", in->ByteSizeOf1DOF);
-    PRINTF("NEKOStatics: TimeMark= "TIMEF"\n", in->startTimeMark);
+    ocrPrintf("NEKOStatics: GlobalElementCount= %u\n", in->GlobalElementCount);
+    ocrPrintf("NEKOStatics: CGcount= %u\n", in->CGcount);
+    ocrPrintf("NEKOStatics: NeighborCount= %u\n", NEKbone_neighborCount);
+    ocrPrintf("NEKOStatics: ByteSizeOf1DOF= %u\n", in->ByteSizeOf1DOF);
+    ocrPrintf("NEKOStatics: TimeMark= "TIMEF"\n", in->startTimeMark);
 
-    PRINTF("NEKOStatics: Affinity counts= %ld\n", in->OCR_affinityCount);
+    ocrPrintf("NEKOStatics: Affinity counts= %ld\n", in->OCR_affinityCount);
 
     unsigned int i;
     for(i=0; i<NEKbone_regionCount; ++i){
-        PRINTF("NEKOStatics: labeledGuids_for_halo[%u]="GUIDF"\n", i, GUIDA(in->haloLabeledGuids[i]) );
+        ocrPrintf("NEKOStatics: labeledGuids_for_halo[%u]="GUIDF"\n", i, GUIDA(in->haloLabeledGuids[i]) );
     }
 }
 
@@ -309,9 +327,13 @@ Err_t copy_ChannelStruct(ChannelStruct_t * in_from, ChannelStruct_t * o_target)
 {
     Err_t err=0;
     while(!err){
+        if(!in_from || !o_target) {err =__LINE__; IFEB;}
         GUID_ASSIGN_VALUE(o_target->c4multi , in_from->c4multi);
         GUID_ASSIGN_VALUE(o_target->c4setf , in_from->c4setf);
         GUID_ASSIGN_VALUE(o_target->c4axi , in_from->c4axi);
+        if(ocrGuidIsNull(o_target->c4multi)||ocrGuidIsUninitialized(o_target->c4multi)||ocrGuidIsError(o_target->c4multi)) {err =__LINE__; IFEB;}
+        if(ocrGuidIsNull(o_target->c4setf)||ocrGuidIsUninitialized(o_target->c4setf)||ocrGuidIsError(o_target->c4setf)) {err =__LINE__; IFEB;}
+        if(ocrGuidIsNull(o_target->c4axi)||ocrGuidIsUninitialized(o_target->c4axi)||ocrGuidIsError(o_target->c4axi)) {err =__LINE__; IFEB;}
         break;
     }
     return err;
@@ -339,30 +361,30 @@ Err_t init_NEKOglobals(NEKOstatics_t * in_statics, unsigned int in_rankID, NEKOg
         io->OCR_affinityCount = in_statics->OCR_affinityCount;
 
         if(io->pDOF != in_statics->pDOF_begin){
-            PRINTF("ERROR: NEKOglobals.pDOF has to be equal to NEKOstatics.pDOF_begin for now: pDOF=%u  pDOF_begin=%u\n",
+            ocrPrintf("ERROR: NEKOglobals.pDOF has to be equal to NEKOstatics.pDOF_begin for now: pDOF=%u  pDOF_begin=%u\n",
                    io->pDOF, in_statics->pDOF_begin);
             err = __LINE__;
             break;
         }
 
         if(io->pDOF <=1){
-            PRINTF("ERROR: NEKOglobals.pDOF is too small.  It  must be >= 2: pDOF=%u\n",
+            ocrPrintf("ERROR: NEKOglobals.pDOF is too small.  It  must be >= 2: pDOF=%u\n",
                    io->pDOF);
             err = __LINE__;
             break;
         }
 
         if( io->rankID >= in_statics->Rtotal){
-            PRINTF("ERROR: NEKOglobals.rankID is too large:  rankID=%u  Rtotal=%u\n",
+            ocrPrintf("ERROR: NEKOglobals.rankID is too large:  rankID=%u  Rtotal=%u\n",
                    io->rankID, in_statics->Rtotal);
             err = __LINE__;
             break;
         }
 
         if( in_statics->Rtotal < io->OCR_affinityCount){
-            PRINTF("WARNING: NEKOglobals.OCR_affinityCount is bigger the total count of Ranks:  Rtotal=%u  OCR_affinityCount=%u\n",
+            ocrPrintf("WARNING: NEKOglobals.OCR_affinityCount is bigger the total count of Ranks:  Rtotal=%u  OCR_affinityCount=%u\n",
                    in_statics->Rtotal, io->OCR_affinityCount);
-            PRINTF("WARNING: The distribution of rankID will not fill all policy domains.\n");
+            ocrPrintf("WARNING: The distribution of rankID will not fill all policy domains.\n");
         }
 
         io->ExRx = in_statics->Ex * in_statics->Rx;
@@ -421,7 +443,7 @@ Err_t copy_NEKOglobals(NEKOglobals_t * in_from, NEKOglobals_t * o_target)
 
 void  print_NEKOglobals(NEKOglobals_t * in)
 {
-    PRINTF("NEKOglobals: pDOF, pDOF3DperR, rankID,affCount ExRx,EyRy,EzRz = %u,%u, %u,%u, %u,%u,%u\n",
+    ocrPrintf("NEKOglobals: pDOF, pDOF3DperR, rankID,affCount ExRx,EyRy,EzRz = %u,%u, %u,%u, %u,%u,%u\n",
            in->pDOF, in->pDOF3DperR, in->rankID, in->OCR_affinityCount,
            in->ExRx, in->EyRy, in->EzRz);
 }

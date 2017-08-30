@@ -7,11 +7,17 @@
 
 #define IFEB if(err) break
 
+#ifndef RECURB_ITER_COUNT
+#   define RECURB_ITER_COUNT 100
+#endif
+
 int init_FFJ_Ledger(unsigned int in_rankid, unsigned int in_nrank, FFJ_Ledger_t * io)
 {
     XMEMSET(io,0,sizeof(FFJ_Ledger_t));
     io->rankid = in_rankid;
     io->nrank  = in_nrank;
+    io->nb_iteration_for_recurB = RECURB_ITER_COUNT;
+    PRINTF("INFO: FFJ_Ledger: Number of iterationB requested= %ld\n", io->nb_iteration_for_recurB);
     return 0;
 }
 int clear_FFJ_Ledger(FFJ_Ledger_t * io)
@@ -100,14 +106,15 @@ int ffjSetup_fcn(unsigned int in_nrank, FFJ_Ledger_t * o_ffjLedger,
     return err;
 }
 
-int ffjFOR_fcn(int in_rank, FFJ_Ledger_t * in_ffjLedger, FFJ_Ledger_t * o_ffjLedger,
+int ffjFOR_fcn(int in_rank, unsigned long in_pdID,
+               FFJ_Ledger_t * in_ffjLedger, FFJ_Ledger_t * o_ffjLedger,
                ocrGuid_t * in_gDoneFOR, ocrGuid_t * o_gDoneFOR)
 {
     int err = 0;
     while(!err){
         copy_FFJ_Ledger(in_ffjLedger, o_ffjLedger);
         o_ffjLedger->rankid = in_rank;
-        o_ffjLedger->pdID = calculate_pid(in_rank, o_ffjLedger->OCR_affinityCount, o_ffjLedger->nrank);
+        o_ffjLedger->pdID = in_pdID;
 
         //DBG> print_FFJ_Ledger(o_ffjLedger);
 
@@ -247,5 +254,5 @@ unsigned long calculate_pid(unsigned int in_rankid, long in_affinityCount, unsig
         break;
     }
 
-    return 0;
+    return x;
 }

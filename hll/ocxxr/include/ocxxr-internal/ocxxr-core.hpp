@@ -6,6 +6,23 @@
 #include <iterator>
 
 namespace ocxxr {
+#if defined MEASURE_TIME || defined INSTRUMENT_POINTER_OP
+namespace internal {
+void recordEnd();
+}
+#endif
+
+#ifdef MEASURE_TIME
+namespace internal {
+void outputTime();
+}
+#endif
+
+#ifdef INSTRUMENT_POINTER_OP
+namespace internal {
+void outputAllCount();
+}
+#endif
 
 /// @brief Base class for all OCR objects which can carry data.
 /// @see DatablockHandle, Event
@@ -38,7 +55,7 @@ class NullHandle : public ObjectHandle {
     NullHandle() : ObjectHandle(NULL_GUID) {}
 
     NullHandle(ocrEdtDep_t dep) : ObjectHandle(dep.guid) {
-        ASSERT(!dep.ptr && this->is_null());
+        assert(!dep.ptr && this->is_null());
     }
 
     // auto-convert NullHandle to any ObjectHandle type
@@ -63,7 +80,21 @@ static_assert(internal::IsLegalHandle<NullHandle>::value,
               "NullHandle must be castable to/from ocrGuid_t.");
 
 /// Shut down OCR.
-inline void Shutdown() { ocrShutdown(); }
+inline void Shutdown() {
+#if defined MEASURE_TIME || defined INSTRUMENT_POINTER_OP
+    internal::recordEnd();
+#endif
+
+#ifdef MEASURE_TIME
+    internal::outputTime();
+#endif
+
+#ifdef INSTRUMENT_POINTER_OP
+    internal::outputAllCount();
+#endif
+
+    ocrShutdown();
+}
 
 /// Abort OCR execution with an error code.
 inline void Abort(u8 error_code) { ocrAbort(error_code); }
@@ -86,7 +117,9 @@ class DatablockHandle : public DataHandle<T> {
     }
 
     /// Destroy this datablock.
-    void Destroy() const { internal::OK(ocrDbDestroy(this->guid())); }
+    void Destroy() const {
+     internal::OK(ocrDbDestroy(this->guid()));
+    }
 
  protected:
     explicit DatablockHandle(u64 count)
@@ -95,9 +128,9 @@ class DatablockHandle : public DataHandle<T> {
     DatablockHandle(u64 count, const DatablockHint &hint)
             : DataHandle<T>(Init(sizeof(T) * count, false, &hint)) {}
 
-    static ocrGuid_t Init(u64 bytes, const DatablockHint *hint) {
-        T **data_ptr;
-        return Init(&data_ptr, bytes, false, hint);
+    static ocrGuid_t Init(u64 bytes, bool acquire, const DatablockHint *hint) {
+        T *data_ptr;
+        return Init(&data_ptr, bytes, acquire, hint);
     }
 
     static ocrGuid_t Init(T **data_ptr, u64 bytes, bool acquire,
@@ -112,6 +145,11 @@ class DatablockHandle : public DataHandle<T> {
                                  NO_ALLOC));
         if (acquire) {
             internal::bookkeeping::AddDatablock(guid, *raw_data_ptr);
+        } else {
+            // FIXME - look into this bug
+            // assert(acquire && "OCR currently has a bug with NO_ACQUIRE");
+            // Need to release the DB now since we weren't supposed to acquire
+            internal::OK(ocrDbRelease(guid));
         }
         return guid;
     }
@@ -151,7 +189,7 @@ class Datablock : public AcquiredData {
     U &data() const {
         // The template type U is only here to get enable_if to work.
         static_assert(std::is_same<T, U>::value, "Template types must match.");
-        ASSERT(data_ != nullptr);
+        assert(data_ != nullptr);
         return *data_;
     }
 
@@ -203,20 +241,20 @@ class Datablock : public AcquiredData {
     T *data_;
 };
 
-template <typename T>
+template <typename T, template <typename> class U = DatablockHandle>
 class DataHandleList {
     // FIXME - implement!
 };
 
-template <typename T>
+template <typename T, template <typename> class U = Datablock>
 class DatablockList : public AcquiredData {
  public:
+    typedef U<T> DB;
     // FIXME - define move assignment function.
     DatablockList(size_t size)
             : capacity_(size),
               count_(0),
-              data_(size ? OCXXR_TEMP_ARRAY_NEW(Datablock<T>, size) : nullptr) {
-    }
+              data_(size ? OCXXR_TEMP_ARRAY_NEW(U<T>, size) : nullptr) {}
 
     DatablockList(DatablockList &&other)
             : capacity_(other.capacity_),
@@ -227,17 +265,17 @@ class DatablockList : public AcquiredData {
 
     ~DatablockList() { OCXXR_TEMP_ARRAY_DELETE(data_); }
 
-    Datablock<T> *begin() const { return data_; }
+    DB *begin() const { return data_; }
 
-    Datablock<T> *end() const { return data_ + count_; }
+    DB *end() const { return data_ + count_; }
 
-    Datablock<T> &operator[](size_t index) const {
-        ASSERT(index < capacity_);
+    DB &operator[](size_t index) const {
+        assert(index < capacity_);
         return data_[index];
     }
 
-    DatablockList &Add(Datablock<T> datablock) {
-        ASSERT(count_ < capacity_ && "DatablockList overflow!");
+    DatablockList &Add(DB datablock) {
+        assert(count_ < capacity_ && "DatablockList overflow!");
         *end() = datablock;
         ++count_;
         return *this;
@@ -250,7 +288,7 @@ class DatablockList : public AcquiredData {
  private:
     size_t capacity_;
     size_t count_;
-    Datablock<T> *data_;
+    DB *data_;
 };
 
 struct Properties {
@@ -314,7 +352,7 @@ class Event : public DataHandle<T> {
     static ocrGuid_t Init(ocrEventTypes_t type, u16 flags,
                           ocrEventParams_t *params, Event self) {
         ocrGuid_t guid = self.guid();
-        ASSERT(self.is_null() == !(flags & Properties::kLabeled) &&
+        assert(self.is_null() == !(flags & Properties::kLabeled) &&
                "Provide self handle iff this is labeled event.");
         flags |= kDefaultFlags;  // Add data mode to flags
         if (params) {
@@ -446,9 +484,22 @@ struct Unpack {
 
 template <template <typename> class T, typename U>
 struct Unpack<T<U>> {
-    typedef U Parameter;
-    static_assert(std::is_convertible<T<U>, DataHandle<U>>::value,
-                  "Expected an OCR data container type.");
+    // Automatically choose one of two options for unpacking this type
+    template <typename A, typename B, bool X = std::is_convertible<A, B>::value>
+    struct Help;
+    // Base Case: found a direct conversion to a DataHandle<U> type
+    template <typename A, typename B>
+    struct Help<A, B, true> {
+        typedef U Type;
+    };
+    // Recursive Case: use conversion to DataHandle via handle() method
+    template <typename A, typename B>
+    struct Help<A, B, false> {
+        typedef decltype(::std::declval<A>().handle()) HandleType;
+        typedef typename Unpack<HandleType>::Parameter Type;
+    };
+    // Unpack the parameter type via Helper
+    typedef typename Help<T<U>, DataHandle<U>>::Type Parameter;
 };
 template <>
 struct Unpack<NullHandle> {
@@ -459,16 +510,23 @@ struct Unpack<void> {
     typedef void Parameter;
 };
 
+static_assert(
+        ::std::is_same<Unpack<DatablockHandle<void>>::Parameter, void>::value,
+        "Support for void DatablockHandles is broken");
+
 template <bool kHasParam, typename AllArgs, typename... ArgsAcc>
 struct VarArgsInfoHelp;
 
-template <bool kHasParam, typename T, typename... ArgsAcc>
-struct VarArgsInfoHelp<kHasParam, void(DatablockList<T>), ArgsAcc...> {
+template <bool kHasParam, typename T, template <typename> class U,
+          typename... ArgsAcc>
+struct VarArgsInfoHelp<kHasParam, void(DatablockList<T, U>), ArgsAcc...> {
     static constexpr bool kHasVarArgs = true;
     typedef void(DepsFn)(ArgsAcc...);
-    typedef void(VarArgsFn)(DatablockList<T>);
-    typedef void(VarArgsHandleFn)(DataHandleList<T>);
+    typedef void(VarArgsFn)(DatablockList<T, U>);
+    typedef void(VarArgsHandleFn)(DataHandleList<T, U>);
     typedef T VarArgsType;
+    typedef U<T> VarArgsClass;
+    typedef DatablockList<T, U> VarArgsListType;
     static constexpr size_t kDepCount = sizeof...(ArgsAcc);
 };
 
@@ -479,6 +537,8 @@ struct VarArgsInfoHelp<kHasParam, void(), ArgsAcc...> {
     typedef void(VarArgsFn)();
     typedef void(VarArgsHandleFn)();
     typedef void VarArgsType;
+    typedef void VarArgsClass;
+    typedef void VarArgsListType;
     static constexpr size_t kDepCount = sizeof...(ArgsAcc);
 };
 
@@ -495,6 +555,8 @@ struct VarArgsInfoHelp<kHasParam, void(A, AllArgs...), ArgsAcc...> {
     typedef typename Recur::VarArgsFn VarArgsFn;
     typedef typename Recur::VarArgsHandleFn VarArgsHandleFn;
     typedef typename Recur::VarArgsType VarArgsType;
+    typedef typename Recur::VarArgsClass VarArgsClass;
+    typedef typename Recur::VarArgsListType VarArgsListType;
     static constexpr size_t kDepCount = Recur::kDepCount;
 };
 
@@ -621,9 +683,9 @@ class TaskImplementation<F, user_fn, void(Params...), void(Args...),
 
     static ocrGuid_t InternalFn(u32 paramc, u64 paramv[], u32 depc,
                                 ocrEdtDep_t depv[]) {
-        ASSERT(paramc == internal::TaskParamInfo<F>::kParamWordCount);
-        ASSERT(kVarArgc > 0 || depc == kDepc);
-        ASSERT(depc >= kDepc);
+        assert(paramc == internal::TaskParamInfo<F>::kParamWordCount);
+        assert(kVarArgc > 0 || depc == kDepc);
+        assert(depc >= kDepc);
         PushTaskState();
         ocrGuid_t result = Launch(paramv, depc, depv);
         PopTaskState();
@@ -647,12 +709,13 @@ class TaskImplementation<F, user_fn, void(Params...), void(Args...),
                 .guid();
     }
 
-    template <typename T = typename internal::FnInfo<F>::VarArgsType>
-    static DatablockList<T> UnpackVarArgs(u32 depc, ocrEdtDep_t depv[],
-                                          size_t) {
-        DatablockList<T> var_args(depc);
+    template <typename T = typename internal::FnInfo<F>::VarArgsType,
+              typename U = typename internal::FnInfo<F>::VarArgsClass,
+              typename L = typename internal::FnInfo<F>::VarArgsListType>
+    static L UnpackVarArgs(u32 depc, ocrEdtDep_t depv[], size_t) {
+        L var_args(depc);
         for (u32 i = kDepc; i < depc; i++) {
-            var_args.Add(Datablock<T>(depv[i]));
+            var_args.Add(U(depv[i]));
         }
         return std::move(var_args);
     }
@@ -788,8 +851,8 @@ class Task<Ret(Args...)> : public ObjectHandle {
             u32 index, T src,
             ocrDbAccessMode_t mode = AccessMode::kDefault) const {
         namespace i = internal;
-        typedef typename i::FnInfo<F>::VarArgsType U;
-        typedef DataHandle<U> Expected;
+        typedef typename i::FnInfo<F>::VarArgsClass U;
+        typedef DataHandleOf<U> Expected;
         typedef DataHandleOf<T> Actual;
         const u32 slot = kDepc + index;
         static_assert(i::FnInfo<F>::kHasVarArgs,
@@ -834,7 +897,7 @@ class Task<Ret(Args...)> : public ObjectHandle {
                           const TaskHint *hint, u16 flags) {
         ocrGuid_t guid;
         ocrGuid_t *out_guid = reinterpret_cast<ocrGuid_t *>(out_event);
-        ASSERT(paramv != nullptr || kParamc == 0);
+        assert(paramv != nullptr || kParamc == 0);
         // TODO - open bug for adding const qualifiers in OCR C API.
         // E.g., "const ocrHint_t *hint" in ocrEdtCreate.
         ocrHint_t *raw_hint = const_cast<ocrHint_t *>(hint->internal());
@@ -895,7 +958,7 @@ class TaskBuilder<F, void(Params...), void(Args...), void(VarArgs...)> {
     }
 
     Task<F> CreateTaskPartial(Params... params, u32 var_args_count = 0) {
-        ASSERT(var_args_count == 0 || kHasVarArgs);
+        assert(var_args_count == 0 || kHasVarArgs);
         return CreateNullTask(nullptr, params..., var_args_count);
     }
 
@@ -913,7 +976,7 @@ class TaskBuilder<F, void(Params...), void(Args...), void(VarArgs...)> {
 
     DelayedFuture<F> CreateFuturePartial(Params... params,
                                          u32 var_args_count = 0) {
-        ASSERT(var_args_count == 0 || kHasVarArgs);
+        assert(var_args_count == 0 || kHasVarArgs);
         Event<R> out_event;
         auto task = CreateNullTask(&out_event, params..., var_args_count);
         return DelayedFuture<F>(task, out_event);
@@ -933,7 +996,7 @@ class TaskBuilder<F, void(Params...), void(Args...), void(VarArgs...)> {
     template <bool kEnable = !kHasVarArgs, internal::EnableIf<kEnable> = 0>
     Task<F> CreateFullTask(Event<R> *out_event, Params... params,
                            DataHandleOf<Args>... deps) {
-        ASSERT((!out_event || flags_ != EDT_PROP_FINISH) &&
+        assert((flags_ != EDT_PROP_FINISH || out_event) &&
                "Created Finish-type EDT, but not using the output event.");
         // Set params (if any)
         u64 *param_ptr[1 + Task<F>::kParamc] = {
@@ -953,13 +1016,13 @@ class TaskBuilder<F, void(Params...), void(Args...), void(VarArgs...)> {
     Task<F> CreateFullTask(Event<R> *out_event, Params... params,
                            DataHandleOf<Args>... deps,
                            const DatablockList<T> &var_args) {
-        ASSERT((!out_event || flags_ != EDT_PROP_FINISH) &&
+        assert((flags_ != EDT_PROP_FINISH || out_event) &&
                "Created Finish-type EDT, but not using the output event.");
         // Set params (if any)
         u64 *param_ptr[1 + Task<F>::kParamc] = {
                 reinterpret_cast<u64 *>(&params)..., nullptr};
         // Set provided dependences
-        ASSERT(var_args.count() == var_args.capacity() &&
+        assert(var_args.count() == var_args.capacity() &&
                "Used incomplete DatablockList for task creation");
         const u32 depc = kDepc + var_args.capacity();
         ocrGuid_t *depv;
@@ -984,14 +1047,14 @@ class TaskBuilder<F, void(Params...), void(Args...), void(VarArgs...)> {
 
     Task<F> CreateNullTask(Event<R> *out_event, Params... params,
                            u32 var_args_count) {
-        ASSERT((!out_event || flags_ != EDT_PROP_FINISH) &&
+        assert((flags_ != EDT_PROP_FINISH || out_event) &&
                "Created Finish-type EDT, but not using the output event.");
         // Set params (if any)
         u64 *param_ptr[1 + Task<F>::kParamc] = {
                 reinterpret_cast<u64 *>(&params)..., nullptr};
         // Create the task
-        ASSERT((var_args_count == 0 || kHasVarArgs) &&
-               "Only provide var_args_count for tasks with VarArgs")
+        assert((var_args_count == 0 || kHasVarArgs) &&
+               "Only provide var_args_count for tasks with VarArgs");
         const u32 depc = kDepc + var_args_count;
         return Task<F>(out_event, template_guid_, param_ptr[0], depc, nullptr,
                        hint_, flags_);
@@ -1054,6 +1117,8 @@ class TaskTemplate : public ObjectHandle {
         return TaskTemplate<F>(guid);
     }
 
+    explicit TaskTemplate(ocrGuid_t guid = NULL_GUID) : ObjectHandle(guid) {}
+
     TaskBuilder<F, PF, DF, VAF> operator()(u16 flags = EDT_PROP_NONE) const {
         return TaskBuilder<F, PF, DF, VAF>(this->guid(), nullptr, flags);
     }
@@ -1066,8 +1131,6 @@ class TaskTemplate : public ObjectHandle {
     void Destroy() const { internal::OK(ocrEdtTemplateDestroy(this->guid())); }
 
  private:
-    explicit TaskTemplate(ocrGuid_t guid) : ObjectHandle(guid) {}
-
     typedef typename internal::FnInfo<F>::Result Result;
     typedef typename internal::Unpack<Result>::Parameter Parameter;
     static_assert(

@@ -5,7 +5,7 @@
 void logo(int version)
 {
     border_print();
-    PRINTF(
+    ocrPrintf(
 "                    _____   _____ ____                  _     \n"
 "                   |  __ \\ / ____|  _ \\                | |    \n"
 "                   | |__) | (___ | |_) | ___ _ __   ___| |__  \n"
@@ -28,15 +28,15 @@ void center_print(const char *s, int width)
     int length = strlen(s);
     int i;
     for (i=0; i<=(width-length)/2; i++) {
-        PRINTF(" ");
+        ocrPrintf(" ");
     }
-    PRINTF("%s", s);
-    PRINTF("\n");
+    ocrPrintf("%s", s);
+    ocrPrintf("\n");
 }
 
 void border_print(void)
 {
-    PRINTF(
+    ocrPrintf(
     "==================================================================="
     "=============\n");
 }
@@ -46,24 +46,24 @@ void fancy_int( int a )
 {
 #if 0
     if( a < 1000 )
-        PRINTF("%d\n",a);
+        ocrPrintf("%d\n",a);
 
     else if( a >= 1000 && a < 1000000 )
-        PRINTF("%d,%03d\n", a / 1000, a % 1000);
+        ocrPrintf("%d,%03d\n", a / 1000, a % 1000);
 
     else if( a >= 1000000 && a < 1000000000 )
-        PRINTF("%d,%03d,%03d\n", a / 1000000, (a % 1000000) / 1000, a % 1000 );
+        ocrPrintf("%d,%03d,%03d\n", a / 1000000, (a % 1000000) / 1000, a % 1000 );
 
     else if( a >= 1000000000 )
-        PRINTF("%d,%03d,%03d,%03d\n",
+        ocrPrintf("%d,%03d,%03d,%03d\n",
                a / 1000000000,
                (a % 1000000000) / 1000000,
                (a % 1000000) / 1000,
                a % 1000 );
     else
-        PRINTF("%d\n",a);
+        ocrPrintf("%d\n",a);
 #endif
-    PRINTF("%d\n", a);
+    ocrPrintf("%d\n", a);
 }
 
 Inputs read_CLI( int argc, char * argv[] )
@@ -200,16 +200,16 @@ Inputs read_CLI( int argc, char * argv[] )
 
 void print_CLI_error(void)
 {
-    PRINTF("Usage: ./multibench <options>\n");
-    PRINTF("Options include:\n");
-    PRINTF("  -t <threads>     Number of OpenMP threads to run\n");
-    PRINTF("  -s <size>        Size of H-M Benchmark to run (small, large)\n");
-    PRINTF("  -l <lookups>     Number of Cross-section (XS) lookups\n");
-    PRINTF("  -p <poles>       Average Number of Poles per Nuclide\n");
-    PRINTF("  -w <poles>       Average Number of Windows per Nuclide\n");
-    PRINTF("  -d               Disables Temperature Dependence (Doppler Broadening)\n");
-    PRINTF("Default is equivalent to: -s large -l 10000000 -p 1000 -w 100\n");
-    PRINTF("See readme for full description of default run values\n");
+    ocrPrintf("Usage: ./multibench <options>\n");
+    ocrPrintf("Options include:\n");
+    ocrPrintf("  -t <threads>     Number of OpenMP threads to run\n");
+    ocrPrintf("  -s <size>        Size of H-M Benchmark to run (small, large)\n");
+    ocrPrintf("  -l <lookups>     Number of Cross-section (XS) lookups\n");
+    ocrPrintf("  -p <poles>       Average Number of Poles per Nuclide\n");
+    ocrPrintf("  -w <poles>       Average Number of Windows per Nuclide\n");
+    ocrPrintf("  -d               Disables Temperature Dependence (Doppler Broadening)\n");
+    ocrPrintf("Default is equivalent to: -s large -l 10000000 -p 1000 -w 100\n");
+    ocrPrintf("See readme for full description of default run values\n");
     exit(4);
 }
 
@@ -222,24 +222,24 @@ void print_input_summary(Inputs input)
     border_print();
     size_t mem = get_mem_estimate(input);
 
-    PRINTF("Materials:                   %d\n", input.n_mats);
-    PRINTF("H-M Benchmark Size:          ");
+    ocrPrintf("Materials:                   %d\n", input.n_mats);
+    ocrPrintf("H-M Benchmark Size:          ");
     if( input.HM == 0 )
-        PRINTF("Small\n");
+        ocrPrintf("Small\n");
     else
-        PRINTF("Large\n");
+        ocrPrintf("Large\n");
     if( input.doppler == 1 )
-        PRINTF("Temperature Dependence:      ON\n");
+        ocrPrintf("Temperature Dependence:      ON\n");
     else
-        PRINTF("Temperature Dependence:      OFF\n");
-    PRINTF("Total Nuclides:              %d\n", input.n_nuclides);
-    PRINTF("Avg Poles per Nuclide:       "); fancy_int(input.avg_n_poles);
-    PRINTF("Avg Windows per Nuclide:     "); fancy_int(input.avg_n_windows);
-    PRINTF("XS Lookups:                  "); fancy_int(input.lookups);
-    PRINTF("Threads:                     %d\n", input.nthreads);
-    PRINTF("Est. Memory Usage (MB):      %.1f\n", mem / 1024.0 / 1024.0);
+        ocrPrintf("Temperature Dependence:      OFF\n");
+    ocrPrintf("Total Nuclides:              %d\n", input.n_nuclides);
+    ocrPrintf("Avg Poles per Nuclide:       "); fancy_int(input.avg_n_poles);
+    ocrPrintf("Avg Windows per Nuclide:     "); fancy_int(input.avg_n_windows);
+    ocrPrintf("XS Lookups:                  "); fancy_int(input.lookups);
+    ocrPrintf("Threads:                     %d\n", input.nthreads);
+    ocrPrintf("Est. Memory Usage (MB):      %.1f\n", mem / 1024.0 / 1024.0);
     #ifdef PAPI
-    PRINTF("PAPI Performance Counters:   ON\n");
+    ocrPrintf("PAPI Performance Counters:   ON\n");
     #endif
 
 }
@@ -252,13 +252,13 @@ void print_results(Inputs input, int mype, double runtime, int nprocs, u64 g_abr
     center_print("RESULTS", 79);
     border_print();
 
-    PRINTF("Threads:     %d\n", input.nthreads);
-    PRINTF("Ranks:     %d\n", input.nprocs);
+    ocrPrintf("Threads:     %d\n", input.nthreads);
+    ocrPrintf("Ranks:     %d\n", input.nprocs);
     if( input.doppler)
-    PRINTF("Slow Faddeeva: %.2f%%\n", (double) g_abrarov/g_alls * 100.f);
-    PRINTF("Runtime:     %.3f seconds\n", runtime);
-    PRINTF("Lookups:     "); fancy_int(input.lookups);
-    PRINTF("Lookups/s:   "); fancy_int((double) input.lookups / (runtime));
+    ocrPrintf("Slow Faddeeva: %.2f%%\n", (double) g_abrarov/g_alls * 100.f);
+    ocrPrintf("Runtime:     %.3f seconds\n", runtime);
+    ocrPrintf("Lookups:     "); fancy_int(input.lookups);
+    ocrPrintf("Lookups/s:   "); fancy_int((double) input.lookups / (runtime));
 
     border_print();
     }

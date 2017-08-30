@@ -43,7 +43,7 @@ ocrGuid_t time_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
       l->time_temp[4] = time();
     } else {
         l->time_operators[4] += time() - l->time_temp[4];
-        PRINTF("Time = %f\n", time() - l->time_temp[4]);
+        ocrPrintf("Time = %f\n", time() - l->time_temp[4]);
         l->time_temp[4] = 0.0;
     }
   } else {
@@ -82,7 +82,7 @@ ocrGuid_t time_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 //      l->time_operators[4] += time()-l->time_operators[4];
         l->time_operators[4] = time() - l->time_temp[4];
         l->time_temp[4] = 0.0;
-        PRINTF("Time = %f\n", l->time_operators[4]);
+        ocrPrintf("Time = %f\n", l->time_operators[4]);
     }
 
   }
@@ -169,9 +169,9 @@ ocrGuid_t finalize_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
       }
     }
   }
-  PRINTF("h = %f  ||error|| = %22.15f\n\n", l->h, max_norm);
+  ocrPrintf("h = %f  ||error|| = %22.15f\n\n", l->h, max_norm);
 
-  PRINTF("Time = %22f\n", l->time_operators[4]/TIMED);
+  ocrPrintf("Time = %22f\n", l->time_operators[4]/TIMED);
 
   ocrDbDestroy(depv[0].guid);
   ocrShutdown();
@@ -197,29 +197,29 @@ ocrGuid_t print_timing_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
     mat[i+3*n] = l->time_operators[3]/TIMED;
   }
 
-  PRINTF("             ");
+  ocrPrintf("             ");
   for (i=0;i<n;i++)
-   PRINTF(" %f  ", ((level_type *)depv[i].ptr)->h);
+   ocrPrintf(" %f  ", ((level_type *)depv[i].ptr)->h);
 
-  PRINTF("\n-----------------------------------------------------------------------\n");
+  ocrPrintf("\n-----------------------------------------------------------------------\n");
 
-  PRINTF("Smooth:      ");
+  ocrPrintf("Smooth:      ");
   for (i=0;i<n;i++)
-     PRINTF(" %f  ", mat[i+0*n]);
+     ocrPrintf(" %f  ", mat[i+0*n]);
 
-  PRINTF("\nResidual:    ");
+  ocrPrintf("\nResidual:    ");
   for (i=0;i<n;i++)
-     PRINTF(" %f  ", mat[i+1*n]);
+     ocrPrintf(" %f  ", mat[i+1*n]);
 
-  PRINTF("\nRestriction: ");
+  ocrPrintf("\nRestriction: ");
   for (i=0;i<n;i++)
-     PRINTF(" %f  ", mat[i+2*n]);
+     ocrPrintf(" %f  ", mat[i+2*n]);
 
-  PRINTF("\nInterpolate: ");
+  ocrPrintf("\nInterpolate: ");
   for (i=0;i<n;i++)
-     PRINTF(" %f  ", mat[i+3*n]);
+     ocrPrintf(" %f  ", mat[i+3*n]);
 
-  PRINTF("\n\nTotal Time = %10f\n", ((level_type*)depv[0].ptr)->time_operators[4]/TIMED);
+  ocrPrintf("\n\nTotal Time = %10f\n", ((level_type*)depv[0].ptr)->time_operators[4]/TIMED);
   ocrDbDestroy(tmp);
 
   return NULL_GUID;
@@ -302,7 +302,7 @@ ocrGuid_t norm_final_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
      max_norm = box_norms[b];
   }
 
-  PRINTF("f-cycle,    norm=%22.20f\n",max_norm);
+  ocrPrintf("f-cycle,    norm=%22.20f\n",max_norm);
 
   return NULL_GUID;
 }

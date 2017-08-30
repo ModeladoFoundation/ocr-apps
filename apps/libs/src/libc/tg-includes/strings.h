@@ -2,7 +2,7 @@
 #define _STRINGS_H
 
 inline void __attribute__((always_inline)) bzero(void *s, size_t n) {
-    ASSERT(s!=NULL);
+    ocrAssert(s!=NULL);
     char* ptr = (char*)s;
     while(n>0) ptr[--n] = 0;
 }

@@ -32,7 +32,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 2 2 2 16 3 0
+WORKLOAD_ARGS ?= 2 2 2 16 1 0
 # Run mode (not fully supported)
 # Set to "yes" if running with torque
 RUN_TORQUE ?= no
@@ -53,7 +53,15 @@ TARGET := hpcg
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := newlib reduction
+REQ_LIBS := libc reduction
+
+# Must have newlib for time-related function
+
+WITH_NEWLIB := yes
+
+ifeq ($(WITH_NEWLIB), yes)
+  REQ_LIBS += newlib
+endif
 
 # Space separated list of source files
 SRCS := hpcg.c timers.c
@@ -70,7 +78,10 @@ CFLAGS += -DDEBUG_APP     #To enable DEBUG_PRINTF in the app
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS := -lreduction
-LDFLAGS += $(APPS_ROOT)/libs/install/$(ARCH)/lib/libc.a
+
+ifeq ($(WITH_NEWLIB), yes)
+  LDFLAGS += -lc
+endif
 
 # Targets:
 #   - all:     Build the application.
@@ -122,5 +133,4 @@ postrun: ;
 
 # Include common part
 include ${APPS_ROOT}/makefiles/make-inc.inc
-
 

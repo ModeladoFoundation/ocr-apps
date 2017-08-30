@@ -23,7 +23,7 @@ typedef real_t real3[3]; //!< a convenience vector with three real_t
 
 static void printSeparator(void)
 {
-    PRINTF("\n");
+    ocrPrintf("\n");
 }
 
 static void zeroReal3(real3 a)

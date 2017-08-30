@@ -1,5 +1,5 @@
 <ompts:test>
-<ompts:description>Test which checks the omp parallel for nowait directive. It fills an array with values and operates on these in the following.</ompts:description>
+<ompts:description>Test which checks the omp sections nowait directive. It has a thread sleep in the first section and tests to see if other thread(s) make it through the sections block before the sleeping thread gets out of it.</ompts:description>
 <ompts:directive>omp parallel sections nowait</ompts:directive>
 <ompts:version>1.0</ompts:version>
 <ompts:dependences>omp parallel sections, omp flush</ompts:dependences>
@@ -39,24 +39,15 @@ int <ompts:testcode:functionname>omp_sections_nowait</ompts:testcode:functionnam
 			}
 #pragma omp section
 			{
-				fprintf (logFile, "Thread nr %d executed work in the first section.\n", rank);
-			}
-		}
-/* Begin of second sections environment */
-#pragma omp sections
-		{
-#pragma omp section
-			{
 				fprintf (logFile, "Thread nr %d executed work in the second section.\n", rank);
 			}
-#pragma omp section
-			{
-				fprintf (logFile, "Thread nr %d executed work in the second section and controls the value of count\n", rank);
-				if (count == 0)
-					result = 1;
-				fprintf (logFile, "cout was %d", count);
-			}
 		}
+        if (count == 0) {
+			fprintf (logFile, "Thread nr %d found count was 0\n", rank);
+            result = 1;
+        } else {
+			fprintf (logFile, "Thread nr %d found count was not 0\n", rank);
+        }
 	</ompts:orphan>
 	}
 

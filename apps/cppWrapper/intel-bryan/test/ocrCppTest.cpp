@@ -6,7 +6,7 @@ using namespace std;
 
 ocrGuid_t realMainEdt( u32 paramc, u64 * paramv, u32 depc, u64 * depv )
 {
-    PRINTF("Hello, from realmain!\n");
+    ocrPrintf("Hello, from realmain!\n");
     ocrShutdown();
 
     return NULL_GUID;

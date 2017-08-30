@@ -72,10 +72,10 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     dlen = len/8;
     if (len == 0) {
-        PRINTF ("ERROR!\n");
+        ocrPrintf ("ERROR!\n");
         return 1;
     }
-    PRINTF ("Rank %d in updatePatch will update %d bytes! (%d)\n", rank, len, dlen);
+    ocrPrintf ("Rank %d in updatePatch will update %d bytes! (%d)\n", rank, len, dlen);
     double *newData;
     newData = (double *) localDataGeometric;
 
@@ -164,7 +164,7 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     //
     //deactivate the GridPatch
-    PRINTF ("Rank %d deactivates its patch in step %d \n", rank, step);
+    ocrPrintf ("Rank %d deactivates its patch in step %d \n", rank, step);
     pGrid->DeactivatePatch(rank);
 
     // pack data into updated halo data block
@@ -216,7 +216,7 @@ ocrGuid_t updatePatch(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrDbRelease (depv[0].guid);
         ocrDbRelease (depv[1].guid);
         ocrEventSatisfy (stateInfo->DONE, NULL_GUID);
-        PRINTF ("Good-by from Rank %d in updatePatch\n", rank);
+        ocrPrintf ("Good-by from Rank %d in updatePatch\n", rank);
     }
 
 
@@ -232,21 +232,21 @@ ocrGuid_t outputEdt (u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     int i, j;
     for (i = 0; i<nWorkers; i++) {
         double* newData = (double *) depv[i].ptr;
-        PRINTF ("Output of rank %d\n", i);
+        ocrPrintf ("Output of rank %d\n", i);
         for (j = 0; j<10; j++) {
-            PRINTF( "%f ", newData [j]);
+            ocrPrintf( "%f ", newData [j]);
         }
         if (newData [5] ==  (i * lastStep)) {
-          PRINTF ("\n\n");
-          PRINTF ("Test passed!\n");
+          ocrPrintf ("\n\n");
+          ocrPrintf ("Test passed!\n");
         } else {
-          PRINTF ("\n\n");
-          PRINTF ("Test FAILED! data [5] = %f should be %f\n", newData [5],  (double) (i + i * lastStep));
+          ocrPrintf ("\n\n");
+          ocrPrintf ("Test FAILED! data [5] = %f should be %f\n", newData [5],  (double) (i + i * lastStep));
         }
-        PRINTF ("\n\n");
+        ocrPrintf ("\n\n");
     }
-    PRINTF ("Good-by from outputEdt!\n");
-    PRINTF ("***********************\n");
+    ocrPrintf ("Good-by from outputEdt!\n");
+    ocrPrintf ("***********************\n");
     fflush (stdout);
     ocrShutdown ();
     return NULL_GUID;
@@ -254,7 +254,7 @@ ocrGuid_t outputEdt (u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 ocrGuid_t initializeEdt (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    PRINTF("Hello from initilaizeEdt!\n");
+    ocrPrintf("Hello from initilaizeEdt!\n");
     fflush (stdout);
     try {
 	std::cout << "Initializing Model and Grid ... " << std::endl;
@@ -267,7 +267,7 @@ ocrGuid_t initializeEdt (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
 	const int nLevels = 40;
         const int nWorkers = paramv [0];
         const int nSteps = paramv [1];
-    PRINTF("initilaizeEdt nWorkers = %d nSteps = %d!\n", nWorkers, nSteps);
+    ocrPrintf("initilaizeEdt nWorkers = %d nSteps = %d!\n", nWorkers, nSteps);
     fflush (stdout);
 
 	double dGDim[6];
@@ -306,7 +306,7 @@ ocrGuid_t initializeEdt (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
         int nNeighbors = 2;
         ocrGuid_t GuidRange;
         ocrGuidRangeCreate( &(GuidRange), 2 * nNeighbors * nWorkers, GUID_USER_EVENT_STICKY);
-    PRINTF("initilaizeEdt after Model Setup\n");
+    ocrPrintf("initilaizeEdt after Model Setup\n");
     fflush (stdout);
 	// Set the model grid (one patch Cartesian grid)
         GridCartesianGLL * pGrid [nWorkers];
@@ -325,7 +325,7 @@ ocrGuid_t initializeEdt (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
 			dRefLat,
 			eVerticalStaggering);
         }
-    PRINTF("initilaizeEdt after Grid Setup\n");
+    ocrPrintf("initilaizeEdt after Grid Setup\n");
     fflush (stdout);
 
 	// Apply the default patch layout
@@ -502,11 +502,11 @@ ocrGuid_t initializeEdt (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
 ///////////////////////////////////////////////////////////////////////////////
 
 extern "C" ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("Hello from DataContainerTest-OCR!\n");
+    ocrPrintf("Hello from DataContainerTest-OCR!\n");
     fflush (stdout);
     void *programArgv = depv[0].ptr;
-    u32 argc=getArgc(programArgv);
-    PRINTF("argc = %d\n", argc);
+    u32 argc=ocrGetArgc(programArgv);
+    ocrPrintf("argc = %d\n", argc);
     ocrGuid_t initialize;
     TempestOcrTask_t initialize_t;
     u64 initialize_paramv [2];
@@ -517,10 +517,10 @@ extern "C" ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t de
         nSteps = 4;
     } else {
         u32 i = 1;
-        nWorkers = (u32) atoi(getArgv(programArgv, i++));
-        nSteps = (u32) atoi(getArgv(programArgv, i++));
+        nWorkers = (u32) atoi(ocrGetArgv(programArgv, i++));
+        nSteps = (u32) atoi(ocrGetArgv(programArgv, i++));
     }
-    PRINTF("Using %d workers, %d steps.\n", nWorkers, nSteps);
+    ocrPrintf("Using %d workers, %d steps.\n", nWorkers, nSteps);
     fflush (stdout);
 
     // Create the InitializationTask
@@ -529,7 +529,7 @@ extern "C" ocrGuid_t mainEdt ( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t de
     initialize_t.FNC = initializeEdt;
     ocrEdtTemplateCreate(&initialize_t.TML, initialize_t.FNC, 2, 0);
     ocrEdtCreate(&initialize_t.EDT, initialize_t.TML, EDT_PARAM_DEF, initialize_paramv, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_GUID, NULL_GUID);
-    PRINTF("mainEdt started Initialize\n");
+    ocrPrintf("mainEdt started Initialize\n");
     fflush (stdout);
     return NULL_GUID;
 }

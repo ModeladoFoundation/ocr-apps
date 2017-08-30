@@ -59,7 +59,7 @@ u64 reductionsizeof(reductionOperator_t operator) {
     if(operator == REDUCTION_U4_BITAND) return(4);
     if(operator == REDUCTION_U4_BITOR) return(4);
     if(operator == REDUCTION_U4_BITXOR) return(4);
-    PRINTF("UNSUPPORTED reductionOperator\n");
+    ocrPrintf("UNSUPPORTED reductionOperator\n");
     ocrShutdown();
     return (u64)-1; // Let's keep the compiler happy
 }
@@ -234,7 +234,7 @@ void reductionOperation(u64 length, void * a, void * b, reductionOperator_t oper
             return;
     }
 
-    PRINTF("unsupported operator type %d \n", operator);
+    ocrPrintf("unsupported operator type %d \n", operator);
     ocrShutdown();
     return;
 }
@@ -659,8 +659,8 @@ ocrGuid_t reductionEdt(u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]) {
             ocrEventSatisfy(returnEVT, DEPV(reduction,mydata,guid));
             }
         return NULL_GUID;
-
         }
+
 }
 
 
@@ -702,7 +702,6 @@ void reductionLaunch(reductionPrivate_t * rpPTR, ocrGuid_t reductionPrivateDBK, 
     ocrEdtCreate(&reductionEDT, rpPTR->reductionTML, EDT_PARAM_DEF, NULL, 2, NULL, EDT_PROP_NONE, &rpPTR->myEdtAffinityHNT, NULL);
     ocrDbCreate(&(localDBK), (void**) &localPTR, rpPTR->size, 0, NULL_HINT, NO_ALLOC);
     memcpy(localPTR, mydataPTR, rpPTR->size);
-//PRINTF("RL%d localDBK "GUIDF" \n",rpPTR->myrank,GUIDA(localDBK));
     ocrDbRelease(localDBK);
     ocrAddDependence(localDBK, reductionEDT, SLOT(reduction,mydata), DB_MODE_RW);
     rpPTR->phase = 0;

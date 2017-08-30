@@ -63,15 +63,15 @@ void print_timers(void* t, u32 atoms)
    timer* timers = (timer*) t;
    double loop_time = timers[loop_timer].total*TICK;
 
-   PRINTF("\n\nTimings\n");
-   PRINTF("        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
-   PRINTF("___________________________________________________________________\n");
+   ocrPrintf("\n\nTimings\n");
+   ocrPrintf("        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
+   ocrPrintf("___________________________________________________________________\n");
    for (int ii=0; ii<number_of_timers; ++ii)
    {
       double total = timers[ii].total*TICK;
       if (timers[ii].count > 0)
 #ifdef TG_ARCH
-         PRINTF("%16s%12lu     %8.4f      %8.4f    %8.2f\n",
+         ocrPrintf("%16s%12lu     %8.4f      %8.4f    %8.2f\n",
 #else
          printf("%-16s%12"PRIu64"     %8.4f      %8.4f    %8.2f\n",
 #endif
@@ -79,7 +79,7 @@ void print_timers(void* t, u32 atoms)
                  total, total/loop_time*100.0);
    }
    real_t rate = timers[compute_force_timer].total / (atoms * timers[compute_force_timer].count);
-   PRINTF("\n---------------------------------------------------\n");
-   PRINTF(" Average atom update rate: %6.2f us/atom/task\n", rate);
-   PRINTF("---------------------------------------------------\n\n");
+   ocrPrintf("\n---------------------------------------------------\n");
+   ocrPrintf(" Average atom update rate: %6.2f us/atom/task\n", rate);
+   ocrPrintf("---------------------------------------------------\n\n");
 }

@@ -76,7 +76,7 @@ void serial_lcs_1D(int* current, int* left, int* above, int* diag,
     int neighbor_j_size = (xj == 1) ? 1 : n;
 
 #ifdef PRINT
-    PRINTF("Calling seq basecase: xi: %d, xj: %d, n: %d \n", xi, xj, n);
+    ocrPrintf("Calling seq basecase: xi: %d, xj: %d, n: %d \n", xi, xj, n);
 #endif
     //copy left to a seperate location.
 
@@ -125,9 +125,9 @@ void serial_lcs_1D(int* current, int* left, int* above, int* diag,
 #ifdef PRINT
     for (i = 0; i < my_i_size; i++) {
         for (j = 0; j < my_j_size; j++) {
-            PRINTF("%d ", current[i * my_j_size + (j)]);
+            ocrPrintf("%d ", current[i * my_j_size + (j)]);
         }
-        PRINTF("\n");
+        ocrPrintf("\n");
     }
 #endif
     return;
@@ -227,7 +227,7 @@ ocrGuid_t recLCSEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
         int nn = n >> 1;
 
-        //PRINTF("Working on size: %lu\n", nn);
+        //ocrPrintf("Working on size: %lu\n", nn);
 
         //--Call for x11-------------------------------------------
         LCS_task_params p1;
@@ -241,7 +241,7 @@ ocrGuid_t recLCSEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         p1.t_labels = p->t_labels;
         p1.score_matrix_labels = p->score_matrix_labels;
 
-        //PRINTF("Calling rec case N: %lu, xi: %lu, xj: %lu, n: %lu \n", p->N, p->xi, p->xj, p->n);
+        //ocrPrintf("Calling rec case N: %lu, xi: %lu, xj: %lu, n: %lu \n", p->N, p->xi, p->xj, p->n);
         // Create the task template
         ocrGuid_t LCSGuidTmp_X11;
         ocrEdtTemplateCreate(&LCSGuidTmp_X11, recLCSEdt, sizeof(p1) / sizeof(u64), 1);
@@ -333,7 +333,7 @@ ocrGuid_t shutDownEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     int len = (int)paramv[0];
 
     long end = cilk_getticks();
-    PRINTF("runtime: %f\n", cilk_ticks_to_seconds(end - (long)paramv[2]));
+    ocrPrintf("runtime: %f\n", cilk_ticks_to_seconds(end - (long)paramv[2]));
 
 #ifdef CHECK_RESULTS
     if (score[len * len - 1] != (int)paramv[1])
@@ -342,7 +342,7 @@ ocrGuid_t shutDownEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         printf("Result matched! We are good :)\n");
 #endif
 
-    PRINTF("\nShutting down OCR runtime\n");
+    ocrPrintf("\nShutting down OCR runtime\n");
 
     ocrShutdown(); // This is the last EDT to execute, terminate
     return NULL_GUID;
@@ -354,13 +354,13 @@ ocrGuid_t randInitEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     int base = (int)paramv[1];
     if (len == base + 1) {
         Ti[0] = 32;
-        //PRINTF("%d ", Ti[0]);
+        //ocrPrintf("%d ", Ti[0]);
         Ti++;
     }
 
     for (int l = 0; l < len; l++) {
         Ti[l] = rand() % 4 + 'A'; // Initialize T
-        //PRINTF("%d ", Ti[l]);
+        //ocrPrintf("%d ", Ti[l]);
     }
     return NULL_GUID;
 }
@@ -373,13 +373,13 @@ ocrGuid_t scoreInitEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     if (len == 1) {
         score[0] = start;
-        //PRINTF("%d ", score[0]);
+        //ocrPrintf("%d ", score[0]);
     }
     else {
 
         for (int l = 0; l < len; l++) {
             score[l] = start + l; // Initialize T
-            //PRINTF("%d ", score[l]);
+            //ocrPrintf("%d ", score[l]);
         }
     }
     return NULL_GUID;
@@ -489,7 +489,7 @@ ocrGuid_t InitEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
         ocrAddDependence(T_ij, randInitTEdt, 0, DB_MODE_RW);
     }
 
-    //PRINTF("\n S:");
+    //ocrPrintf("\n S:");
     ////////////////////////////////////////////////////////
 
     //////////////////Initialize S/////////////////////////
@@ -697,7 +697,7 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     // Collect command line arguments.
     ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
     void* PTR_cmdLineArgs = depv[0].ptr;
-    u32 argc = getArgc(PTR_cmdLineArgs);
+    u32 argc = ocrGetArgc(PTR_cmdLineArgs);
 
     // Input params and default values.
     int N = 1024; // string length
@@ -705,27 +705,27 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     int num_workers = 16; // maximum number of workers
 
     if (argc < 1) {
-        PRINTF("USAGE: please run the program as follows:\n"
+        ocrPrintf("USAGE: please run the program as follows:\n"
                "executable input_string_length number_of_cores basecase\n");
         exit(1);
     }
 
     if (argc > 1) {
-        N = (int)atol(getArgv(PTR_cmdLineArgs, 1));
+        N = (int)atol(ocrGetArgv(PTR_cmdLineArgs, 1));
     }
     if (argc > 2) {
-        base = (int)atol(getArgv(PTR_cmdLineArgs, 2));
+        base = (int)atol(ocrGetArgv(PTR_cmdLineArgs, 2));
     }
     if (argc > 3) {
-        num_workers = (int)atol(getArgv(PTR_cmdLineArgs, 3));
+        num_workers = (int)atol(ocrGetArgv(PTR_cmdLineArgs, 3));
     }
 
     // base can not be > N.
     if (N < base)
         base = N;
 
-    PRINTF("\n");
-    PRINTF("Running LCS.\nStrings len: %ld  basecase: %ld\n", N, base);
+    ocrPrintf("\n");
+    ocrPrintf("Running LCS.\nStrings len: %ld  basecase: %ld\n", N, base);
     fflush(stdout);
 
     // Create mapguids for S, T and lcs_score matrix.
@@ -770,7 +770,7 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     assert(lcs_score != NULL);
 
     // Initialize the data
-    //PRINTF("%d HERE\n", );
+    //ocrPrintf("%d HERE\n", );
 
     init_param pv;
 
@@ -866,39 +866,39 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 ////////////////////////////////////////////////////////////
 // Print values for debug purpose
 #ifdef PRINT
-    PRINTF("\nS: ");
+    ocrPrintf("\nS: ");
     for (int i = 0; i < num_labels; i++) {
         int* Si = S[i];
         int block_size = (i == 0) ? (base + 1) : base;
         for (int j = 0; j < block_size; j++) {
-            PRINTF("%ld ", Si[j]);
+            ocrPrintf("%ld ", Si[j]);
         }
     }
-    PRINTF("\nT: ");
+    ocrPrintf("\nT: ");
     for (int i = 0; i < num_labels; i++) {
         int* Ti = T[i];
         int block_size = (i == 0) ? (base + 1) : base;
         for (int j = 0; j < block_size; j++) {
-            PRINTF("%ld ", Ti[j]);
+            ocrPrintf("%ld ", Ti[j]);
         }
     }
 
-    PRINTF("\n");
+    ocrPrintf("\n");
 #endif
 
 #ifdef CHECK_RESULTS
 #ifdef PRINT
-    PRINTF("\n_S: ");
+    ocrPrintf("\n_S: ");
     for (int i = 0; i < Nplus1; i++) {
 
-        PRINTF("%ld ", _S[i]);
+        ocrPrintf("%ld ", _S[i]);
     }
-    PRINTF("\n_T: ");
+    ocrPrintf("\n_T: ");
     for (int i = 0; i < Nplus1; i++) {
 
-        PRINTF("%ld ", _T[i]);
+        ocrPrintf("%ld ", _T[i]);
     }
-    PRINTF("\n");
+    ocrPrintf("\n");
 #endif
 
     serial_lcs(score, _S, _T, 1, 1, N);
@@ -906,9 +906,9 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
 #ifdef PRINT
     for (int i = 1; i < Nplus1; i++) {
         for (int j = 1; j < Nplus1; j++) {
-            PRINTF("%d ", score[i * Nplus1 + (j)]);
+            ocrPrintf("%d ", score[i * Nplus1 + (j)]);
         }
-        PRINTF("\n");
+        ocrPrintf("\n");
     }
 #endif
 
@@ -939,7 +939,7 @@ extern "C" ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv
     // Create the task template
     ocrGuid_t recLCSGuid;
     ocrEdtTemplateCreate(&recLCSGuid, recLCSEdt, sizeof(LCS_task_params) / sizeof(u64), 1);
-    //PRINTF("%d HERE\n", sizeof(LCS_task_params)/sizeof(u64) );
+    //ocrPrintf("%d HERE\n", sizeof(LCS_task_params)/sizeof(u64) );
 
     // Create the task
     ocrGuid_t recLCSEdt, outputEventGuid2, outputEventGuidOnce2;

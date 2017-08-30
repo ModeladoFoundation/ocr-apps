@@ -8,7 +8,7 @@
 ocrGuid_t CCD_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdtDep_t *depv) {
 	int retval;
 #ifdef TRACE_LVL_2
-PRINTF("//// enter CCD_edt\n");RAG_FLUSH;
+ocrPrintf("//// enter CCD_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==0);
 	assert(depc==5); // 5th is post_Affine_evg
@@ -29,7 +29,7 @@ RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params
 		image_params,	image_params_dbg);
 
 #ifdef TRACE_LVL_2
-PRINTF("//// leave CCD_edt\n");RAG_FLUSH;
+ocrPrintf("//// leave CCD_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -38,7 +38,7 @@ ocrGuid_t ccd_async_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdt
 	int retval;
     ccdAsyncPRM_t *ccdAsyncParamvIn = (ccdAsyncPRM_t *)paramv;
 #ifdef TRACE_LVL_3
-PRINTF("////// enter ccd_async_edt\n");RAG_FLUSH;
+ocrPrintf("////// enter ccd_async_edt\n");RAG_FLUSH;
 #endif
 	assert(PRMNUM(ccdAsync));
 	struct corners_t *corners = &(ccdAsyncParamvIn->corners);
@@ -54,7 +54,7 @@ RAG_REF_MACRO_SPAD(struct ImageParams,image_params,image_params_ptr,image_params
 	int Ncor = image_params->Ncor;
         int Ncor_sqr = Ncor * Ncor;
 #ifdef DEBUG
-PRINTF("////// ccd_async m1 m2 n1 n2 %d %d %d %d\n",m1,m2,n1,n2);RAG_FLUSH;
+ocrPrintf("////// ccd_async m1 m2 n1 n2 %d %d %d %d\n",m1,m2,n1,n2);RAG_FLUSH;
 #endif
         for(int m=m1; m<m2; m++) {
             int mIndex = (Ncor-1)/2 + m;
@@ -113,7 +113,7 @@ PRINTF("////// ccd_async m1 m2 n1 n2 %d %d %d %d\n",m1,m2,n1,n2);RAG_FLUSH;
 	} // for n
 
 #ifdef TRACE_LVL_3
-PRINTF("////// leave ccd_async_edt\n");RAG_FLUSH;
+ocrPrintf("////// leave ccd_async_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -126,13 +126,13 @@ CCD(	struct complexData **curImage,    ocrGuid_t curImage_dbg,
 {
 	int retval;
 #ifdef TRACE_LVL_2
-PRINTF("//// enter CCD\n");RAG_FLUSH;
+ocrPrintf("//// enter CCD\n");RAG_FLUSH;
 #endif
 	int Mwins = image_params->Iy - image_params->Ncor + 1;
 	int Nwins = image_params->Ix - image_params->Ncor + 1;
 	assert(image_params->Ncor < MAX_Ncor);
 #ifdef TRACE_LVL_2
-PRINTF("//// Mwins == %d and Nwins == %d, Ncor == %d\n",Mwins,Nwins,image_params->Ncor);RAG_FLUSH;
+ocrPrintf("//// Mwins == %d and Nwins == %d, Ncor == %d\n",Mwins,Nwins,image_params->Ncor);RAG_FLUSH;
 #endif
 #ifdef RAG_NEW_BLK_SIZE
 	int CCD_ASYNC_BLOCK_SIZE_M = RAG_NEW_BLK_SIZE;
@@ -145,7 +145,7 @@ PRINTF("//// Mwins == %d and Nwins == %d, Ncor == %d\n",Mwins,Nwins,image_params
 #endif
 ///////////// create async
 #ifdef TRACE_LVL_2
-PRINTF("//// create a template for ccd_async function\n");RAG_FLUSH;
+ocrPrintf("//// create a template for ccd_async function\n");RAG_FLUSH;
 #endif
 	ocrGuid_t ccd_async_clg;
 	retval = ocrEdtTemplateCreate(
@@ -174,7 +174,7 @@ PRINTF("//// create a template for ccd_async function\n");RAG_FLUSH;
 			async_corners.n2   = n+CCD_ASYNC_BLOCK_SIZE_N;
 #endif
 #ifdef TRACE_LVL_2
-PRINTF("//// create an edt for ccd_async\n");RAG_FLUSH;
+ocrPrintf("//// create an edt for ccd_async\n");RAG_FLUSH;
 #endif
 			ocrGuid_t ccd_async_scg;
             ccdAsyncPRM_t ccdAsyncParamv;
@@ -200,7 +200,7 @@ RAG_DEF_MACRO_PASS(ccd_async_scg,NULL,NULL,NULL,NULL,image_params_dbg,3);
 	} /* for m */
 
 #ifdef TRACE_LVL_2
-PRINTF("//// leave CCD\n");RAG_FLUSH;
+ocrPrintf("//// leave CCD\n");RAG_FLUSH;
 #endif
 	return;
 }

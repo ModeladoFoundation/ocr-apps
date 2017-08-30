@@ -61,9 +61,9 @@ CFLAGS :=
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread $(EXTRALDFLAGS)
+LDFLAGS := -lpthread
 
-CONFIG_FLAGS := --guid COUNTED_MAP
+CONFIG_FLAGS += --guid COUNTED_MAP
 # Targets:
 #   - all:     Build the application.
 #   - debug:   Build the debug version of the application

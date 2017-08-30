@@ -18,18 +18,18 @@ typedef char s8;
 
 #if 0
 #define COMPILE_ASSERT(a) assert(a)
-#define ASSERT(a) assert(a)
+#define ocrAssert(a) assert(a)
 //#define RESULT_ASSERT(a, op, b) do { assert((a) op (b), __FILE__, __LINE__); } while(0);
 //#define RESULT_TRUE(a) do { assert((a) != 0, __FILE__, __LINE__); } while(0);
-#define ASSERT_BLOCK_BEGIN(cond) if(!(cond)) {
-#define ASSERT_BLOCK_END ASSERT(0 && "assert block failure"); }
+#define ocrAssert_BLOCK_BEGIN(cond) if(!(cond)) {
+#define ocrAssert_BLOCK_END ocrAssert(0 && "assert block failure"); }
 #else
 #define COMPILE_ASSERT(a)
-#define ASSERT(a)
+#define ocrAssert(a)
 #define RESULT_ASSERT(a, op, b) do { a; } while(0);
 #define RESULT_TRUE(a) do { a; } while(0);
-#define ASSERT_BLOCK_BEGIN(cond) if(0) {
-#define ASSERT_BLOCK_END }
+#define ocrAssert_BLOCK_BEGIN(cond) if(0) {
+#define ocrAssert_BLOCK_END }
 #endif /* OCR_ASSERT */
 
 

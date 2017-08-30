@@ -1,0 +1,118 @@
+#!/bin/bash -l
+#SBATCH -p TPLARG_QUEUE
+#SBATCH -N TPLARG_NODE_SCALING
+#SBATCH -t TPLARG_HOUR:TPLARG_MIN:00
+#SBATCH -J TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
+#SBATCH -o TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
+
+export OCR_INSTALL=TPLARG_OCR_INSTALL
+export RUN_MODE=runApp
+
+export REPO_TOP=TPLARG_REPO_TOP
+export XST_BATCH="yes"
+
+.  ${REPO_TOP}/ocr/ocr/scripts/xs-tools/jump_mpi_ws ${REPO_TOP}
+
+export tile=TPLARG_TILE
+export iter=TPLARG_ITER
+
+if [[ ${XST_BATCH} == "yes" ]]; then
+    if [[ ${SLURM_SUBMIT_DIR} != "" ]]; then
+        # arrange for logs to be under the submit folder
+        rundirName="rundir.TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN"
+        export LOGDIR="${SLURM_SUBMIT_DIR}/${rundirName}"
+        mkdir -p ${LOGDIR}
+    fi
+fi
+
+# To instruct SLURM to affinitize MPI processes hosting OCR
+if [[ "TPLARG_QUEUE" == "XAS*" ]]; then
+    export OCR_MPI_OPTS+=" -c 72"
+fi
+
+cd ${REPO_TOP}/apps/apps/Stencil2D/refactored/ocr/intel-channelEVTs
+
+export OCR_NUM_NODES=TPLARG_NODE_SCALING
+
+function myroot()
+{
+    local v1=`echo "e(l($1)/$2)" | bc -l`
+    awk -vn1=$v1 'BEGIN{printf("%d\n",n1)}'
+}
+
+function runnerWorkloadArguments {
+    # Replace comm workers by comp worker. This is for perf debugging only.
+    if [[ $HACK_SPECIAL_WORKER == "HC" ]]; then
+        pes_comp=${pes_all}
+    fi
+
+    # Adjust number of domains when reaching the maximum number of cores per nodes.
+    # On edison, '24' is the max and we tell the application to use 24 domains when
+    # we really have only 23 compute workers. So we oversubscribe which will be really
+    # bad for the static scheduler.
+    if [[ "${pes_per_process}" == "24" ]]; then
+        domainCount=${pes_all}
+    else
+        domainCount=${pes_comp}
+    fi
+    scale_factor=`myroot ${domainCount} 2`
+    export WORKLOAD_ARGS="$((${scale_factor}*${tile})) ${domainCount} ${iter}"
+}
+
+# Dumping context and environment
+lscpu > ${SLURM_SUBMIT_DIR}/output_dump_lscpu
+env > ${SLURM_SUBMIT_DIR}/output_dump_env
+
+START_DATE=`date`
+echo "START_DATE=${START_DATE}" > ${SLURM_SUBMIT_DIR}/output_dates_TPLARG_NODE_SCALINGN
+
+export CFGARG_SCHEDULER="STATIC"
+
+if [[ "TPLARG_WITH_NUMA" = "yes" ]]; then
+    export CFGARG_NUMA="TPLARG_NUMA_DISTRIB:TPLARG_NUMA_PACKAGE:TPLARG_NUMA_CORES"
+fi
+
+export NODE_SCALING="TPLARG_NODE_SCALING"
+export CORE_SCALING="TPLARG_CORE_SCALING"
+export NB_RUN="TPLARG_NB_RUN"
+export TARGET="TPLARG_APP_NAME"
+export WORKLOAD_INSTALL_ROOT="TPLARG_APP_INSTALL"
+
+# Check for OCR profiler (yes = yes)
+if [[ "TPLARG_OCR_PROFILER" = "yes" ]]; then
+    echo "mkdir -p ${LOGDIR}/${OCR_TYPE}"
+    mkdir -p ${LOGDIR}/${OCR_TYPE}
+    echo "cp -R ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}/${TARGET} ${LOGDIR}/${OCR_TYPE}"
+    cp -R ${WORKLOAD_INSTALL_ROOT}/${OCR_TYPE}/${TARGET} ${LOGDIR}/${OCR_TYPE}
+    export WORKLOAD_INSTALL_ROOT="${LOGDIR}"
+    echo "PROF: WORKLOAD_INSTALL_ROOT=${WORKLOAD_INSTALL_ROOT}"
+    ls -l ${LOGDIR}/${OCR_TYPE}
+fi
+
+. ./scripts/scaling.sh
+
+if [[ -n "${RUN_MPI}" ]]; then
+    MID_DATE=`date`
+    echo "MID_DATE=${MID_DATE}" >> ${SLURM_SUBMIT_DIR}/output_dates_TPLARG_NODE_SCALINGN
+
+    # run MPI check
+    cd ${REPO_TOP}/apps/apps/Stencil2D/baseline/prk-original/mpi
+
+    # Eliminate the additional communication worker in OCR
+    adjCores=""
+    for i in `echo ${c}`; do
+        if [[ $i != "24" ]]; then
+            let adj=$(( $i - 1 ))
+        fi
+        adjCores+="$adj "
+    done
+
+    if [[ "TPLARG_QUEUE" == "XAS*" ]]; then
+        export OCR_MPI_OPTS=" -c 72 "
+    fi
+
+    MY_MPI_ARGS="${OCR_MPI_OPTS}" n="TPLARG_NODE_SCALING" c="${adjCores}" iter="TPLARG_ITER" tile="TPLARG_TILE" nbRuns="TPLARG_NB_RUN" prog="stencil_mapped" ./scripts/batch/runNersc.sh > ${SLURM_SUBMIT_DIR}/output_checked_mpi_TPLARG_NODE_SCALINGN
+
+    END_DATE=`date`
+    echo "END_DATE=${END_DATE}" >> ${SLURM_SUBMIT_DIR}/output_dates_TPLARG_NODE_SCALINGN
+fi

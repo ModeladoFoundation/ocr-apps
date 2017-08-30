@@ -1,6 +1,8 @@
 #ifndef TIMERS_H
 #define TIMERS_H
 
+#include "ocr-types.h"
+
 enum timer_name {
 total_timer, number_of_timers};
 

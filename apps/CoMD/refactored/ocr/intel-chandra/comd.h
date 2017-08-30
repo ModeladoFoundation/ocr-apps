@@ -316,7 +316,7 @@ static inline int getPoliyDomainID( int b, u32* grid, int PD_X, int PD_Y, int PD
     //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
     //
     int pd = globalRankFromCoords(pd_x, pd_y, pd_z, PD_X, PD_Y, PD_Z);
-    //PRINTF("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+    //ocrPrintf("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
 
     return pd;
 }
@@ -327,9 +327,9 @@ static inline void timestamp( const char* msg )
   time_t t = time( NULL );
   char* time_string = ctime( &t );
   time_string[24] = '\0';
-  PRINTF( "%s: ", time_string );
+  ocrPrintf( "%s: ", time_string );
 #endif
-  PRINTF( "%s\n", msg );
+  ocrPrintf( "%s\n", msg );
 }
 
 #endif

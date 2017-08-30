@@ -5,7 +5,11 @@
 #define ENABLE_EXTENSION_LABELING  // For labeled GUIDs
 #include "extensions/ocr-labeling.h"  // For labeled GUIDs
 
+#ifdef REDUCTION_EAGER
+#include "reductionEager.h"
+#else
 #include "reduction.h"
+#endif
 
 #include "ptest_FORforkjoin.h" //FFJ_Ledger_t
 
@@ -45,7 +49,14 @@ int DRmainEdt_fcn(DRshared_t * o_sharedRef, DRshared_t * o_shared, unsigned long
         err = init_DRshared(o_shared); IFEB;
 
         ocrGuid_t reductionRangeGUID = NULL_GUID;
-        err = ocrGuidRangeCreate(&reductionRangeGUID, in_nrank, GUID_USER_EVENT_STICKY); IFEB;
+        unsigned long rangeCount;
+#ifdef REDUCTION_EAGER
+        //Note: *2 is for eager reduction library double buffering I think
+        rangeCount = in_nrank*2;
+#else
+        rangeCount = in_nrank;
+#endif
+        err = ocrGuidRangeCreate(&reductionRangeGUID, rangeCount, GUID_USER_EVENT_STICKY); IFEB;
 
         GUID_ASSIGN_VALUE(o_sharedRef->reductionRangeGUID, reductionRangeGUID);
         GUID_ASSIGN_VALUE(o_shared->reductionRangeGUID, reductionRangeGUID);
@@ -82,10 +93,10 @@ int DRinit_fcn(FFJ_Ledger_t * in_ledger, DRshared_t * in_shared, reductionPrivat
         io_reducPrivate->nrank  = in_ledger->nrank;
         io_reducPrivate->myrank = in_ledger->rankid;
         io_reducPrivate->ndata  = 1; // 1 means that the object we are going to allReduce will be a scalar.
-        io_reducPrivate->reductionOperator = REDUC_OPERATION_TYPE;
+        io_reducPrivate->reductionOperator = REDUC_OPERATOR;
         io_reducPrivate->rangeGUID = in_shared->reductionRangeGUID;
         io_reducPrivate->new = 1;
-        io_reducPrivate->type = ALLREDUCE;
+        io_reducPrivate->type = REDUC_OPERATION_TYPE;
 
         ocrEventParams_t params;
         params.EVENT_CHANNEL.maxGen = 2; //2 for channel exchange
@@ -169,6 +180,10 @@ int DR_reduxA_stop_fcn(unsigned int in_multiplier, FFJ_Ledger_t * in_ledger, Red
     return err;
 }
 
+/**
+ * io_reducPrivateGuid: where we want the reduction answer to be written to
+ * reductionPrivate_t: reduction configuration data-structure
+ */
 int DR_reduxB_start_fcn(FFJ_Ledger_t * in_ledger, unsigned int in_multiplier,
                         ocrGuid_t io_reducPrivateGuid, reductionPrivate_t * io_reducPrivate,
                         unsigned int in_destSlot, ocrGuid_t in_destinationGuid)
@@ -181,8 +196,12 @@ int DR_reduxB_start_fcn(FFJ_Ledger_t * in_ledger, unsigned int in_multiplier,
         sum = val * in_multiplier;
 
 #       ifdef DR_ENABLE_REDUCTION_B
+#ifdef DR_ENABLE_REDUCTION_EVENT
+            err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
+#else
             err = ocrAddDependence(io_reducPrivate->returnEVT, in_destinationGuid, in_destSlot, DB_MODE_RO); IFEB;
             reductionLaunch(io_reducPrivate, io_reducPrivateGuid, &sum);
+#endif
 #       else
             ocrGuid_t gd_sum = NULL_GUID;
             ReducSum_t * o_sum = NULL;
@@ -209,6 +228,9 @@ int DR_reduxB_stop_fcn(unsigned int in_multiplier, FFJ_Ledger_t * in_ledger, Red
 
         TimeMark_t t = getTime();
         in_ledger->at_DR_reduxB_stop_fcn = t;
+        TimeMark_t dt = t - in_ledger->at_DR_reduxB_start_fcn;
+        if(dt<0) dt=-dt; //Just to make sure we get something that is monotonously increasing.
+        in_ledger->cumulsum_DR_reduxB_stop_fcn += dt;
 
         ReducSum_t x = *in_sum;
         err = ocrDbDestroy( in_sum_guid ); IFEB;
@@ -242,7 +264,7 @@ void print_DR_Ledger_timings(FFJ_Ledger_t * in)
     TimeMark_t t_reduxA = in->at_DR_reduxA_stop_fcn - in->at_DR_reduxA_start_fcn;
     TimeMark_t t_reduxB = in->at_DR_reduxB_stop_fcn - in->at_DR_reduxB_start_fcn;
 
-    TIMEPRINT5("INFO: TIME: DR rank=%u/%u PD=%lu, reduxA,reduxB="TIMEF","TIMEF"\n",
-               in->rankid,in->nrank, in->pdID, t_reduxA, t_reduxB);
+    TIMEPRINT5("INFO: TIME: DR rank=%u/%u reduxA,reduxB,cumulReduxB="TIMEF","TIMEF","TIMEF"\n",
+               in->rankid,in->nrank, t_reduxA, t_reduxB, in->cumulsum_DR_reduxB_stop_fcn);
 }
 

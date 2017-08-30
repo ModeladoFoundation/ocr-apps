@@ -16,18 +16,18 @@
 u64 count = 0;
 
 ocrGuid_t funcEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    ASSERT(paramc == 1 && depc == 1);
+    ocrAssert(paramc == 1 && depc == 1);
     int i;double s=0;
     u64 temp = count;
     for(i=0;i<100000;i++) s+=i;
-    PRINTF("id = %d, global count = %d, sum = %f\n",*paramv, temp, s);
+    ocrPrintf("id = %d, global count = %d, sum = %f\n",*paramv, temp, s);
     count = temp + 1;
     return NULL_GUID;
 }
 
 ocrGuid_t shutEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    ASSERT(paramc == 0);
-    PRINTF("SHUTDOWN\n");
+    ocrAssert(paramc == 0);
+    ocrPrintf("SHUTDOWN\n");
     ocrShutdown();
     return NULL_GUID;
 }

@@ -37,6 +37,9 @@
 #include "linkCells.h"
 #include "eam.h"
 #include "performanceTimers.h"
+#ifdef ENABLE_SPAWNING_HINT
+#include "priority.h"
+#endif
 
 #define MAX(A,B) ((A) > (B) ? (A) : (B))
 
@@ -191,7 +194,7 @@ void initAtomHaloExchange(HaloExchange* hh, Domain* domain, LinkCell* boxes)
    ocrHint_t myDbkAffinityHNT;
    ocrHintInit( &myDbkAffinityHNT, OCR_HINT_DB_T );
 #ifdef USE_EAGER_DB_HINT
-    if( domain->procCoord[0]==0 && domain->procCoord[1]==0 && domain->procCoord[2]==0 ) PRINTF("Using Eager DB hint\n");
+    if( domain->procCoord[0]==0 && domain->procCoord[1]==0 && domain->procCoord[2]==0 ) ocrPrintf("Using Eager DB hint\n");
    ocrSetHintValue(&myDbkAffinityHNT, OCR_HINT_DB_EAGER, 1);
 #else
    ocrGuid_t currentAffinity = NULL_GUID;
@@ -335,9 +338,17 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
     // Do halo-exchange along one axis
     ocrGuid_t exchangeDataTML, exchangeDataEDT, exchangeDataOEVT, exchangeDataOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = PTR_rankH->myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->exchangeDataTML, //exchangeDataEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &exchangeDataOEVT );
+#else
     ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->exchangeDataTML, //exchangeDataEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, &exchangeDataOEVT );
+#endif
 
     createEventHelper( &exchangeDataOEVTS, 1);
     ocrAddDependence( exchangeDataOEVT, exchangeDataOEVTS, 0, DB_MODE_NULL );
@@ -355,9 +366,15 @@ ocrGuid_t haloExchangeEdt(EDT_ARGS)
         //set up halo-exchange along the next axis
         ocrGuid_t haloExchangeEDT;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML,
+                      EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL);
+#else
         ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML,
                       EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL);
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, haloExchangeEDT, _idep++, DB_MODE_RO );
@@ -423,6 +440,10 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
     sim->PTR_rankH = PTR_rankH;
 
     ocrHint_t myEdtAffinityHNT = sim->PTR_rankH->myEdtAffinityHNT;
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     ocrDBK_t DBK_pot = sim->DBK_pot;
 
@@ -437,9 +458,15 @@ ocrGuid_t exchangeDataEdt(EDT_ARGS)
 
     ocrGuid_t loadAtomsBufferTML, loadAtomsBufferEDT, loadAtomsBufferOEVT, loadAtomsBufferOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrEdtCreate( &loadAtomsBufferEDT, PTR_rankTemplateH->loadAtomsBufferTML, //loadAtomsBufferEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, &loadAtomsBufferOEVT );
+#else
     ocrEdtCreate( &loadAtomsBufferEDT, PTR_rankTemplateH->loadAtomsBufferTML, //loadAtomsBufferEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &loadAtomsBufferOEVT );
+#endif
 
     createEventHelper( &loadAtomsBufferOEVTS, 1);
     ocrAddDependence( loadAtomsBufferOEVT, loadAtomsBufferOEVTS, 0, DB_MODE_NULL );
@@ -516,9 +543,17 @@ ocrGuid_t forceHaloExchangeEdt(EDT_ARGS)
     // Do halo-exchange along one axis
     ocrGuid_t exchangeDataTML, exchangeDataEDT, exchangeDataOEVT, exchangeDataOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = PTR_rankH->myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+    ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->forceExchangeDataTML, //forceExchangeDataEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &exchangeDataOEVT );
+#else
     ocrEdtCreate( &exchangeDataEDT, PTR_rankTemplateH->forceExchangeDataTML, //forceExchangeDataEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, &exchangeDataOEVT );
+#endif
 
     createEventHelper( &exchangeDataOEVTS, 1);
     ocrAddDependence( exchangeDataOEVT, exchangeDataOEVTS, 0, DB_MODE_NULL );
@@ -537,9 +572,15 @@ ocrGuid_t forceHaloExchangeEdt(EDT_ARGS)
         //set up halo-exchange along the next axis
         ocrGuid_t haloExchangeEDT;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->forceHaloExchangeTML,
+                      EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, &myEdtAffinitySpawnHNT, NULL);
+#else
         ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->forceHaloExchangeTML,
                       EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, NULL);
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, haloExchangeEDT, _idep++, DB_MODE_RO );
@@ -588,6 +629,10 @@ ocrGuid_t forceExchangeDataEdt(EDT_ARGS)
     sim->PTR_rankH = PTR_rankH;
 
     ocrHint_t myEdtAffinityHNT = sim->PTR_rankH->myEdtAffinityHNT;
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 1);
+#endif
 
     ocrDBK_t DBK_nAtoms = sim->boxes->DBK_nAtoms;
 
@@ -604,9 +649,15 @@ ocrGuid_t forceExchangeDataEdt(EDT_ARGS)
 
     ocrGuid_t loadForceBufferTML, loadForceBufferEDT, loadForceBufferOEVT, loadForceBufferOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrEdtCreate( &loadForceBufferEDT, PTR_rankTemplateH->loadForceBufferTML, //loadForceBufferEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_NONE, &myEdtAffinitySpawnHNT, &loadForceBufferOEVT );
+#else
     ocrEdtCreate( &loadForceBufferEDT, PTR_rankTemplateH->loadForceBufferTML, //loadForceBufferEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_NONE, &myEdtAffinityHNT, &loadForceBufferOEVT );
+#endif
 
     createEventHelper( &loadForceBufferOEVTS, 1);
     ocrAddDependence( loadForceBufferOEVT, loadForceBufferOEVTS, 0, DB_MODE_NULL );
@@ -693,7 +744,7 @@ ocrDBK_t mkAtomCellList(int** list_PTR, LinkCell* boxes, enum HaloFaceOrder iFac
       for (int iy=yBegin; iy<yEnd; ++iy)
          for (int iz=zBegin; iz<zEnd; ++iz)
             list[count++] = getBoxFromTuple(boxes, ix, iy, iz);
-   ASSERT(count == nCells);
+   ocrAssert(count == nCells);
    return DBK_list;
 }
 
@@ -920,7 +971,7 @@ void unloadAtomsBuffer(void* vparms, void* data, int face, int bufSize, char* ch
    SimFlat* s = (SimFlat*) data;
    AtomMsg* buf = (AtomMsg*) charBuf;
    int nBuf = bufSize / sizeof(AtomMsg);
-   ASSERT(bufSize % sizeof(AtomMsg) == 0);
+   ocrAssert(bufSize % sizeof(AtomMsg) == 0);
 
    for (int ii=0; ii<nBuf; ++ii)
    {
@@ -984,7 +1035,7 @@ ocrDBK_t mkForceSendCellList(int** list_PTR, LinkCell* boxes, int face, int nCel
       xBegin=-1;   xEnd=nx+1; yBegin=-1;   yEnd=ny+1; zBegin=nz-1; zEnd=nz;
       break;
      default:
-      ASSERT(1==0);
+      ocrAssert(1==0);
    }
 
    int count = 0;
@@ -993,7 +1044,7 @@ ocrDBK_t mkForceSendCellList(int** list_PTR, LinkCell* boxes, int face, int nCel
          for (int iz=zBegin; iz<zEnd; ++iz)
             list[count++] = getBoxFromTuple(boxes, ix, iy, iz);
 
-   ASSERT(count == nCells);
+   ocrAssert(count == nCells);
    return DBK_list;
 }
 
@@ -1036,7 +1087,7 @@ ocrDBK_t mkForceRecvCellList(int** list_PTR, LinkCell* boxes, int face, int nCel
       xBegin=-1; xEnd=nx+1; yBegin=-1; yEnd=ny+1; zBegin=nz; zEnd=nz+1;
       break;
      default:
-      ASSERT(1==0);
+      ocrAssert(1==0);
    }
 
    int count = 0;
@@ -1045,7 +1096,7 @@ ocrDBK_t mkForceRecvCellList(int** list_PTR, LinkCell* boxes, int face, int nCel
          for (int iz=zBegin; iz<zEnd; ++iz)
             list[count++] = getBoxFromTuple(boxes, ix, iy, iz);
 
-   ASSERT(count == nCells);
+   ocrAssert(count == nCells);
    return DBK_list;
 }
 
@@ -1235,7 +1286,7 @@ void unloadForceBuffer(void* vparms, void* vdata, int face, int bufSize, char* c
    ForceExchangeParms* parms = (ForceExchangeParms*) vparms;
    ForceExchangeData* data = (ForceExchangeData*) vdata;
    ForceMsg* buf = (ForceMsg*) charBuf;
-   ASSERT(bufSize % sizeof(ForceMsg) == 0);
+   ocrAssert(bufSize % sizeof(ForceMsg) == 0);
 
    int nCells = parms->nCells[face];
    int* cellList = parms->recvCells[face];
@@ -1250,7 +1301,7 @@ void unloadForceBuffer(void* vparms, void* vdata, int face, int bufSize, char* c
          ++iBuf;
       }
    }
-   ASSERT(iBuf == bufSize/ sizeof(ForceMsg));
+   ocrAssert(iBuf == bufSize/ sizeof(ForceMsg));
 }
 
 void destroyForceExchange(void* vparms)
@@ -1354,13 +1405,13 @@ ocrGuid_t sortAtomsInCellsEdt( EDT_ARGS )
 ///  A function suitable for passing to qsort to sort atoms by gid.
 ///  Because every atom in the simulation is supposed to have a unique
 ///  id, this function checks that the atoms have different gids.  If
-///  that ASSERTion ever fails it is a sign that something has gone
+///  that ocrAssertion ever fails it is a sign that something has gone
 ///  wrong elsewhere in the code.
 int sortAtomsById(const void* a, const void* b)
 {
    int aId = ((AtomMsg*) a)->gid;
    int bId = ((AtomMsg*) b)->gid;
-   ASSERT(aId != bId);
+   ocrAssert(aId != bId);
 
    if (aId < bId)
       return -1;

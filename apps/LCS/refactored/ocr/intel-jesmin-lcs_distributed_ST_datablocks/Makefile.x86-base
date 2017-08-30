@@ -56,7 +56,7 @@ include ${APPS_ROOT}/makefiles/make-pre.inc
 TARGET := lcs
 
 # With "restrict" keyword, icc is 1.5x faster for than gcc
-CC := icc
+#CC := icc
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH

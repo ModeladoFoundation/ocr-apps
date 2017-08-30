@@ -1,4 +1,4 @@
-/* Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,8 @@ namespace Realm {
 
     extern Logger log_reservation; // in reservation_impl.cc
 
-    const ID OCRReservationImpl::ocr_rsrv_impl = ID(OCRReservationImpl::ID_TYPE, gasnet_mynode(), 0);
+    //const ID OCRReservationImpl::ocr_rsrv_impl = ID(OCRReservationImpl::ID_TYPE, gasnet_mynode(), 0);
+    const ID OCRReservationImpl::ocr_rsrv_impl = ID::make_reservation(gasnet_mynode(), 0);
 
     /*static*/ Reservation OCRReservationImpl::create_reservation(size_t _data_size /*= 0*/)
     {

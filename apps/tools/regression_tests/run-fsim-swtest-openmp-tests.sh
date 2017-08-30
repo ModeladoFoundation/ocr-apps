@@ -81,7 +81,6 @@ test_omp_lock
 test_omp_for_reduction
 test_omp_master
 test_omp_atomic
-test_omp_task_untied
 test_omp_for_lastprivate
 test_omp_sections_nowait
 orph_test_omp_section_lastprivate
@@ -102,17 +101,14 @@ orph_test_omp_master
 orph_test_omp_parallel_default
 orph_test_omp_barrier
 orph_test_omp_taskyield
-orph_test_omp_task_untied
 orph_test_omp_parallel_for_if
 test_omp_parallel_for_if
-orph_test_omp_parallel_firstprivate
 orph_test_omp_for_nowait
 test_omp_single_nowait
 orph_test_omp_parallel_num_threads
 orph_test_omp_for_schedule_guided
 orph_test_omp_for_private
 test_omp_test_nest_lock
-orph_test_omp_parallel_private
 test_omp_parallel_firstprivate
 test_omp_nest_lock
 orph_test_omp_get_num_threads
@@ -142,6 +138,7 @@ test_has_openmp
 orph_test_omp_parallel_sections_reduction
 test_omp_task_private
 "
+TESTS_LIST=$TESTS
 
 if [ "$1" == "-h" ]; then
   print_help
@@ -152,35 +149,37 @@ fi
 
 for TEST in $TESTS; do
 
-  # Add ctest_ to the name to use the crosstest version
-  NORMAL_TEST=$TEST
-  [ "$CTEST" ] && TEST=${TEST/test/ctest}
+  if ! echo $TESTS_LIST | grep -q "\<$TEST\>"; then
+    echo "Invalid test name '$TEST'" 1>&2
+    continue
+  fi
 
   export TEST_NAME=$TEST
 
-  declare -a REGEXS=("ready alarm")
+  # Add ctest_ to the name to use the crosstest version
+  [ "$CTEST" ] && TEST=${TEST/test/ctest}
 
-  # Using the static (not pie) executables
-  EXECUTABLE_INSTALL="$APPS_ROOT/libs/src/libomp/build-tg-xe-static/testsuite/bin/c"
+  TEST_FILE=$TEST
+
+
+  case $TEST_FILE in
+    *.p)
+      EXECUTABLE_INSTALL="$APPS_ROOT/libs/src/libomp/build-tg-xe-pie/testsuite/bin/c"
+      ;;
+    *)
+      EXECUTABLE_INSTALL="$APPS_ROOT/libs/src/libomp/build-tg-xe-static/testsuite/bin/c"
+      TEST_FILE+=.swtest
+      ;;
+  esac
 
   # The test programs output log files to the directory where they were run from.
   # We want these to go in the LOGS_DIR directory
   export WORKLOAD_INSTALL=$LOGS_DIR
 
-  # Set up the env for the test
-  case $TEST in
-    *)
-      if echo $TESTS | grep -q "\<$NORMAL_TEST\>"; then
-        # There is no custom verification for this test. Use the default.
-        export FSIM_ARGS="-q -c $APPS_ROOT/legacy/tg-xe/ccfg.cfg -- $EXECUTABLE_INSTALL/$TEST_NAME"
-        REGEXS+=("Directive worked without errors\.")
-      else
-        echo "Invalid test name '$TEST'" 1>&2
-        continue
-      fi
-      ;;
-  esac
+  export FSIM_ARGS="-q -c $APPS_ROOT/legacy/tg-xe/ccfg.cfg -- $EXECUTABLE_INSTALL/$TEST_FILE"
 
+  declare -a REGEXS=("ready alarm")
+  REGEXS+=("Directive worked without errors\.")
   REGEXS+=("Client shutdown has been approved")
 
   # Execute the test, moving on if unsuccessful
@@ -194,9 +193,9 @@ for TEST in $TESTS; do
   esac
 
   if [ "$SUCCESS" -eq 0 ]; then
-    echo " !!! Test $TEST_NAME failed !!!" 1>&2
+    echo " !!! Test $TEST failed !!!" 1>&2
   else
-    echo "Test $TEST_NAME succeeded"
+    echo "Test $TEST succeeded"
   fi
   echo
 done

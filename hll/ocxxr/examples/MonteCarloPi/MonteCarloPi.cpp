@@ -4,6 +4,15 @@
 #include <cstdlib>
 #include <ocxxr-main.hpp>
 
+#ifdef MEASURE_TIME
+#include <ctime>
+#include <ratio>
+#include <chrono>
+using namespace std::chrono;
+
+high_resolution_clock::time_point start;
+#endif
+
 #define ITERS 10000
 
 struct WorkerArgs {
@@ -50,10 +59,21 @@ void PiAccumulatorTask(ocxxr::DatablockList<long> var_args) {
     PRINTF("Pi equals %f \n", Pi);
 
     PRINTF("Shutting down...\n");
+
+#ifdef MEASURE_TIME
+	high_resolution_clock::time_point end = high_resolution_clock::now();
+	duration<double> time_span = duration_cast<duration<double>>(end - start);
+	PRINTF("elapsed time: %f second\n", time_span.count());
+#endif
+
     ocxxr::Shutdown();
 }
 
 void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs> args) {
+#ifdef MEASURE_TIME
+    start = high_resolution_clock::now();
+#endif
+
     PRINTF("Main task started\n");
     int count = 10;
     if (args->argc() < 2) {

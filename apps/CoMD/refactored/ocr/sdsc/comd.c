@@ -11,12 +11,12 @@
 static void timestamp(const char* msg)
 {
 #ifdef TG_ARCH
-  PRINTF(msg);
+  ocrPrintf(msg);
 #else
   time_t t= time(NULL);
   char* timeString = ctime(&t);
   timeString[24] = '\0';
-  PRINTF("%s: %s\n", timeString, msg);
+  ocrPrintf("%s: %s\n", timeString, msg);
 #endif
 }
 
@@ -28,12 +28,12 @@ ocrGuid_t end_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]);
 
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-  u64 argc = getArgc(depv[0].ptr);
+  u64 argc = ocrGetArgc(depv[0].ptr);
   ocrGuid_t args;
   char** argv;
   ocrDbCreate(&args, (void**)&argv, sizeof(char*)*argc, 0, NULL_GUID, NO_ALLOC);
   for(u32 a = 0; a < argc; ++a)
-    argv[a] = getArgv(depv[0].ptr,a);
+    argv[a] = ocrGetArgv(depv[0].ptr,a);
 
   ocrGuid_t timer_i;
   timer* timer_p;
@@ -96,7 +96,7 @@ ocrGuid_t main_edt3(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
   sim->energy0 = (sim->e_potential + sim->e_kinetic) / sim->bxs.atoms;
   sim->atoms0 = sim->bxs.atoms;
-  PRINTF("\n\nInitial energy : %14.12f, atom count : %d \n\n", sim->energy0, sim->atoms0);
+  ocrPrintf("\n\nInitial energy : %14.12f, atom count : %d \n\n", sim->energy0, sim->atoms0);
 
   timestamp("Initialization Finished\n");
   timestamp("Starting simulation\n");

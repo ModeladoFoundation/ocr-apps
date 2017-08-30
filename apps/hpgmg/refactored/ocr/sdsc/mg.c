@@ -10,7 +10,7 @@ ocrGuid_t do_solves(ocrGuid_t start, mg_type* mg_ptr, int num, int warmup)
 for(n = 0; n < num; ++n) {
   if (!warmup)
    c = time_all(mg_ptr,c);
-    PRINTF("FMGSolve...\n");
+    ocrPrintf("FMGSolve...\n");
     c = init_ur(mg_ptr, c,0);
     c = init_ur(mg_ptr, c,1);
     c = restrict_all(mg_ptr, c);

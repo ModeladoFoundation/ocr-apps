@@ -1,0 +1,16 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+OCR_TYPE := x86
+
+TOP := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(TOP)/Makefile.x86-base
+
+# SPMD library is written in C++
+# Set the compiler to g++ for proper linking
+CC=g++
+
+# SPMD examples require mpi.h
+# MPI_INSTALL will be when including Makefile.x86-base
+CFLAGS += -I${MPI_INSTALL}/include
+

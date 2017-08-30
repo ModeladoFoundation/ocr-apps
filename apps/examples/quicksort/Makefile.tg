@@ -50,7 +50,11 @@ TARGET := quicksort
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := libc macros
+REQ_LIBS := macros
+
+ifeq ($(WITH_NEWLIB), yes)
+  REQ_LIBS += newlib
+endif
 
 # Space separated list of source files
 SRCS := quicksort.c
@@ -63,7 +67,11 @@ CFLAGS :=
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS :=
+# LDFLAGS :=
+
+ifeq ($(WITH_NEWLIB), yes)
+  LDFLAGS += -lc
+endif
 
 # Targets:
 #   - all:     Build the application.

@@ -1,0 +1,141 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+
+# ARCH
+ARCH        := x86
+# APPS
+ifndef APPS_ROOT
+$(warning APPS_ROOT not set. Using default path. APPS_ROOT can also be set by sourcing app_env.bash from "apps/"!)
+APPS_ROOT ?= ../../../../../apps
+endif
+
+# APPLICATION
+WORKLOAD_SRC          ?= .
+WORKLOAD_BUILD_ROOT   ?= ./build
+WORKLOAD_INSTALL_ROOT ?= ./install
+
+# If 0, the workload has no input file
+# If 1+, this is the index in the argument
+# list after which everything is considered an
+# input file. Note that the index STARTS AT 1
+WORKLOAD_INPUT_FILE_IDX := 0
+
+arg1 ?= 4
+arg2 ?= 4
+arg3 ?= 10
+arg4 ?= 2
+arg5 ?= YES_COARSEN
+
+# You can specify default arguments here. These
+# will be overriden by (in order):
+#   - the WORKLOAD_ARGS environment variable
+#   - the arguments passed to 'make run'
+# To restate, the arguments passed to make run have
+# the highest priority and will override both the
+# default arguments here and the ones passed through
+# an environment variable
+WORKLOAD_ARGS ?= --num_refine 1 --npx ${arg1} --npy ${arg1} --npz ${arg1} --nx 1 --ny 1 --nz 1 --num_objects 1 --object 2 0 -0.11 -0.11 -0.11 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 20 --checksum_freq 1 --report_perf 15 --num_vars 2 --comm_vars 2 --plot_freq 1 --stages_per_ts 2 --refine_freq ${arg4} --block_change 2
+
+# Set to yes if running visualizer or export as environment variable
+ENABLE_VISUALIZER ?= no
+
+# Run mode (not fully supported)
+# Set to "yes" if running with torque
+RUN_TORQUE ?= no
+# By default, the make system will make sure OCR is properly
+# built. You can override this here:
+#  - Set to buildApp if you just want to build the app (OCR must be built)
+#  - Set to runApp if you just want to run the app (the app and OCR must be built)
+# This is mostly used by Jenkins as it splits out the build and run phases for
+# a test
+RUN_MODE ?=
+
+## END of variables coming from user/environment
+
+
+include ${APPS_ROOT}/makefiles/make-pre.inc
+
+# Name of the application to build
+TARGET := miniAMR.x
+
+# Space separated list of directory names in apps/libs/src
+# that need to be built. These will be built for ARCH
+REQ_LIBS := ocrAppUtils
+
+# Space separated list of source files
+#SRCS := block.c  chksum.c  comm.c  clone.c  init.c  move.c  parent.c  plot.c  stencil.c  refine.c  root.c  util.c  wtime.c
+
+SRCS := mainOCR.c
+
+CONFIG_FLAGS+=--guid LABELED --binding seq
+
+# Additional CFLAGS. By default, it includes
+# all OCR required includes and $(APPS_LIBS_INSTALL)/include
+# TG_ARCH is also defined for Fsim
+CFLAGS := -Wall -fms-extensions -DBUILD_OCR_VERSION -DRELAX_DATABLOCK_SEASONINGx -DNANNY_ON_STEROIDSx -DNANNY_FUNC_NAMES -lefence -g -O0
+CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
+CFLAGS += -DOCR_ASSERT
+CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT
+CFLAGS += -DENABLE_EXTENSION_COUNTED_EVT
+CFLAGS += -DMAX_REF=${arg2}
+CFLAGS += -DMAX_TIME=${arg3}
+CFLAGS += -D${arg5}
+
+# Additional LDFLAGS. By default, it includes
+# the required OCR library path and $(APPS_LIBS_INSTALL)/lib
+# Note that none of the specific libraries specified in
+# REQ_LIBS are included.
+LDFLAGS := -lpthread -lm -locrAppUtils
+
+# Targets:
+#   - all:     Build the application.
+#   - debug:   Build the debug version of the application
+#   - install: Build and install
+#   - run:     Run the application
+all:	CFLAGS += -O3 -g
+all:	TARGETS := all
+all:	default
+
+debug:	CFLAGS += -O0
+debug:	TARGETS := debug
+debug:	default
+
+install: all
+
+# This rule will be executed prior to execution:
+#  - For the TG target, this happens when the binary is built
+#  - For all other targets this happens prior to running the
+#    executable
+# WORKLOAD_ARGS and WORKLOAD_INPUTS are available
+# to you and contain, respectively, the non file
+# arguments and the file arguments. They will be
+# passed directly to the application unless you
+# modify them. You can use the following
+# syntax to do so:
+# $(eval WORKLOAD_INPUTS := something) or
+# $(eval WORKLOAD_INPUTS := $(shell <script>))
+# The second syntax will execute <script> and assign
+# its output to WORKLOAD_INPUTS
+#
+# You may also want to assign a value to WORKLOAD_OUTS
+# which should contain the list of output files produced
+# by the application (to be passed to postrun). This is
+# taken-care of for you on TG but not on any of the
+# other platforms.
+# 'prerun: ;' is an empty rule (the rule is required)
+.PHONY: prerun
+prerun: ;
+
+# This rule will be executed after execution
+# The variable ${WORKLOAD_OUTS} contains a space separated
+# list of output files
+# 'postrun: ;' is an empty rule (the rule is required)
+.PHONY: postrun
+postrun: ;
+
+# Any additional rules required can go here
+
+# Include common part
+include ${APPS_ROOT}/makefiles/make-inc.inc
+

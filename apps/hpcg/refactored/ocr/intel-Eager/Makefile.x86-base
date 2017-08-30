@@ -29,7 +29,7 @@ WORKLOAD_INPUT_FILE_IDX := 0
 # the highest priority and will override both the
 # default arguments here and the ones passed through
 # an environment variable
-WORKLOAD_ARGS ?= 3 4 5 16 50 0
+WORKLOAD_ARGS ?= 2 2 2 64 10 0
 
 # Set to yes if running visualizer or export as environment variable
 ENABLE_VISUALIZER ?= no
@@ -53,11 +53,11 @@ RUN_MODE ?=
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := hpcgEager
+TARGET ?= hpcgEager
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := reductionEager macros
+REQ_LIBS := reductionEager macros timer
 
 # Space separated list of source files
 SRCS := hpcgEager.c timers.c
@@ -86,7 +86,7 @@ endif
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lreductionEager -lm
+LDFLAGS := -lpthread -lreductionEager -lm -ltimer
 
 # Targets:
 #   - all:     Build the application.

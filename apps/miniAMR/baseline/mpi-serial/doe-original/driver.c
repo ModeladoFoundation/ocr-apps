@@ -78,7 +78,11 @@ void driver(void)
                stencil_calc(var);
                t3 = timer();
                timer_calc_all += t3 - t4;
+               #ifdef COMPARISONWITHOCR //Intel specific changes: Added by Chandra
+               if (checksum_freq && !(ts%checksum_freq) && !stage) {
+               #else
                if (checksum_freq && !(stage%checksum_freq)) {
+               #endif
                   sum = check_sum(var);
                   if (report_diffusion && !my_pe)
                      printf("%d var %d sum %lf old %lf diff %lf tol %lf\n",

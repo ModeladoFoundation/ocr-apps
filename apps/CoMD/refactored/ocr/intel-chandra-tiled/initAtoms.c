@@ -102,7 +102,7 @@ void createFccLattice(int nx, int ny, int nz, real_t lat, SimFlat* s)
    //stopTimer(commReduceTimer);
     s->atoms->nGlobal = nb*nx*ny*nz;
 
-   ASSERT(s->atoms->nGlobal == nb*nx*ny*nz);
+   ocrAssert(s->atoms->nGlobal == nb*nx*ny*nz);
 }
 
 void adjustVcm(SimFlat* s, real_t *oldVcm, real_t *newVcm )

@@ -15,7 +15,7 @@ Copywrite Intel Corporation 2015
 #include "extensions/ocr-affinity.h" //needed for affinity
 
 #include "string.h" //if memcpy is needed
-#include "stdio.h"  //needed for PRINTF debugging
+#include "stdio.h"  //needed for ocrPrintf debugging
 #include "math.h" //for integer abs
 
 #include "reduction.h"
@@ -181,14 +181,14 @@ u8 init_simulation( command_t* cmd_p, sharedBlock_t* sbPTR )
     if( sizex < minx || sizey < miny || sizez < minz )
     {
         insane |= 1;
-        PRINTF( "\nSimulation too small.\n"
+        ocrPrintf( "\nSimulation too small.\n"
                "  Increase the number of unit cells to make the simulation\n"
                "  at least (%3.2f, %3.2f. %3.2f) Ansgstroms in size\n", minx, miny, minz );
     }
     if( sbPTR->pot.lattice_type!=FCC )
     {
         insane |= 2;
-        PRINTF( "\nOnly FCC Lattice type supported. Fatal Error.\n");
+        ocrPrintf( "\nOnly FCC Lattice type supported. Fatal Error.\n");
     }
     if( insane ) return insane;
 
@@ -212,21 +212,21 @@ u8 init_simulation( command_t* cmd_p, sharedBlock_t* sbPTR )
 
     sbPTR->nAtoms = 4*(cmd_p->nx*cmd_p->ny*cmd_p->nz); //TODO: Hard-coded to copper BCC linkcells
 
-    PRINTF( "Simulation data: \n");
-    PRINTF( "  Total atoms        : %d\n", sbPTR->nAtoms );
-    PRINTF( "  Min bounds  : [ %14.10f, %14.10f, %14.10f ]\n", 0.0,0.0,0.0 );
-    PRINTF( "  Max bounds  : [ %14.10f, %14.10f, %14.10f ]\n\n",
+    ocrPrintf( "Simulation data: \n");
+    ocrPrintf( "  Total atoms        : %d\n", sbPTR->nAtoms );
+    ocrPrintf( "  Min bounds  : [ %14.10f, %14.10f, %14.10f ]\n", 0.0,0.0,0.0 );
+    ocrPrintf( "  Max bounds  : [ %14.10f, %14.10f, %14.10f ]\n\n",
            sbPTR->boxDataStH.domain[0], sbPTR->boxDataStH.domain[1], sbPTR->boxDataStH.domain[2] );
-    PRINTF( "  Boxes        : %6d,%6d,%6d = %8d\n",
+    ocrPrintf( "  Boxes        : %6d,%6d,%6d = %8d\n",
            sbPTR->boxDataStH.grid[0], sbPTR->boxDataStH.grid[1], sbPTR->boxDataStH.grid[2], sbPTR->boxDataStH.b_num );
-    PRINTF( "  Box size           : [ %14.10f, %14.10f, %14.10f ]\n",
+    ocrPrintf( "  Box size           : [ %14.10f, %14.10f, %14.10f ]\n",
            sbPTR->boxDataStH.b_size[0], sbPTR->boxDataStH.b_size[1], sbPTR->boxDataStH.b_size[2] );
-    PRINTF( "  Box factor         : [ %14.10f, %14.10f, %14.10f ] \n",
+    ocrPrintf( "  Box factor         : [ %14.10f, %14.10f, %14.10f ] \n",
            sbPTR->boxDataStH.b_size[0]/sbPTR->pot.cutoff,
            sbPTR->boxDataStH.b_size[1]/sbPTR->pot.cutoff,
            sbPTR->boxDataStH.b_size[2]/sbPTR->pot.cutoff );
-    //PRINTF( "  Max Link Cell Occupancy: %d of %d\n\n", sbPTR->boxDataStH.max_occupancy, MAXATOMS );
-    PRINTF( "\nPotential data: \n");
+    //ocrPrintf( "  Max Link Cell Occupancy: %d of %d\n\n", sbPTR->boxDataStH.max_occupancy, MAXATOMS );
+    ocrPrintf( "\nPotential data: \n");
     sbPTR->pot.print( &sbPTR->pot );
 
     // Memory footprint diagnostics
@@ -236,11 +236,11 @@ u8 init_simulation( command_t* cmd_p, sharedBlock_t* sbPTR )
     int nTotalBoxes = sbPTR->boxDataStH.b_num;
     float linkCellMemTotal = (float) nTotalBoxes*(perAtomSize*MAXATOMS)/1024/1024;
 
-    PRINTF( "\n" );
-    PRINTF("Memory data: \n");
-    PRINTF( "  Intrinsic atom footprint = %4d B/atom \n", perAtomSize);
-    PRINTF( "  Total atom footprint     = %7.3f MB\n", atomMemGlobal);
-    PRINTF( "  Link cell atom footprint = %7.3f MB\n\n", linkCellMemTotal);
+    ocrPrintf( "\n" );
+    ocrPrintf("Memory data: \n");
+    ocrPrintf( "  Intrinsic atom footprint = %4d B/atom \n", perAtomSize);
+    ocrPrintf( "  Total atom footprint     = %7.3f MB\n", atomMemGlobal);
+    ocrPrintf( "  Link cell atom footprint = %7.3f MB\n\n", linkCellMemTotal);
 
     ocrGuidRangeCreate(&(sbPTR->haloRangeGUID), 27*sbPTR->boxDataStH.b_num, GUID_USER_EVENT_STICKY);
     ocrGuidRangeCreate(&(sbPTR->vcmReductionRangeGUID), sbPTR->boxDataStH.b_num, GUID_USER_EVENT_STICKY);
@@ -255,7 +255,7 @@ u8 init_simulation( command_t* cmd_p, sharedBlock_t* sbPTR )
 //indices of vectors (arbitrary order)
 
 void bomb(char * s) {
-PRINTF("ERROR %s TERMINATING\n", s);
+ocrPrintf("ERROR %s TERMINATING\n", s);
 ocrShutdown();
 return;
 }
@@ -322,7 +322,7 @@ void putAtomInBox(atomData_t* atoms,
    atoms->p[iOff][1] = py;
    atoms->p[iOff][2] = pz;
 
-   //PRINTF("%d %f %f %f\n", gid, x, y, z);
+   //ocrPrintf("%d %f %f %f\n", gid, x, y, z);
 
    ++atoms->nAtoms;
 }
@@ -364,16 +364,16 @@ void createFccLattice( int nx, int ny, int nz, real_t lat, SimFlat_t* s )
                if (ry < localMin[1] || ry >= localMax[1]) continue;
                if (rz < localMin[2] || rz >= localMax[2]) continue;
                int id = ib+nb*(iz+nz*(iy+ny*(ix)));
-               //PRINTF("id %d ix %d %d %d %d %d %d\n", id, ix, iy, iz, nx, ny, nz);
+               //ocrPrintf("id %d ix %d %d %d %d %d %d\n", id, ix, iy, iz, nx, ny, nz);
                putAtomInBox(s->atoms, id, 0, rx, ry, rz, px, py, pz);
-               //PRINTF("id %d ix %f %f %f\n", id, rx, ry, rz );
+               //ocrPrintf("id %d ix %f %f %f\n", id, rx, ry, rz );
             }
 
    // set total atoms in simulation
    //addIntParallel(&s->atoms->nLocal, &s->atoms->nGlobal, 1);
    //reduce PTR_atomData->atoms
 
-   //ASSERT(PTR_atomData->nGlobal == nb*nx*ny*nz);
+   //ocrAssert(PTR_atomData->nGlobal == nb*nx*ny*nz);
 }
 
 void setMomentum(SimFlat_t* s, real_t temperature)
@@ -390,7 +390,7 @@ void setMomentum(SimFlat_t* s, real_t temperature)
        s->atoms->p[iOff][1] = mass * sigma * gasdev(&seed);
        s->atoms->p[iOff][2] = mass * sigma * gasdev(&seed);
 
-       //PRINTF("Mom HERE %f %f %f %f\n", s->atoms->p[iOff][0],s->atoms->p[iOff][1],s->atoms->p[iOff][2], mass);
+       //ocrPrintf("Mom HERE %f %f %f %f\n", s->atoms->p[iOff][0],s->atoms->p[iOff][1],s->atoms->p[iOff][2], mass);
     }
 }
 
@@ -407,9 +407,9 @@ void computeLocalVcm(SimFlat_t* s, real_t* vcmLocal)
          int iSpecies = s->atoms->iSpecies[iOff];
          vcmLocal[3] += s->species->mass[iSpecies];
 
-        //PRINTF("Local vcm iS %d %f %f %f %f\n", iSpecies, s->atoms->p[iOff][0], s->atoms->p[iOff][1], s->atoms->p[iOff][2], s->species->mass[iSpecies]);
+        //ocrPrintf("Local vcm iS %d %f %f %f %f\n", iSpecies, s->atoms->p[iOff][0], s->atoms->p[iOff][1], s->atoms->p[iOff][2], s->species->mass[iSpecies]);
     }
-        //PRINTF("Local vcmSum iS %f %f %f %f\n", vcmLocal[0], vcmLocal[1], vcmLocal[2], vcmLocal[3] );
+        //ocrPrintf("Local vcmSum iS %f %f %f %f\n", vcmLocal[0], vcmLocal[1], vcmLocal[2], vcmLocal[3] );
 
     //vcmLocal[0] = vcmLocal[1] = vcmLocal[2] =0.0;
     //vcmLocal[3] = 1.0; //TODO
@@ -430,7 +430,7 @@ void randomDisplacements(atomData_t* atoms, real_t delta)
        atoms->r[iOff][1] += (2.0*lcg61(&seed)-1.0) * delta;
        atoms->r[iOff][2] += (2.0*lcg61(&seed)-1.0) * delta;
 
-       //PRINTF("r %f %f %f\n", atoms->r[iOff][0], atoms->r[iOff][1],atoms->r[iOff][2] );
+       //ocrPrintf("r %f %f %f\n", atoms->r[iOff][0], atoms->r[iOff][1],atoms->r[iOff][2] );
     }
 }
 
@@ -459,7 +459,7 @@ void initLinkCells( int iBox, linkCellH_t* linkCellH_p, privateBlock_t* pbPTR, s
     linkCellH_p->coordinates[1] = iy;
     linkCellH_p->coordinates[2] = iz;
 
-    //PRINTF("iBox %d: %d %d %d\n", iBox0, ix, iy, iz);
+    //ocrPrintf("iBox %d: %d %d %d\n", iBox0, ix, iy, iz);
 
     linkCellH_p->min[0] = linkCellH_p->coordinates[0]*sbPTR->boxDataStH.b_size[0];
     linkCellH_p->min[1] = linkCellH_p->coordinates[1]*sbPTR->boxDataStH.b_size[1];
@@ -511,8 +511,8 @@ ocrGuid_t setVcm(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     oldVcm[1] = vcmSum[1]/totalMass;
     oldVcm[2] = vcmSum[2]/totalMass;
 
-    //PRINTF("vcmSum %f %f %f %f\n", vcmSum[0], vcmSum[1], vcmSum[2], vcmSum[3]); //TODO
-    //PRINTF("vcmSum %f %f %f\n", oldVcm[0], oldVcm[1], oldVcm[2]);
+    //ocrPrintf("vcmSum %f %f %f %f\n", vcmSum[0], vcmSum[1], vcmSum[2], vcmSum[3]); //TODO
+    //ocrPrintf("vcmSum %f %f %f\n", oldVcm[0], oldVcm[1], oldVcm[2]);
 
     real_t vZero[3] = {0., 0., 0.};
     real_t* newVcm = vZero;
@@ -532,7 +532,7 @@ ocrGuid_t setVcm(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
        s.atoms->p[iOff][2] += mass * vShift[2];
     }
 
-    //PRINTF("HELLO\n");
+    //ocrPrintf("HELLO\n");
 
    return NULL_GUID;
 }
@@ -635,7 +635,7 @@ ocrGuid_t adjustTemperatureEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t de
     real_t temperature = adjustTemperatureEdtParamvPTR->temperature;
     int nGlobal = adjustTemperatureEdtParamvPTR->nGlobal;
 
-    //PRINTF("ePot %f eKin %f atoms %d\n", eGlobalPTR[0], eGlobalPTR[1], (int)eGlobalPTR[2]);
+    //ocrPrintf("ePot %f eKin %f atoms %d\n", eGlobalPTR[0], eGlobalPTR[1], (int)eGlobalPTR[2]);
 
     SimFlat_t s;
     s.atoms = PTR_atomData;
@@ -678,7 +678,7 @@ static inline void move_atom(u8 s, atomData_t* sPTR_atomData, atomData_t* dPTR_a
   if( ++dPTR_atomData->nAtoms > dPTR_linkCell->max_occupancy )
     dPTR_linkCell->max_occupancy = dPTR_atomData->nAtoms;
 
-  ASSERT(dPTR_atomData->nAtoms<=MAXATOMS);
+  ocrAssert(dPTR_atomData->nAtoms<=MAXATOMS);
 }
 
 //depv: DBK_atomDataH0, DBK_linkCellH0, DBK_atomDataH1, DBK_linkCellH1
@@ -699,7 +699,7 @@ ocrGuid_t move_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
            PTR_atomData0->r[a][2] >= PTR_linkCell1->min[2])
         {
             move_atom(a, PTR_atomData0, PTR_atomData1, PTR_linkCell0, PTR_linkCell1);
-            //PRINTF("Moving atom %d\n", PTR_atomData0->gid[a]);
+            //ocrPrintf("Moving atom %d\n", PTR_atomData0->gid[a]);
         }
     }
 
@@ -709,7 +709,7 @@ ocrGuid_t move_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 //depv: DBK_atomDataH0, DBK_linkCellH0
 ocrGuid_t redistributeAtomsEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
-    //PRINTF("redistributeAtomsEdt\n");
+    //ocrPrintf("redistributeAtomsEdt\n");
     ocrGuid_t PDaffinityGuid = NULL_GUID;
     ocrHint_t HNT_edt;
     ocrHintInit( &HNT_edt, OCR_HINT_EDT_T );
@@ -761,7 +761,7 @@ ocrGuid_t redistributeAtomsEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t de
 
         if((1<<f)&x)
         {
-            //PRINTF("HERE %d\n", f);
+            //ocrPrintf("HERE %d\n", f);
             ocrEdtCreate(&edtg, tmp, 0, NULL, 4, NULL, EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), NULL);
             ocrAddDependence(DBK_atomDataH, edtg, 0, DB_MODE_EW);
             ocrAddDependence(DBK_linkCellH, edtg, 1, DB_MODE_EW);
@@ -794,13 +794,13 @@ ocrGuid_t printThingsEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     if( itimestep == 0 )
     {
-        PRINTF( "\nInitial energy : %f, atom count : %u\n\n", energy, nGlobal );
+        ocrPrintf( "\nInitial energy : %f, atom count : %u\n\n", energy, nGlobal );
         timestamp( "Starting simulation\n");
-        PRINTF( "#                                                                                         Performance\n");
-        PRINTF( "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
+        ocrPrintf( "#                                                                                         Performance\n");
+        ocrPrintf( "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
     }
 
-    PRINTF( "%7d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
+    ocrPrintf( "%7d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
          itimestep, itimestep*1.0, energy, e_u, e_k, temp, -1.0, nGlobal );
     }
 
@@ -815,7 +815,7 @@ void advanceVelocity(atomData_t* atoms, real_t dt)
          atoms->p[iOff][1] += dt*atoms->f[iOff][1];
          atoms->p[iOff][2] += dt*atoms->f[iOff][2];
 
-         //PRINTF("%f p %f %f %f f %f %f %f\n", dt, atoms->p[iOff][0], atoms->p[iOff][1],atoms->p[iOff][2],
+         //ocrPrintf("%f p %f %f %f f %f %f %f\n", dt, atoms->p[iOff][0], atoms->p[iOff][1],atoms->p[iOff][2],
          //atoms->f[iOff][0],atoms->f[iOff][1],atoms->f[iOff][2] );
     }
 }
@@ -856,7 +856,7 @@ ocrGuid_t advancePositionEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv
        s.atoms->r[iOff][1] += invmass * dt * s.atoms->p[iOff][1];
        s.atoms->r[iOff][2] += invmass * dt * s.atoms->p[iOff][2];
 
-       //PRINTF("r1 t %f im %f r %f %f %f\n", dt, invmass, s.atoms->r[iOff][0], s.atoms->r[iOff][1],s.atoms->r[iOff][2] );
+       //ocrPrintf("r1 t %f im %f r %f %f %f\n", dt, invmass, s.atoms->r[iOff][0], s.atoms->r[iOff][1],s.atoms->r[iOff][2] );
     }
 
     return NULL_GUID;
@@ -884,7 +884,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     mass_t* mass_p = depv[6].ptr;
 
     u32 iBox = pbPTR->myrank;
-    //PRINTF("iBox %d t %d\n", iBox, itimestep);
+    //ocrPrintf("iBox %d t %d\n", iBox, itimestep);
 
     ocrGuid_t rpKeEVT = rpKePTR->returnEVT;
 
@@ -895,7 +895,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     for( _inbr = 0; _inbr <= 26; ++_inbr )
     {
         nbr_atomDataGuids[_inbr] = PTR_linkCell->nbr_atomDataGuids[_inbr];
-        //PRINTF("H %d, nbr_atomDataGuids %lx %p\n", _inbr, nbr_atomDataGuids[_inbr], PTR_linkCell->nbr_atomDataGuids);
+        //ocrPrintf("H %d, nbr_atomDataGuids %lx %p\n", _inbr, nbr_atomDataGuids[_inbr], PTR_linkCell->nbr_atomDataGuids);
     }
 
     ocrGuid_t advanceVelocityTML, advanceVelocityEDT, advanceVelocityOEVT, advanceVelocityOEVTS;
@@ -960,7 +960,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     for( _idep=0; _idep <= 26; _idep++ )
     {
-        //PRINTF("%lx %d %d\n", pbPTR->nbr_positionEVTs[_idep], iBox, _idep);
+        //ocrPrintf("%lx %d %d\n", pbPTR->nbr_positionEVTs[_idep], iBox, _idep);
         ocrAddDependence( pbPTR->nbr_positionEVTs[_idep], redistributeAtomsEDT, _idep+2, DB_MODE_NULL ); //depend on the neighbors
     }
 
@@ -990,7 +990,7 @@ ocrGuid_t timestepEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     for( _inbr=0; _inbr <= 26; _inbr++ )
     {
-        //PRINTF("%lx %d %d\n", nbr_atomDataGuids[_inbr], iBox, _inbr);
+        //ocrPrintf("%lx %d %d\n", nbr_atomDataGuids[_inbr], iBox, _inbr);
         ocrAddDependence( nbr_atomDataGuids[_inbr], computeForceEDT, _inbr, _inbr!=13?DB_MODE_RO:DB_MODE_RW );
         ocrAddDependence( pbPTR->nbr_redistributeEVTs[_inbr], computeForceEDT, 27+_inbr, DB_MODE_NULL ); //depend on the neighbors
     }
@@ -1211,7 +1211,7 @@ ocrGuid_t comdEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     for( _inbr = 0; _inbr <= 26; ++_inbr )
     {
         nbr_atomDataGuids[_inbr] = PTR_linkCell->nbr_atomDataGuids[_inbr];
-        //PRINTF("H %d, nbr_atomDataGuids %lx %p\n", _inbr, nbr_atomDataGuids[_inbr], PTR_linkCell->nbr_atomDataGuids);
+        //ocrPrintf("H %d, nbr_atomDataGuids %lx %p\n", _inbr, nbr_atomDataGuids[_inbr], PTR_linkCell->nbr_atomDataGuids);
     }
 
     //ocrDbRelease(rpVcmDBK); not needed?
@@ -1331,7 +1331,7 @@ ocrGuid_t comdEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     for( _idep=0; _idep <= 26; _idep++ )
     {
-        //PRINTF("%lx %d %d\n", pbPTR->nbr_positionEVTs[_idep], iBox, _idep);
+        //ocrPrintf("%lx %d %d\n", pbPTR->nbr_positionEVTs[_idep], iBox, _idep);
         ocrAddDependence( pbPTR->nbr_positionEVTs[_idep], redistributeAtomsEDT, _idep+2, DB_MODE_NULL ); //depend on the neighbors
     }
 
@@ -1361,7 +1361,7 @@ ocrGuid_t comdEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
 
     for( _inbr=0; _inbr <= 26; _inbr++ )
     {
-        //PRINTF("%lx %d %d\n", nbr_atomDataGuids[_inbr], iBox, _inbr);
+        //ocrPrintf("%lx %d %d\n", nbr_atomDataGuids[_inbr], iBox, _inbr);
         ocrAddDependence( nbr_atomDataGuids[_inbr], computeForceEDT, _inbr, _inbr!=13?DB_MODE_RO:DB_MODE_RW );
         ocrAddDependence( pbPTR->nbr_redistributeEVTs[_inbr], computeForceEDT, 27+_inbr, DB_MODE_NULL ); //depend on the neighbors
     }
@@ -1478,7 +1478,7 @@ ocrGuid_t channelInitEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
     atomData_t* PTR_atomData = depv[6].ptr;
     mass_t* mass_p = depv[7].ptr;
 
-    //PRINTF("myrank %d\n", pbPTR->myrank);
+    //ocrPrintf("myrank %d\n", pbPTR->myrank);
 
     u64 i, dummy;
 
@@ -1492,7 +1492,7 @@ ocrGuid_t channelInitEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         PTR_linkCell->nbr_linkCellGuids[i] = eventsPTR[2];
         PTR_linkCell->nbr_atomDataGuids[i] = eventsPTR[3];
         //pbPTR->nbr_massGuids[i] = eventsPTR[4];
-        //PRINTF("Atomg guid %lx %lx\n", PTR_linkCell->nbr_linkCellGuids[i], PTR_linkCell->nbr_atomDataGuids[i]);
+        //ocrPrintf("Atomg guid %lx %lx\n", PTR_linkCell->nbr_linkCellGuids[i], PTR_linkCell->nbr_atomDataGuids[i]);
     }
 
     //Capture all the events needed for inter-cell depedencies
@@ -1669,7 +1669,7 @@ ocrGuid_t comdInitEdt( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
                 ocrGuidFromIndex( &(stickyEVT), sbPTR->haloRangeGUID, 27*nbrRank + 26-ind );
                 ocrEventCreate( &stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG );
 
-                //PRINTF("s %d r %d se %d re %d s(%d %d %d) r(%d %d %d)\n", myrank, nbrRank, ind, 26-ind, ix0, iy0, iz0, ix, iy, iz);
+                //ocrPrintf("s %d r %d se %d re %d s(%d %d %d) r(%d %d %d)\n", myrank, nbrRank, ind, 26-ind, ix0, iy0, iz0, ix, iy, iz);
                 //Collective event create for the neighbors
 
                 ocrAddDependence( stickyEVT, channelInitEDT, 8+ind, DB_MODE_RW ); //TODO
@@ -1759,11 +1759,11 @@ ocrGuid_t wrapUpEdt( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
     //DEPVDEF(wrapUp);
     //PRMDEF(wrapUp);
     //double * returnPTR = (double *) DEPV(wrapUp,returnBlock,ptr);
-    //PRINTF("final deviation: %f \n", returnPTR[0]);
+    //ocrPrintf("final deviation: %f \n", returnPTR[0]);
     //double stop =  wtime();
     //double elapsed = stop - PRM(wrapUp,startTime);
-    //PRINTF("elapsed time: %f \n", elapsed);
-    PRINTF("Shutting down\n");
+    //ocrPrintf("elapsed time: %f \n", elapsed);
+    ocrPrintf("Shutting down\n");
     ocrShutdown();
     return NULL_GUID;
 }
@@ -1803,7 +1803,7 @@ ocrGuid_t main1Edt( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
     s64 PD_X, PD_Y, PD_Z;
     splitDimension( affinityCount, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 3-D grid
 #else
-    //PRINTF("NOT Using affinity API\n");
+    //ocrPrintf("NOT Using affinity API\n");
 #endif
 
     u64 i;
@@ -1833,13 +1833,13 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
     //BEGIN: Command line argument processing
     void * programArgv = depv[0].ptr;
-    u32 argc = getArgc( programArgv );
+    u32 argc = ocrGetArgc( programArgv );
 
     ocrGuid_t argv_g;
     char** argv;
     ocrDbCreate( &argv_g, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
     for( u32 a = 0; a < argc; ++a )
-      argv[a] = getArgv( programArgv, a );
+      argv[a] = ocrGetArgv( programArgv, a );
 
     ocrGuid_t cmd_g;
     command_t* cmd_p;

@@ -181,12 +181,12 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     void* PTR_cmdLineArgs = depv[0].ptr;
     globalParamH_t* PTR_globalParamH = depv[1].ptr;
 
-    u32 argc = getArgc(PTR_cmdLineArgs);
+    u32 argc = ocrGetArgc(PTR_cmdLineArgs);
     DEBUG_PRINTF(("Got ARGC: %"PRIu32"\n", argc));
 #ifdef DEBUG_APP
     u32 i;
     for(i=0; i<argc; ++i) {
-        PRINTF("ARG %"PRIu32": %s\n", i, getArgv(PTR_cmdLineArgs, i));
+        ocrPrintf("ARG %"PRIu32": %s\n", i, ocrGetArgv(PTR_cmdLineArgs, i));
     }
 #endif
     s64 npoints, nranks, ntimesteps;
@@ -200,9 +200,9 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     if (argc == 4)
     {
         u32 i = 1;
-        npoints = (s64) atoi(getArgv(PTR_cmdLineArgs, i++));
-        nranks = (s64) atoi(getArgv(PTR_cmdLineArgs, i++));
-        ntimesteps = (s64) atoi(getArgv(PTR_cmdLineArgs, i++));
+        npoints = (s64) atoi(ocrGetArgv(PTR_cmdLineArgs, i++));
+        nranks = (s64) atoi(ocrGetArgv(PTR_cmdLineArgs, i++));
+        ntimesteps = (s64) atoi(ocrGetArgv(PTR_cmdLineArgs, i++));
 
         npoints = (npoints != -1) ? npoints : NPOINTS;
         nranks = (nranks != -1) ? nranks : NRANKS;
@@ -229,24 +229,24 @@ ocrGuid_t FNC_init_globalParamH(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t d
     PTR_globalParamH->NR_X = (s64) PTR_globalParamH->NR;
     #endif
 
-    PRINTF("\n");
-    PRINTF("OCR stencil execution on 2D grid\n");
+    ocrPrintf("\n");
+    ocrPrintf("OCR stencil execution on 2D grid\n");
     #if PROBLEM_TYPE==2
-    PRINTF("Grid size                   = %lldx%lld\n", PTR_globalParamH->NP_X, PTR_globalParamH->NP_Y);
+    ocrPrintf("Grid size                   = %lldx%lld\n", PTR_globalParamH->NP_X, PTR_globalParamH->NP_Y);
     #elif PROBLEM_TYPE==1
-    PRINTF("Grid size                   = %lld\n", PTR_globalParamH->NP_X);
+    ocrPrintf("Grid size                   = %lld\n", PTR_globalParamH->NP_X);
     #endif
-    PRINTF("Number of tiles             = %lld\n", PTR_globalParamH->NR);
+    ocrPrintf("Number of tiles             = %lld\n", PTR_globalParamH->NR);
     #if PROBLEM_TYPE==2
-    PRINTF("Tiles in x & y-directions   = %lldx%lld\n", PTR_globalParamH->NR_X, PTR_globalParamH->NR_Y);
+    ocrPrintf("Tiles in x & y-directions   = %lldx%lld\n", PTR_globalParamH->NR_X, PTR_globalParamH->NR_Y);
     #elif PROBLEM_TYPE==1
-    PRINTF("Tiles in x                  = %lld\n", PTR_globalParamH->NR_X);
+    ocrPrintf("Tiles in x                  = %lld\n", PTR_globalParamH->NR_X);
     #endif
-    PRINTF("Radius of stencil           = %d\n", HALO_RADIUS);
-    PRINTF("Type of stencil             = star\n");
-    PRINTF("Data type                   = double precision\n");
-    PRINTF("Number of iterations        = %lld\n", PTR_globalParamH->NT);
-    PRINTF("\n");
+    ocrPrintf("Radius of stencil           = %d\n", HALO_RADIUS);
+    ocrPrintf("Type of stencil             = star\n");
+    ocrPrintf("Data type                   = double precision\n");
+    ocrPrintf("Number of iterations        = %lld\n", PTR_globalParamH->NT);
+    ocrPrintf("\n");
 
     return NULL_GUID;
 }
@@ -366,12 +366,12 @@ ocrGuid_t FNC_rankInitSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t dep
 #ifdef ENABLE_EXTENSION_AFFINITY
     s64 affinityCount;
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    ASSERT( affinityCount >= 1 );
-    PRINTF("Using affinity API\n");
+    ocrAssert( affinityCount >= 1 );
+    ocrPrintf("Using affinity API\n");
     s64 PD_X, PD_Y;
     splitDimension(affinityCount, &PD_X, &PD_Y);
 #else
-    PRINTF("NOT Using affinity API\n");
+    ocrPrintf("NOT Using affinity API\n");
 #endif
 
     s32 i;
@@ -899,7 +899,7 @@ ocrGuid_t FNC_rankComputeSpawner(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t 
 #ifdef ENABLE_EXTENSION_AFFINITY
     s64 affinityCount;
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    ASSERT( affinityCount >= 1 );
+    ocrAssert( affinityCount >= 1 );
     s64 PD_X, PD_Y;
     splitDimension(affinityCount, &PD_X, &PD_Y);
 #endif
@@ -1933,12 +1933,12 @@ ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 
     if( ABS( PTR_norm[0] - reference_norm ) > EPSILON )
     {
-        PRINTF( "ERROR: L1 norm = %f, Reference L1 norm = %f\n", PTR_norm[0], reference_norm);
+        ocrPrintf( "ERROR: L1 norm = %f, Reference L1 norm = %f\n", PTR_norm[0], reference_norm);
     }
     else
     {
         DEBUG_PRINTF(( "SUCCESS: L1 norm = %f, Reference L1 norm = %f\n", PTR_norm[0], reference_norm));
-        PRINTF( "Solution validates\n" );
+        ocrPrintf( "Solution validates\n" );
     }
 #endif
 
@@ -1946,7 +1946,7 @@ ocrGuid_t FNC_summary(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
     double avgtime = stencil_time[0]/(double)NT;
 
     double flops = (double) (2*stencil_size+1) * f_active_points;
-    PRINTF("Rate (MFlops/s): %f  Avg time (s): %f\n",
+    ocrPrintf("Rate (MFlops/s): %f  Avg time (s): %f\n",
            1.0E-06 * flops/avgtime, avgtime);
 
     ocrShutdown();

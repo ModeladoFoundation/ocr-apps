@@ -6,7 +6,7 @@ ocrGuid_t post_FormImage_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, o
 	int retval;
     postFormImagePRM_t *postFormImageParamvIn = (postFormImagePRM_t *)paramv;
 #ifdef TRACE_LVL_2
-PRINTF("//// enter post_FormImage_edt\n");RAG_FLUSH;
+ocrPrintf("//// enter post_FormImage_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==PRMNUM(postFormImage));
 	ocrGuid_t arg_scg = postFormImageParamvIn->arg_scg; // ReadData_edt or Affine_edt
@@ -32,19 +32,19 @@ RAG_REF_MACRO_PASS(NULL,NULL,NULL,NULL,dig_spot_dbg,7);
 	if(ocrGuidIsNull(refImage_dbg)) {	// RAG NULL_GUID FSIM BUG WORKAROUND
 #endif
 #ifdef TRACE_LVL_2
-PRINTF("//// refImage_dbg == NULL_GUID (next guid = "GUIDF") "GUIDF"\n",GUIDA(arg_scg),GUIDA(X_dbg));RAG_FLUSH;
+ocrPrintf("//// refImage_dbg == NULL_GUID (next guid = "GUIDF") "GUIDF"\n",GUIDA(arg_scg),GUIDA(X_dbg));RAG_FLUSH;
 #endif
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,X_dbg,2);	// ReadData_edt
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,Pt_dbg,3);	// ReadData_edt
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,Tp_dbg,4);	// ReadData_edt
 	} else {
 #ifdef TRACE_LVL_2
-PRINTF("//// refImage_dbg == struct complexData ** (next guid = "GUIDF") "GUIDF"\n",GUIDA(arg_scg),GUIDA(curImage_dbg));RAG_FLUSH;
+ocrPrintf("//// refImage_dbg == struct complexData ** (next guid = "GUIDF") "GUIDF"\n",GUIDA(arg_scg),GUIDA(curImage_dbg));RAG_FLUSH;
 #endif
 RAG_DEF_MACRO_SPAD(arg_scg,NULL,NULL,NULL,NULL,curImage_dbg,0);	// Affine_edt
 	}
 #ifdef TRACE_LVL_2
-PRINTF("//// leave post_FormImage_edt\n");RAG_FLUSH;
+ocrPrintf("//// leave post_FormImage_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }
@@ -53,7 +53,7 @@ ocrGuid_t FormImage_edt(uint32_t paramc, uint64_t *paramv, uint32_t depc, ocrEdt
 	int retval;
     formImagePRM_t *formImageParamvIn = (formImagePRM_t *)paramv;
 #ifdef TRACE_LVL_2
-PRINTF("//// enter FormImage_edt\n");RAG_FLUSH;
+ocrPrintf("//// enter FormImage_edt\n");RAG_FLUSH;
 #endif
 	assert(paramc==PRMNUM(formImage));
 	ocrGuid_t arg_scg = formImageParamvIn->arg_scg; // ReadData_edt or Affine_edt
@@ -75,7 +75,7 @@ RAG_REF_MACRO_BSM( struct DigSpotVars,dig_spot,dig_spot_ptr,dig_spot_lcl,dig_spo
 #endif
 
 #ifdef TRACE_LVL_2
-PRINTF("//// create a template for post_FormImage function\n");RAG_FLUSH;
+ocrPrintf("//// create a template for post_FormImage function\n");RAG_FLUSH;
 #endif
 	ocrGuid_t post_FormImage_clg;
 	retval = ocrEdtTemplateCreate(
@@ -92,7 +92,7 @@ PRINTF("//// create a template for post_FormImage function\n");RAG_FLUSH;
 	templateList[__sync_fetch_and_add(&templateIndex,1)] = post_FormImage_clg;
 
 #ifdef TRACE_LVL_2
-PRINTF("//// create an edt for post_FormImage\n");RAG_FLUSH;
+ocrPrintf("//// create an edt for post_FormImage\n");RAG_FLUSH;
 #endif
 	ocrGuid_t post_FormImage_scg;
     postFormImagePRM_t postFormImageParamv;
@@ -125,7 +125,7 @@ RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,dig_spot_dbg,7);
 	if(refImage != NULL) {		// RAG NULL_GUID FSIM BUG WORKAROUND
 #endif
 #ifdef TRACE_LVL_2
-PRINTF("//// Copy curImage to refImage\n");RAG_FLUSH;
+ocrPrintf("//// Copy curImage to refImage\n");RAG_FLUSH;
 #endif
 		for(int m=0; m<image_params->Iy; m++) {
 // RAG refImage should be in DRAM
@@ -138,7 +138,7 @@ PRINTF("//// Copy curImage to refImage\n");RAG_FLUSH;
 	} // if !NULL
 
 #ifdef TRACE_LVL_2
-PRINTF("//// Zero curImage\n");RAG_FLUSH;
+ocrPrintf("//// Zero curImage\n");RAG_FLUSH;
 #endif
 	for(int n=0; n<image_params->Iy; n++) {
 #ifdef RAG_DRAM
@@ -152,11 +152,11 @@ PRINTF("//// Zero curImage\n");RAG_FLUSH;
 #ifndef RAG_DIG_SPOT
 // to stop defined but unused warning by compiler
 		radar_params = radar_params;
-		PRINTF("!!! DIGITAL SPOTLIGHTING NOT YET SUPPORTED !!!\n");RAG_FLUSH;
+		ocrPrintf("!!! DIGITAL SPOTLIGHTING NOT YET SUPPORTED !!!\n");RAG_FLUSH;
 		xe_exit(1);
 #else // RAG_DIG_SPOT
 #ifdef TRACE_LVL_2
-PRINTF("//// FormImage FFTW initialization TF = %d\n",image_params->TF);RAG_FLUSH;
+ocrPrintf("//// FormImage FFTW initialization TF = %d\n",image_params->TF);RAG_FLUSH;
 #endif
 		fftwf_plan plan_forward;
 		fftwf_complex *input, *fft_result; ocrGuid_t input_dbg, fft_result_dbg;
@@ -201,7 +201,7 @@ PRINTF("//// FormImage FFTW initialization TF = %d\n",image_params->TF);RAG_FLUS
 				}
 
 #ifdef TRACE_LVL_2
-PRINTF("//// Perform backprojection over subimage\n");RAG_FLUSH;
+ocrPrintf("//// Perform backprojection over subimage\n");RAG_FLUSH;
 #endif
 				struct corners_t corners;
 				corners.m1   = i*image_params->Sx;
@@ -219,7 +219,7 @@ PRINTF("//// Perform backprojection over subimage\n");RAG_FLUSH;
 #endif // RAG_DIG_SPOT
 	} else { // else not digital spot light
 #ifdef TRACE_LVL_2
-PRINTF("//// Perform backprojection over full image\n");RAG_FLUSH;
+ocrPrintf("//// Perform backprojection over full image\n");RAG_FLUSH;
 #endif
 		struct corners_t corners;
 		corners.m1   = 0;
@@ -227,7 +227,7 @@ PRINTF("//// Perform backprojection over full image\n");RAG_FLUSH;
 		corners.n1   = 0;
 		corners.n2   = image_params->Iy;
 #ifdef TRACE_LVL_2
-PRINTF("//// create a template for BackProj function\n");RAG_FLUSH;
+ocrPrintf("//// create a template for BackProj function\n");RAG_FLUSH;
 #endif
 		ocrGuid_t BackProj_clg;
 		retval = ocrEdtTemplateCreate(
@@ -239,7 +239,7 @@ PRINTF("//// create a template for BackProj function\n");RAG_FLUSH;
 		templateList[__sync_fetch_and_add(&templateIndex,1)] = BackProj_clg;
 
 #ifdef TRACE_LVL_2
-PRINTF("//// create an edt for BackProj\n");RAG_FLUSH;
+ocrPrintf("//// create an edt for BackProj\n");RAG_FLUSH;
 #endif
 		ocrGuid_t BackProj_scg, BackProj_evg;
         backProjPRM_t backProjParamv;
@@ -270,7 +270,7 @@ RAG_DEF_MACRO_PASS(post_FormImage_scg,NULL,NULL,NULL,NULL,BackProj_evg,7);
 #endif
 	} // endif digital spot light
 #ifdef TRACE_LVL_2
-PRINTF("//// leave FormImage_edt\n");RAG_FLUSH;
+ocrPrintf("//// leave FormImage_edt\n");RAG_FLUSH;
 #endif
 	return NULL_GUID;
 }

@@ -5,8 +5,8 @@
 #include "app_ocr_err_util.h"
 
 //-----------------------------------------------------------------------------
-#define EDT_PRINTEXIT(label, x,line,filename) if(!(x)){PRINTF("%s: %s : line=%d, file=%s\n",label, #x,line,filename); ocrShutdown();}
-#define EDT_PRINTERROREXIT(label, x,line,filename) if(x){PRINTF("%s: %u : line=%d, file=%s\n",label, (unsigned int)x,line,filename); ocrShutdown();}
+#define EDT_PRINTEXIT(label, x,line,filename) if(!(x)){ocrPrintf("%s: %s : line=%d, file=%s\n",label, #x,line,filename); ocrShutdown();}
+#define EDT_PRINTERROREXIT(label, x,line,filename) if(x){ocrPrintf("%s: %u : line=%d, file=%s\n",label, (unsigned int)x,line,filename); ocrShutdown();}
 #define EDT_ASSERT(x) EDT_PRINTEXIT(     "ASSERT", x,__LINE__,__FILE__)
 #define EDT_ERROR(x)  EDT_PRINTERROREXIT("ERROR", x,__LINE__,__FILE__)
 #define EDT_ARGS u32 paramc, u64* paramv, u32 depc , ocrEdtDep_t depv[]

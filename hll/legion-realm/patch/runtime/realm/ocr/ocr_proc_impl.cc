@@ -1,4 +1,4 @@
-/* Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Rice University, Intel Corporation
  *
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,6 +58,7 @@ namespace Realm {
     //extract the function pointer to be executed
     Processor::TaskFuncPtr task_func = argv_ptr->fnptr;
     //extract args and arglen and pass it to the function
+    assert(task_func!=NULL);
     task_func(argv_ptr->args, argv_ptr->arglen, NULL, 0, argv_ptr->p);
 
     return NULL_GUID;
@@ -84,8 +85,8 @@ namespace Realm {
   {
     //ignores reqs, priority
 
-    const int num_dep = 1; //start_event
-    ocrGuid_t db_guid = UNINITIALIZED_GUID;
+    const u64 dest = me.address_space();
+    assert(dest == OCRUtil::ocrCurrentPolicyDomain());
 
     int size = sizeof(ArgsEDT) + arglen;
     int argc = U64_COUNT(size);
@@ -93,20 +94,15 @@ namespace Realm {
     ArgsEDT *argv_ptr = (ArgsEDT *) argv;
     argv_ptr->p = me;
     argv_ptr->fnptr = task_table[func_id].fnptr;
+    assert(argv_ptr->fnptr!=NULL);
     argv_ptr->arglen = arglen;
     memcpy(argv_ptr->args, args, arglen);
 
     //create and call the EDT
     ocrGuid_t ocr_realm_conversion_edt, out_ocr_realm_conversion_edt, persistent_evt_guid;
-    ocrEdtCreate(&ocr_realm_conversion_edt, OCRProcessor::ocr_realm_conversion_edt_t, argc,
-      argv, num_dep, &db_guid, EDT_PROP_NONE, NULL_HINT, &out_ocr_realm_conversion_edt);
-
-    //attach the output of EDT to the finish_event
-    ocrAddDependence(out_ocr_realm_conversion_edt, finish_event.evt_guid, 0, DB_MODE_RO);
-
-    //satsify the dependency after setting the sticky event to prevent the
-    //EDT from starting before adding dependence to the sticky event
-    ocrAddDependence(start_event.evt_guid, ocr_realm_conversion_edt, 0, DB_MODE_RO);
+    ocrEdtCreate(&ocr_realm_conversion_edt, OCRProcessor::ocr_realm_conversion_edt_t,
+      argc, argv, 1, &start_event.evt_guid, EDT_PROP_OEVT_VALID,
+      &(OCRUtil::ocrHintArr[dest]), &finish_event.evt_guid);
   }
 
   void OCRProcessor::shutdown()
@@ -135,6 +131,7 @@ namespace Realm {
     Processor::TaskFuncPtr fnptr;
     const FunctionPointerImplementation *fpi = codedesc.find_impl<FunctionPointerImplementation>();
 
+#if 0
     while(!fpi) {
 #ifdef REALM_USE_DLFCN
       // can we make it from a DSO reference?
@@ -152,6 +149,7 @@ namespace Realm {
       // no other options?  give up
       assert(0);
     }
+#endif
 
     fnptr = (Processor::TaskFuncPtr)(fpi->fnptr);
 

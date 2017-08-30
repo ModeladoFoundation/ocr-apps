@@ -141,7 +141,7 @@ ocrGuid_t solve_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 #if DEBUG
     residual_coarse(level,box,vec_temp,x_id,R_id,a,b);
     double norm_of_residual = norm_coarse(level,vec_temp);
-    PRINTF("j=%8d, norm=%12.6e, norm_inital=%12.6e, reduction=%e\n",j,norm_of_residual,norm_of_r0,norm_of_residual/norm_of_r0);
+    ocrPrintf("j=%8d, norm=%12.6e, norm_inital=%12.6e, reduction=%e\n",j,norm_of_residual,norm_of_r0,norm_of_residual/norm_of_r0);
 #endif
     double r_dot_r0_new = dot_coarse(level,r_id,r0_id);     //   r_dot_r0_new = dot(r,r0)
     if(r_dot_r0_new == 0.0){
@@ -169,7 +169,7 @@ ocrGuid_t solve_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 #endif
 
 #if DEBUG
-  if(BiCGStabFailed)PRINTF("BiCGStab Failed... error = %d\n",BiCGStabFailed);
+  if(BiCGStabFailed)ocrPrintf("BiCGStab Failed... error = %d\n",BiCGStabFailed);
 #endif
 
   ocrDbDestroy(temp_guid);

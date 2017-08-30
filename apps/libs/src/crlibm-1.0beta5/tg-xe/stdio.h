@@ -7,8 +7,8 @@
 
 #ifdef TG_ARCH
 
-#define printf( ... )          PRINTF(__VA_ARGS__)
-#define fprintf(filedesc, ... ) PRINTF(__VA_ARGS__)
+#define printf( ... )          ocrPrintf(__VA_ARGS__)
+#define fprintf(filedesc, ... ) ocrPrintf(__VA_ARGS__)
 #define fflush(filedesc)
 
 #endif

@@ -5,7 +5,7 @@ static constexpr int kPayload = 765;
 void ChildTask(ocxxr::DatablockList<int> args) {
     auto arg = args[0];
     PRINTF("Child task ran! (arg=%d)\n", arg.data());
-    ASSERT(arg.data() == kPayload);
+    assert(arg.data() == kPayload);
     PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
 }

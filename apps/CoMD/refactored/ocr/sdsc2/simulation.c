@@ -34,13 +34,13 @@ u8 init_simulation( command_t* cmd_p, simulationH_t* simH_p, mdtimer_t* timer_p 
   double sizez = cmd_p->nz*lattice_const;
   if( sizex < minx || sizey < miny || sizez < minz ) {
     insane |= 1;
-    PRINTF( "\nSimulation too small.\n"
+    ocrPrintf( "\nSimulation too small.\n"
            "  Increase the number of unit cells to make the simulation\n"
            "  at least (%3.2f, %3.2f. %3.2f) Ansgstroms in size\n", minx, miny, minz );
   }
   if( simH_p->pot.lattice_type!=FCC ) {
     insane |= 2;
-    PRINTF( "\nOnly FCC Lattice type supported. Fatal Error.\n");
+    ocrPrintf( "\nOnly FCC Lattice type supported. Fatal Error.\n");
   }
   if( insane ) return insane;
 
@@ -60,21 +60,21 @@ u8 init_simulation( command_t* cmd_p, simulationH_t* simH_p, mdtimer_t* timer_p 
 
   simH_p->atoms = 4*(cmd_p->nx*cmd_p->ny*cmd_p->nz); //TODO: Hard-coded to copper BCC linkcells
 
-  PRINTF( "Simulation data: \n");
-  PRINTF( "  Total atoms        : %d\n", simH_p->atoms );
-  PRINTF( "  Min bounds  : [ %14.10f, %14.10f, %14.10f ]\n", 0.0,0.0,0.0 );
-  PRINTF( "  Max bounds  : [ %14.10f, %14.10f, %14.10f ]\n\n",
+  ocrPrintf( "Simulation data: \n");
+  ocrPrintf( "  Total atoms        : %d\n", simH_p->atoms );
+  ocrPrintf( "  Min bounds  : [ %14.10f, %14.10f, %14.10f ]\n", 0.0,0.0,0.0 );
+  ocrPrintf( "  Max bounds  : [ %14.10f, %14.10f, %14.10f ]\n\n",
          simH_p->boxDataStH.domain[0], simH_p->boxDataStH.domain[1], simH_p->boxDataStH.domain[2] );
-  PRINTF( "  Boxes        : %6d,%6d,%6d = %8d\n",
+  ocrPrintf( "  Boxes        : %6d,%6d,%6d = %8d\n",
          simH_p->boxDataStH.grid[0], simH_p->boxDataStH.grid[1], simH_p->boxDataStH.grid[2], simH_p->boxDataStH.b_num );
-  PRINTF( "  Box size           : [ %14.10f, %14.10f, %14.10f ]\n",
+  ocrPrintf( "  Box size           : [ %14.10f, %14.10f, %14.10f ]\n",
          simH_p->boxDataStH.b_size[0], simH_p->boxDataStH.b_size[1], simH_p->boxDataStH.b_size[2] );
-  PRINTF( "  Box factor         : [ %14.10f, %14.10f, %14.10f ] \n",
+  ocrPrintf( "  Box factor         : [ %14.10f, %14.10f, %14.10f ] \n",
          simH_p->boxDataStH.b_size[0]/simH_p->pot.cutoff,
          simH_p->boxDataStH.b_size[1]/simH_p->pot.cutoff,
          simH_p->boxDataStH.b_size[2]/simH_p->pot.cutoff );
-  //PRINTF( "  Max Link Cell Occupancy: %d of %d\n\n", simH_p->boxDataStH.max_occupancy, MAXATOMS );
-  PRINTF( "\nPotential data: \n");
+  //ocrPrintf( "  Max Link Cell Occupancy: %d of %d\n\n", simH_p->boxDataStH.max_occupancy, MAXATOMS );
+  ocrPrintf( "\nPotential data: \n");
   simH_p->pot.print( &simH_p->pot );
 
    // Memory footprint diagnostics
@@ -84,11 +84,11 @@ u8 init_simulation( command_t* cmd_p, simulationH_t* simH_p, mdtimer_t* timer_p 
    int nTotalBoxes = simH_p->boxDataStH.b_num;
    float linkCellMemTotal = (float) nTotalBoxes*(perAtomSize*MAXATOMS)/1024/1024;
 
-   PRINTF( "\n" );
-   PRINTF("Memory data: \n");
-   PRINTF( "  Intrinsic atom footprint = %4d B/atom \n", perAtomSize);
-   PRINTF( "  Total atom footprint     = %7.3f MB\n", atomMemGlobal);
-   PRINTF( "  Link cell atom footprint = %7.3f MB\n\n", linkCellMemTotal);
+   ocrPrintf( "\n" );
+   ocrPrintf("Memory data: \n");
+   ocrPrintf( "  Intrinsic atom footprint = %4d B/atom \n", perAtomSize);
+   ocrPrintf( "  Total atom footprint     = %7.3f MB\n", atomMemGlobal);
+   ocrPrintf( "  Link cell atom footprint = %7.3f MB\n\n", linkCellMemTotal);
 
   ocrGuid_t* PTR_linkCellGuidsH;
   ocrGuid_t* PTR_atomDataGuidsH;
@@ -108,12 +108,12 @@ u8 init_simulation( command_t* cmd_p, simulationH_t* simH_p, mdtimer_t* timer_p 
     ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
                  DB_PROP_SINGLE_ASSIGNMENT, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
     ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids ); //Get all the available Policy Domain affinity guids
-    ASSERT( affinityCount >= 1 );
-    PRINTF("Using affinity API\n");
+    ocrAssert( affinityCount >= 1 );
+    ocrPrintf("Using affinity API\n");
     s64 PD_X, PD_Y, PD_Z;
     splitDimension(affinityCount, &PD_X, &PD_Y, &PD_Z); //Split available PDs into a 3-D grid
 #else
-    PRINTF("NOT Using affinity API\n");
+    ocrPrintf("NOT Using affinity API\n");
 #endif
 
   u32 b;
@@ -366,7 +366,7 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuid_t* nbr_dataGuids = (ocrGuid_t*)depv[32].ptr;
 
     PTR_atomData->linkCellGuid = DBK_linkCellH;
-    //PRINTF("%s %d %d %d\n", __func__, coords[0], coords[1], coords[2]);
+    //ocrPrintf("%s %d %d %d\n", __func__, coords[0], coords[1], coords[2]);
 
 #ifndef TG_ARCH
   memset( linkCellH_p,0,sizeof(linkCellH_t)); memset(PTR_atomData,0,sizeof(atomData_t));
@@ -490,7 +490,7 @@ ocrGuid_t FNC_init( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrEdtTemplateDestroy( tmp );
   }
   else {
-    ASSERT(0);
+    ocrAssert(0);
   }
 
   u8 n;
@@ -551,12 +551,12 @@ ocrGuid_t EDT_init_fork( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
                  DB_PROP_SINGLE_ASSIGNMENT, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
     ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids ); //Get all the available Policy Domain affinity guids;
-    ASSERT( affinityCount >= 1 );
-    //PRINTF("Using affinity API\n");
+    ocrAssert( affinityCount >= 1 );
+    //ocrPrintf("Using affinity API\n");
     s64 PD_X, PD_Y, PD_Z;
     splitDimension(affinityCount, &PD_X, &PD_Y, &PD_Z); //Split available PDs into a 3-D grid
 #else
-    //PRINTF("NOT Using affinity API\n");
+    //ocrPrintf("NOT Using affinity API\n");
 #endif
 
   u32 b; void* PTR_linkCell_scheduleGuids;

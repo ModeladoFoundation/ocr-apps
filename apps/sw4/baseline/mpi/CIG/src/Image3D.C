@@ -621,7 +621,7 @@ void Image3D::write_image( int cycle, std::string &path, double t,
    off_t offset = 2*sizeof(int) + 2*sizeof(double) + 3*sizeof(int) + 25*sizeof(char) +
       ng*(2*sizeof(double)+6*sizeof(int));
 
-   ASSERT(m_isDefinedMPIWriters);
+   ocrAssert(m_isDefinedMPIWriters);
    int gridinfo = 0;
    if( mEW->topographyExists() )
       gridinfo = 1;

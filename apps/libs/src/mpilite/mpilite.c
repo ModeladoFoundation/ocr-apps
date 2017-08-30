@@ -16,12 +16,12 @@
 #include "mpi.h"
 #include <malloc.h>
 
-// Note: can't hide PRINTF with an empty macro or these following
+// Note: can't hide ocrPrintf with an empty macro or these following
 // warn/error message macros won't print anything. They need to be macros
 // so they can execute a return.
-#define MPI_INFO(s,w) {PRINTF("WARNING: %s, will return " #w "\n",(s));}
-#define MPI_WARNING(s,w) {PRINTF("WARNING: %s, returning " #w "\n",(s)); return (w);}
-#define MPI_ERROR(s) {PRINTF("ERROR: %s; exiting\n",s); exit(1);}
+#define MPI_INFO(s,w) {ocrPrintf("WARNING: %s, will return " #w "\n",(s));}
+#define MPI_WARNING(s,w) {ocrPrintf("WARNING: %s, returning " #w "\n",(s)); return (w);}
+#define MPI_ERROR(s) {ocrPrintf("ERROR: %s; exiting\n",s); exit(1);}
 
 #define CHECK_RANGE(r,max,fn,kind)  if(r < 0 || r >= max) \
 {\
@@ -168,7 +168,7 @@ int MPI_Finalize(void)
 #if DEBUG_MPI    // Only needed for debugging....
     rankContextP_t rankContext = getRankContext();
     const u32 rank = rankContext->rank;
-    PRINTF("MPI_Finalize: rank #%d: Finalized!\n", rank);
+    ocrPrintf("MPI_Finalize: rank #%d: Finalized!\n", rank);
 #endif    // end of debugging
 
     getRankContext()->mpiInitialized = FALSE;
@@ -230,7 +230,7 @@ int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
     const u32 source = rankContext->rank;
     const u32 numRanks = rankContext->numRanks;
     const u32 maxTag = rankContext->maxTag;
-    PRINTF("MPI_Isend: rank #%d: Sending on index %d\n", source,
+    ocrPrintf("MPI_Isend: rank #%d: Sending on index %d\n", source,
            guidIndex(source, dest, tag));
 #endif    // end of debugging
 
@@ -254,7 +254,7 @@ int MPI_Send(void *buf,int count, MPI_Datatype
     const u32 maxTag = rankContext->maxTag;
     const u64 totalSize = count * rankContext->sizeOf[datatype];
 
-    //PRINTF("MPI_Send: rank #%d: Sending on index %d\n", source, guidIndex(source, dest, tag));
+    //ocrPrintf("MPI_Send: rank #%d: Sending on index %d\n", source, guidIndex(source, dest, tag));
 
     CHECK_RANGE(dest, numRanks, "MPI_Send", "dest");
     CHECK_RANGE(tag, maxTag+1, "MPI_Send", "tag");
@@ -460,7 +460,7 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
     // the ptr and guid from the data array.
 
 #if DEBUG_MPI
-    PRINTF("Rank %d recving from %d tag %d DB %p on event %p\n",dest, source, tag, DB, *eventP);
+    ocrPrintf("Rank %d recving from %d tag %d DB %p on event %p\n",dest, source, tag, DB, *eventP);
 
 #endif
 
@@ -543,7 +543,7 @@ int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
         {
 #if DEBUG_MPI    // Only needed for debugging....
             const u32 source = rankContext->rank;
-            PRINTF("MPI_Isend: rank #%d: dest:%d, tag:%d %d\n", source, dest, tag);
+            ocrPrintf("MPI_Isend: rank #%d: dest:%d, tag:%d %d\n", source, dest, tag);
             fflush(stdout);
 #endif    // end of debugging
 
@@ -560,7 +560,7 @@ int MPI_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
     bool done;
 
 #if DEBUG_MPI    // Only needed for debugging....
-    PRINTF("MPI_Isend_a: rank #%d: dest:%d, tag:%d %d\n", source, dest, tag);
+    ocrPrintf("MPI_Isend_a: rank #%d: dest:%d, tag:%d %d\n", source, dest, tag);
     fflush(stdout);
 #endif    // end of debugging
 
@@ -591,7 +591,7 @@ int MPI_Send(void *buf,int count, MPI_Datatype
     const u64 totalSize = count * rankContext->sizeOf[datatype];
 
 #if DEBUG_MPI  // debug
-    PRINTF("MPI_Send: rank #%d: Sending to %d tag:%d \n", source, dest, tag);
+    ocrPrintf("MPI_Send: rank #%d: Sending to %d tag:%d \n", source, dest, tag);
     fflush(stdout);
 #endif
 
@@ -617,7 +617,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source,
     int ret = MPI_SUCCESS;
 
 #if DEBUG_MPI    // Only needed for debugging....
-    PRINTF("MPI_Irecv: rank #%d: source:%d, tag:%d %d\n", dest, source, tag);
+    ocrPrintf("MPI_Irecv: rank #%d: source:%d, tag:%d %d\n", dest, source, tag);
     fflush(stdout);
 #endif    // end of debugging
 
@@ -727,7 +727,7 @@ int MPI_Recv(void *buf,int count, MPI_Datatype
     const u64 totalSize = count * rankContext->sizeOf[datatype];
 
 #if DEBUG_MPI
-    PRINTF("MPI_Recv: rank #%d: Recv from %d tag:%d\n",  dest, source, tag);
+    ocrPrintf("MPI_Recv: rank #%d: Recv from %d tag:%d\n",  dest, source, tag);
     fflush(stdout);
 #endif
 
@@ -852,7 +852,7 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
             //MPI_REQUEST_NULL is legitimate.
             //MPI_WARNING("MPI_Wait: bad value for request", MPI_ERR_REQUEST);
 #if DEBUG_MPI
-            PRINTF("MPI_Wait: rank #%d: MPI_NULL_REQUEST\n", rank);
+            ocrPrintf("MPI_Wait: rank #%d: MPI_NULL_REQUEST\n", rank);
 #endif
             return MPI_SUCCESS;
         }
@@ -860,7 +860,7 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status)
     const bool done = FFWD_MQ_DONE == r->status;
 
 #if DEBUG_MPI
-    PRINTF("MPI_Wait: rank #%d: request->(op=%s, done=%s)\n", rank, get_op_string(r),
+    ocrPrintf("MPI_Wait: rank #%d: request->(op=%s, done=%s)\n", rank, get_op_string(r),
            (done ? "yes" : "no"));
 #endif
 
@@ -915,7 +915,7 @@ int MPI_Waitall(int count, MPI_Request *array_of_requests,
     rankContextP_t rankContext = getRankContext();
     const u32 rank = rankContext->rank;
 
-    PRINTF("MPI_Waitall: rank #%d: %d aor %p aos %p\n", rank, count,
+    ocrPrintf("MPI_Waitall: rank #%d: %d aor %p aos %p\n", rank, count,
            array_of_requests, array_of_statuses);
 #endif
 
@@ -959,7 +959,7 @@ int MPI_Waitany(int count, MPI_Request *array_of_requests,
     rankContextP_t rankContext = getRankContext();
     const u32 rank = rankContext->rank;
 
-    PRINTF("MPI_Waitany: rank #%d: %d aor %p s %p\n", rank, count,
+    ocrPrintf("MPI_Waitany: rank #%d: %d aor %p s %p\n", rank, count,
            array_of_requests, status);
 #endif
 
@@ -1005,7 +1005,7 @@ int MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
     if (!aggressiveNB)
         {
 #if DEBUG_MPI
-            PRINTF("MPI_Test: rank #%d: request->(op=%s)\n", rank, (NULL == request? "NULL" :
+            ocrPrintf("MPI_Test: rank #%d: request->(op=%s)\n", rank, (NULL == request? "NULL" :
                    get_op_string(*request)));
 #endif
             *flag = TRUE;
@@ -1021,7 +1021,7 @@ int MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
         {
             //MPI_REQUEST_NULL is legitimate. E.g., previous TEST succeeded.
 #if DEBUG_MPI
-            PRINTF("MPI_Test: rank #%d: MPI_NULL_REQUEST, set flag=TRUE\n", rank);
+            ocrPrintf("MPI_Test: rank #%d: MPI_NULL_REQUEST, set flag=TRUE\n", rank);
 #endif
 
             *flag = TRUE;
@@ -1032,7 +1032,7 @@ int MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
     bool done = (FFWD_MQ_DONE == r->status);
 
 #if DEBUG_MPI
-    PRINTF("MPI_Test: rank #%d: request->(op=%s, done=%s)\n", rank, get_op_string(r),
+    ocrPrintf("MPI_Test: rank #%d: request->(op=%s, done=%s)\n", rank, get_op_string(r),
            (done ? "yes" : "no"));
 #endif
 
@@ -1233,7 +1233,7 @@ int MPI_Reduce (void *sendbuf, void *resultbuf, int count,
         // If only 1 rank, then root == rank, and we just made sure
         // resultbuf[*] == sendbuf[*], so we're done!
 #if DEBUG_MPI
-        PRINTF("Reduce: root rank#%d returns value\n", rank);
+        ocrPrintf("Reduce: root rank#%d returns value\n", rank);
         fflush(stdout);
 #endif
 
@@ -1261,7 +1261,7 @@ int MPI_Reduce (void *sendbuf, void *resultbuf, int count,
         MPI_Send(sendbuf, count, datatype, vDest, 0 /*tag*/, comm);
 
 #if DEBUG_MPI
-        PRINTF("Reduce: rank#%d leaf sends to %d\n", rank, vDest);
+        ocrPrintf("Reduce: rank#%d leaf sends to %d\n", rank, vDest);
         fflush(stdout);
 #endif
 
@@ -1741,11 +1741,11 @@ int MPI_Reduce (void *sendbuf, void *resultbuf, int count,
         MPI_Send(recvbuf, count, datatype, vDest, 0 /*tag*/, comm);
 
 #if DEBUG_MPI
-        PRINTF("Reduce: rank#%d sends to %d recvs from %d %d %d %d\n", rank, vDest,
+        ocrPrintf("Reduce: rank#%d sends to %d recvs from %d %d %d %d\n", rank, vDest,
                srcs[0], srcs[1], srcs[2], srcs[3]);
         fflush(stdout);
     } else {
-        PRINTF("Reduce: root rank#%d returns value\n", rank);
+        ocrPrintf("Reduce: root rank#%d returns value\n", rank);
         fflush(stdout);
 #endif
     }
@@ -2665,7 +2665,7 @@ int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm)
     }
 
 #ifdef DEBUG_MPI
-    PRINTF("MPI_Comm_dup: success, comm: 0x%p, *newcomm:%p\n", comm, *newcomm);
+    ocrPrintf("MPI_Comm_dup: success, comm: 0x%p, *newcomm:%p\n", comm, *newcomm);
     fflush(stdout);
 #endif
     return MPI_SUCCESS;
@@ -2730,12 +2730,12 @@ int MPI_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm)
     MPI_Group_incl(comm->group, count, ranks, &newgroup);
 
 #if DEBUG_MPI
-    PRINTF("MPI_Comm_split %d: newgroup: size:%d gpid:%d gpid_array={",
+    ocrPrintf("MPI_Comm_split %d: newgroup: size:%d gpid:%d gpid_array={",
            gpid, newgroup->size, newgroup->gpid);
     int ii;
     for(ii=0;ii<newgroup->size;ii++)
-        PRINTF("%d ", newgroup->gpid_array[ii]);
-    PRINTF("}\n");
+        ocrPrintf("%d ", newgroup->gpid_array[ii]);
+    ocrPrintf("}\n");
 #endif
 
     MPI_Comm_create(comm, newgroup, newcomm);

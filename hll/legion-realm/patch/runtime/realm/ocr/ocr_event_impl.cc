@@ -1,4 +1,4 @@
-/* Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,14 +35,15 @@ namespace Realm {
 
     ocrGuid_t OCREventImpl::event_waiter_edt_t = NULL_GUID;
 
-    const ID OCREventImpl::ocr_event_impl = ID(OCREventImpl::ID_TYPE, gasnet_mynode(), 0);
+    //const ID OCREventImpl::ocr_event_impl = ID(OCREventImpl::ID_TYPE, gasnet_mynode(), 0);
+    const ID OCREventImpl::ocr_event_impl = ID::make_event(gasnet_mynode(), 0, 0);
 
     //EDT function that calls event_triggered
     //argv is the object whose event_triggered() needs to be invoked
     ocrGuid_t event_waiter_func(u32 argc, u64 *argv, u32 depc, ocrEdtDep_t depv[])
     {
       assert(depc == 1);
-      ((EventWaiter *)argv)->event_triggered();
+      ((EventWaiter *)argv)->event_triggered(Event::NO_EVENT, false);
       return NULL_GUID;
     }
 
@@ -61,7 +62,6 @@ namespace Realm {
     /*static*/ Event OCREventImpl::create_ocrevent(void)
     {
       Event e = OCREventImpl::ocr_event_impl.convert<Event>();
-      e.gen = 0;
       ocrEventCreate(&e.evt_guid, OCR_EVENT_STICKY_T, EVT_PROP_NONE);
       e.id = GUIDA(e.evt_guid);
       return e;
@@ -75,7 +75,7 @@ namespace Realm {
 
     /*static*/ void OCREventImpl::wait(ocrGuid_t evt)
     {
-      ocrLegacyBlockProgress(evt, NULL, NULL, NULL, LEGACY_PROP_NONE);
+      OCRUtil::ocrLegacyBlock(evt);
     }
 
     /*static*/ void OCREventImpl::external_wait(ocrGuid_t evt)
@@ -85,13 +85,15 @@ namespace Realm {
 
     /*static*/ bool OCREventImpl::add_waiter(Event needed, EventWaiter *waiter)
     {
+      //TODO need to find out whether EDT can be created anywhere
+      const int dest = OCRUtil::ocrCurrentPolicyDomain();
       const size_t waiter_size = waiter->get_size();
 
       //invoke the EDT that calls event_triggered
       ocrGuid_t event_waiter_edt;
-      ocrEdtCreate(&event_waiter_edt, OCREventImpl::event_waiter_edt_t,
+      ocrEdtCreate(NULL, OCREventImpl::event_waiter_edt_t,
         U64_COUNT(waiter_size), (u64*)waiter, 1, & needed.evt_guid,
-        EDT_PROP_NONE, NULL_HINT, NULL);
+        EDT_PROP_NONE, &(OCRUtil::ocrHintArr[dest]), NULL);
       return true;
     }
 

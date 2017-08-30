@@ -60,7 +60,7 @@ ocrGuid_t interpolate_edt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[])
 {
   VERBOSEP("interpolate_edt\n");
 
-  ASSERT(paramv[0]==VC_INTERPOLATE || paramv[0]==FMG_INTERPOLATE);
+  ocrAssert(paramv[0]==VC_INTERPOLATE || paramv[0]==FMG_INTERPOLATE);
 
   if (depc <= 11) {
     void (*interpolation_f)(level_type*, box_type*, level_type*, box_type*, int)

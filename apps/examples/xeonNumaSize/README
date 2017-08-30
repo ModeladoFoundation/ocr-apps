@@ -1,0 +1,39 @@
+xeonNumaSize is a test program for evaluating allocation
+ideas and memory use in a KNL (Knights Landing) processor.
+
+To build this application:
+
+cd to the ocr/ocr/build/x86-phi directory and do:
+    CC=icc OCR_TYPE=x86-phi make install
+
+Then ce to the apps/apps/examples/xeonNumaSize directory
+and do:
+    make -f Makefile.x86-phi-mpi run
+
+
+Put the following in a shell script named "rapp" (run
+application).  Make sure that "$HOME/src/apps" and
+"$HOME/src/ocr" are the tops of the apps and ocr trees
+respectively.  Adjust the script as needed...
+
+  #!/bin/bash
+  APP=xeonNumaSize
+  TGT=$HOME/src/apps/apps/examples/$APP/install/x86-phi-mpi
+  export OCR_INSTALL=$HOME/src/ocr/ocr/install
+  export LD_LIBRARY_PATH=$HOME/src/ocr/ocr/install/lib:$HOME/src/apps/apps/libs/install/x86/lib:${LD_LIBRARY_PATH}
+  export OCR_CONFIG=$TGT/generated.cfg
+
+  cd $TGT
+  echo ./$APP $*
+  ./$APP $*
+
+Run the program with no args, or with "-h" and you'll get help.
+
+The tst.sh script is an example of running the program to test DRAM/DDR performance
+and MCDRAM performance.
+
+The tst2.sh script was used to evaluate cache line performance.
+The test program locks down as many constraints as it can.
+
+The tst3.sh script was used to evaluate the quick-allocator change
+that implemented the cache line offset.

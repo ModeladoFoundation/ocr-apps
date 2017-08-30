@@ -26,10 +26,10 @@ void print_throughput_custom_name(char * timer_name,
                              char * workloadUnit, unsigned long long workload,
                              char * durationUnit, double duration,
                              char * throughputUnit, double throughput) {
-    PRINTF("Timer Name        : %s\n", timer_name);
-    PRINTF("Workload    (%s): %llu\n", (workloadUnit ? workloadUnit : UNIT_WORKLOAD_STR), workload);
-    PRINTF("Duration    (%s)   : %f\n", (durationUnit ? durationUnit : UNIT_DURATION_STR), duration);
-    PRINTF("Throughput  (%s): %f\n", (throughputUnit ? throughputUnit : UNIT_THROUGHPUT_STR), throughput);
+    ocrPrintf("Timer Name        : %s\n", timer_name);
+    ocrPrintf("Workload    (%s): %llu\n", (workloadUnit ? workloadUnit : UNIT_WORKLOAD_STR), workload);
+    ocrPrintf("Duration    (%s)   : %f\n", (durationUnit ? durationUnit : UNIT_DURATION_STR), duration);
+    ocrPrintf("Throughput  (%s): %f\n", (throughputUnit ? throughputUnit : UNIT_THROUGHPUT_STR), throughput);
 }
 
 void print_throughput_custom(char * timer_name, unsigned long long nb_instances, double duration_sec, double throughput) {
@@ -44,11 +44,11 @@ void print_throughput(char * timer_name, unsigned long long nb_instances, double
 }
 
 void print_elapsed(double duration_sec) {
-    PRINTF("Elapsed        (s): %f\n", duration_sec);
+    ocrPrintf("Elapsed        (s): %f\n", duration_sec);
 }
 
 void print_elapsed_usec(long duration_sec) {
-    PRINTF("Elapsed       (us): %ld\n", duration_sec);
+    ocrPrintf("Elapsed       (us): %ld\n", duration_sec);
 }
 
 void summary_throughput_timer(timestamp_t * start_t, timestamp_t * stop_t, unsigned long long instances) {

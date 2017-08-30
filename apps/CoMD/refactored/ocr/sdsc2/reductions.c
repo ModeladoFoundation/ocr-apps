@@ -47,17 +47,17 @@ ocrGuid_t build_reduction(ocrGuid_t simH_g, ocrGuid_t reductionH_g, u32 nPartici
     ocrDbCreate( &DBK_affinityGuids, (void**) &PTR_affinityGuids, sizeof(ocrGuid_t)*affinityCount,
                  DB_PROP_SINGLE_ASSIGNMENT, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
     ocrAffinityGet( AFFINITY_PD, &affinityCount, PTR_affinityGuids ); //Get all the available Policy Domain affinity guids;
-    ASSERT( affinityCount >= 1 );
-    //PRINTF("Using affinity API\n");
+    ocrAssert( affinityCount >= 1 );
+    //ocrPrintf("Using affinity API\n");
     s64 PD_X, PD_Y, PD_Z;
     splitDimension(affinityCount, &PD_X, &PD_Y, &PD_Z); //Split available PDs into a 3-D grid
 
     int pd = globalRankFromCoords(0, 0, 0, PD_X, PD_Y, PD_Z);
-    //PRINTF("linkCell %d %d %d, policy domain %d: %d %d %d\n", id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+    //ocrPrintf("linkCell %d %d %d, policy domain %d: %d %d %d\n", id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
     PDaffinityGuid = PTR_affinityGuids[pd];
     ocrSetHintValue( &HNT_edt, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 #else
-    //PRINTF("NOT Using affinity API\n");
+    //ocrPrintf("NOT Using affinity API\n");
 #endif
 
     switch(key)
@@ -126,7 +126,7 @@ ocrGuid_t build_reduction(ocrGuid_t simH_g, ocrGuid_t reductionH_g, u32 nPartici
                 ocrEdtCreate( &(leaves_p[inode*nodeGap+ileaf*leafGap]), TML_reduction, _paramc, paramv, _depc, NULL,
                                 EDT_PROP_NONE, PICK_1_1(&HNT_edt,PDaffinityGuid), &event);
                 ocrAddDependence( event, EDT_node, ileaf, ileaf ? DB_MODE_RO : DB_MODE_RW );
-                //PRINTF("Creating EDT %d(level=%d) with depc %d with output slot triggering edt %d(level=%d) on slot %d\n",
+                //ocrPrintf("Creating EDT %d(level=%d) with depc %d with output slot triggering edt %d(level=%d) on slot %d\n",
                 //        inode*nodeGap+ileaf*leafGap, idepth-1, ndep_leaf, inode*nodeGap, idepth, ileaf);
             }
         }
@@ -157,7 +157,7 @@ ocrGuid_t build_reduction(ocrGuid_t simH_g, ocrGuid_t reductionH_g, u32 nPartici
             ocrEventCreateParams(&event,OCR_EVENT_COUNTED_T,1,&params);
             ocrAddDependence( event, EDT_node, ileaf, ileaf ? DB_MODE_RO : DB_MODE_RW );
             leaves_p[inode*nodeGap+ileaf*leafGap] = event;
-            //PRINTF("Creating event guid %d which triggers EDT guid %d(level=%d) on slot %d\n", inode*nodeGap+ileaf*leafGap, inode*nodeGap, idepth, ileaf);
+            //ocrPrintf("Creating event guid %d which triggers EDT guid %d(level=%d) on slot %d\n", inode*nodeGap+ileaf*leafGap, inode*nodeGap, idepth, ileaf);
         }
     }
 

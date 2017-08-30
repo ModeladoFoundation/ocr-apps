@@ -53,7 +53,7 @@ void print_iterate(int in_edtType, ocrGuid_t in_thisEDT,
     if(ocrGuidIsEq(in_thisEDT, NULL_GUID)){
         //This printf does not output EDT guids in order to make the output
         //independent of the underlying value of the guids.
-        PRINTF("TESTIO> TREEFORKJOIN TaskTYPE=%d TaskID="GUIDF" ITERATE dex=%5lu lohi=%5u,%5u  %s\n",
+        ocrPrintf("TESTIO> TREEFORKJOIN TaskTYPE=%d TaskID="GUIDF" ITERATE dex=%5lu lohi=%5u,%5u  %s\n",
                 in_edtType,
                 GUIDA(in_thisEDT),
                 it->btindex,
@@ -61,7 +61,7 @@ void print_iterate(int in_edtType, ocrGuid_t in_thisEDT,
                 t
                );
     }else {
-        PRINTF("TESTIO> TREEFORKJOIN TaskTYPE=%d TaskID="GUIDF" ITERATE dex=%5lu lohi=%5u,%5u  Togo="GUIDF" %s\n",
+        ocrPrintf("TESTIO> TREEFORKJOIN TaskTYPE=%d TaskID="GUIDF" ITERATE dex=%5lu lohi=%5u,%5u  Togo="GUIDF" %s\n",
                 in_edtType,
                 GUIDA(in_thisEDT),
                 it->btindex,
@@ -85,7 +85,7 @@ void print_TChecksum_work(int in_edtType, ocrGuid_t in_thisEDT, TChecksum_work_t
         t = in_text;
     }
 
-    PRINTF("TESTIO> TREEFORKJOIN TaskTYPE=%d TaskID="GUIDF" WORK dex=%lu res=%lu %s\n",
+    ocrPrintf("TESTIO> TREEFORKJOIN TaskTYPE=%d TaskID="GUIDF" WORK dex=%lu res=%lu %s\n",
             in_edtType,
             GUIDA(in_thisEDT),
             w.btindex,
@@ -402,12 +402,12 @@ Err_t concludeBtForkJoin(int in_edtType, ocrGuid_t in_thisEDT,
     while(!err){
         if(in_reference == in_result){
 //DEV#           ifdef TREE_FORKJOIN_VERBOSE
-                PRINTF("TESTIO> TREEFORKJOIN Concluding: TaskTYPE=%d TaskID="GUIDF" Work is ok.\n",
+                ocrPrintf("TESTIO> TREEFORKJOIN Concluding: TaskTYPE=%d TaskID="GUIDF" Work is ok.\n",
                        in_edtType, GUIDA(in_thisEDT));
 //DEV#           endif
         }else{
 #           ifdef TREE_FORKJOIN_VERBOSE
-                PRINTF("TESTIO> TREEFORKJOIN Concluding: TaskTYPE=%d TaskID="GUIDF" ERROR: ref=%lu  work=%lu.\n",
+                ocrPrintf("TESTIO> TREEFORKJOIN Concluding: TaskTYPE=%d TaskID="GUIDF" ERROR: ref=%lu  work=%lu.\n",
                     in_edtType, in_thisEDT,
                    (unsigned long) in_reference,
                    (unsigned long) in_result

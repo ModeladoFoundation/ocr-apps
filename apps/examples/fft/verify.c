@@ -60,7 +60,7 @@ ocrGuid_t fftVerifyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     float *X_real;
     float *X_imag;
     u64 N = paramv[0];
-    PRINTF("Starting verification. depc:%d\n",depc);
+    ocrPrintf("Starting verification. depc:%d\n",depc);
     if(depc > 4) {
         data_in = (float*)depv[0].ptr;
         X_real_other = (float*)depv[1].ptr;
@@ -80,21 +80,21 @@ ocrGuid_t fftVerifyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         X_real[i] = 0;
         X_imag[i] = 0;
     }
-    PRINTF("Finished initializing.\n");
+    ocrPrintf("Finished initializing.\n");
 
     // Run ditfft2
     ditfft2(X_real, X_imag, data_in, N, 1);
 
-    PRINTF("Serial transform complete.\n");
+    ocrPrintf("Serial transform complete.\n");
 
     // Verify results
     for(i=0;i<N;i++) {
         if(!areSame(X_real_other[i],X_real[i]) ||
            !areSame(X_imag_other[i],X_imag[i])) {
             intact = false;
-            PRINTF("Mismatch at index %d\n",i);
-            PRINTF("Expected: %f, %f\n", X_real[i], X_imag[i]);
-            PRINTF("Computed: %f, %f\n", X_real_other[i], X_imag_other[i]);
+            ocrPrintf("Mismatch at index %d\n",i);
+            ocrPrintf("Expected: %f, %f\n", X_real[i], X_imag[i]);
+            ocrPrintf("Computed: %f, %f\n", X_real_other[i], X_imag_other[i]);
             break;
         }
     }
@@ -106,9 +106,9 @@ ocrGuid_t fftVerifyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
         ocrDbDestroy(depv[2].guid);
     }
     if(intact) {
-        PRINTF("Program produced correct results.\n");
+        ocrPrintf("Program produced correct results.\n");
     } else {
-        PRINTF("Program output did not match!\n");
+        ocrPrintf("Program output did not match!\n");
     }
     VERIFY(intact, "Output matched expected results\n");
 

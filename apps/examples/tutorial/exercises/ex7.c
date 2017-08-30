@@ -23,7 +23,7 @@ ocrGuid_t complete(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     in1 = *(u32*)depv[0].ptr;
     in2 = *(u32*)depv[1].ptr;
     out = *(u32*)depv[2].ptr;
-    PRINTF("Done with %d (%d + %d)\n", out, in1, in2);
+    ocrPrintf("Done with %d (%d + %d)\n", out, in1, in2);
 
     if (out > 3) {
         // TODO: Fibonacci only uses the past two results (fib(N) = fib(N-1) + fib(N-2))
@@ -69,15 +69,15 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     compTemplateGuid = extract->paramGuid[2];
 
     u32 n = *(u32*)(depv[0].ptr);
-    PRINTF("Starting fibEdt(%u)\n", n);
-    ASSERT(n >= 2);
+    ocrPrintf("Starting fibEdt(%u)\n", n);
+    ocrAssert(n >= 2);
 
     /* create the completion EDT and pass it the in/out argument as a dependency */
     /* create the EDT with the done_event as the argument */
     ocrEdtCreate(&comp, compTemplateGuid, sizeof(ocrGuid_t)/sizeof(u64), paramv, 3, NULL, EDT_PROP_NONE,
                  NULL_HINT, NULL);
 
-    PRINTF("In fibEdt(%d) -- checking for required answers\n", n);
+    ocrPrintf("In fibEdt(%d) -- checking for required answers\n", n);
 
     // Check if n-1 exists
     ocrGuidFromIndex(&evt0, mapGuid, n-1);
@@ -97,10 +97,10 @@ ocrGuid_t fibEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
     }
 
-    PRINTF("In fibEdt(%u) -- spawned complete EDT GUID 0x%llx\n", n, (u64)comp);
+    ocrPrintf("In fibEdt(%u) -- spawned complete EDT GUID 0x%llx\n", n, (u64)comp);
     ocrAddDependence(depv[0].guid, comp, 2, DB_DEFAULT_MODE);
 
-    PRINTF("Returning from fibEdt(%u)\n", n);
+    ocrPrintf("Returning from fibEdt(%u)\n", n);
     return NULL_GUID;
 
 }
@@ -124,14 +124,14 @@ u64 fib(u32 n)
 
 /* just define the main EDT function */
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-    PRINTF("Starting mainEdt\n");
+    ocrPrintf("Starting mainEdt\n");
     u32 input;
-    u32 argc = getArgc(depv[0].ptr);
+    u32 argc = ocrGetArgc(depv[0].ptr);
     if((argc != 2)) {
-        PRINTF("Usage: fib <num>, defaulting to 10\n");
+        ocrPrintf("Usage: fib <num>, defaulting to 10\n");
         input = 10;
     } else {
-        input = atoi(getArgv(depv[0].ptr, 1));
+        input = atoi(ocrGetArgv(depv[0].ptr, 1));
     }
 
     u64 correctAns = fib(input);
@@ -163,10 +163,10 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     {
         ocrGuid_t templateGuid;
         ocrEdtTemplateCreate(&templateGuid, absFinal, 1, 1);
-        PRINTF("Created template and got GUID 0x%llx\n", templateGuid);
+        ocrPrintf("Created template and got GUID 0x%llx\n", templateGuid);
         ocrEdtCreate(&absFinalEdt, templateGuid, 1, &correctAns, 1, NULL, EDT_PROP_NONE,
                      NULL_HINT, NULL);
-        PRINTF("Created ABS EDT and got  GUID 0x%llx\n", absFinalEdt);
+        ocrPrintf("Created ABS EDT and got  GUID 0x%llx\n", absFinalEdt);
         ocrEdtTemplateDestroy(templateGuid);
     }
 
@@ -174,9 +174,9 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
     ocrGuid_t fibArg;
     u32* res;
 
-    PRINTF("Before 1st DB create\n");
+    ocrPrintf("Before 1st DB create\n");
     ocrDbCreate(&fibArg, (void**)&res, sizeof(u32), DB_PROP_NONE, NULL_HINT, NO_ALLOC);
-    PRINTF("Got DB created\n");
+    ocrPrintf("Got DB created\n");
 
     /* DB is in/out */
     *res = input;

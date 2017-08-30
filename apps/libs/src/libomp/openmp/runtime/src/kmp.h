@@ -1049,7 +1049,11 @@ extern int __kmp_place_num_threads_per_core;
 #define KMP_BLOCKTIME_MULTIPLIER     (1000)    /* number of blocktime units per second */
 #define KMP_MIN_BLOCKTIME            (0)
 #define KMP_MAX_BLOCKTIME            (INT_MAX) /* Must be this for "infinite" setting the work */
+#ifndef KMP_OS_TGR
 #define KMP_DEFAULT_BLOCKTIME        (200)     /*  __kmp_blocktime is in milliseconds  */
+#else
+#define KMP_DEFAULT_BLOCKTIME        (INT_MAX)
+#endif
 /* Calculate new number of monitor wakeups for a specific block time based on previous monitor_wakeups */
 /* Only allow increasing number of wakeups */
 #define KMP_WAKEUPS_FROM_BLOCKTIME(blocktime, monitor_wakeups) \

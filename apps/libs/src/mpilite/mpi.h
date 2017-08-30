@@ -58,16 +58,16 @@ int __mpiOcrMain(int argc, char * argv[]);
 #endif
 
 #ifndef __x86_64__
- // If not on x86, only have PRINTF, so substitute it for printf
-// replace printf with PRINTF, but don't include ocr.h
-#define printf PRINTF
+ // If not on x86, only have ocrPrintf, so substitute it for printf
+// replace printf with ocrPrintf, but don't include ocr.h
+#define printf ocrPrintf
 
 #ifdef _STDIO_H
-    // so stdio.h has been included, need decl for PRINTF.
-    // If not included yet, the #define printf PRINTF will provide a decl
-    // for PRINTF if stdio.h is included. If it's not included, then it
+    // so stdio.h has been included, need decl for ocrPrintf.
+    // If not included yet, the #define printf ocrPrintf will provide a decl
+    // for ocrPrintf if stdio.h is included. If it's not included, then it
     // doesn't matter
-    unsigned int PRINTF(const char *, ...);
+    unsigned int ocrPrintf(const char *, ...);
 #endif
 #endif // ndef __x86_64__
 

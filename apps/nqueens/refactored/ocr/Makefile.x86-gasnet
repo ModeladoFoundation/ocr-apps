@@ -1,0 +1,12 @@
+# This file is subject to the license agreement located in the file LICENSE
+# and cannot be distributed without it. This notice cannot be
+# removed or modified.
+
+CONFIG_COMM_LAYER=gasnet
+
+OCR_TYPE := x86-gasnet
+
+$(error NQueens OCR implementation not compliant with distributed-OCR (see bug #1005))
+
+TOP := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(TOP)/Makefile.x86-base

@@ -4,7 +4,7 @@ static constexpr u32 kPayload = 765;
 
 void ChildTask(ocxxr::Datablock<u32> arg) {
     PRINTF("Child task ran! (arg=%d)\n", arg.data());
-    ASSERT(arg.data() == kPayload);
+    assert(arg.data() == kPayload);
     PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
 }

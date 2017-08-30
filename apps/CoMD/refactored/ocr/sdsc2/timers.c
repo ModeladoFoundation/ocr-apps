@@ -20,9 +20,9 @@ void print_timers(mdtimer_t* timers_p, u32 atoms, u32 steps)
 {
   double loop_time = timers_p[total_timer].total*TICK;
 
-  PRINTF("\n\nTimings\n");
-  PRINTF("        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
-  PRINTF("___________________________________________________________________\n");
+  ocrPrintf("\n\nTimings\n");
+  ocrPrintf("        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
+  ocrPrintf("___________________________________________________________________\n");
   for (int ii=0; ii<number_of_timers; ++ii)
   {
     double total = timers_p[ii].total*TICK;
@@ -30,14 +30,14 @@ void print_timers(mdtimer_t* timers_p, u32 atoms, u32 steps)
 #ifndef TG_ARCH
       printf("%-16s%12llu     %8.4f      %8.4f    %8.2f\n",
 #else
-      PRINTF("%16s %11llu     %8.4f      %8.4f    %8.2f\n",
+      ocrPrintf("%16s %11llu     %8.4f      %8.4f    %8.2f\n",
 #endif
              timer_name[ii], timers_p[ii].count, total/(double)timers_p[ii].count,
              total, total/loop_time*100.0);
   }
   double rate = (double) timers_p[total_timer].total / (atoms * steps);
   //double rate = 1; //FIXME
-  PRINTF("\n---------------------------------------------------\n");
-  PRINTF(" Average atom update rate: %6.2f us/atom/task\n", rate);
-  PRINTF("---------------------------------------------------\n\n");
+  ocrPrintf("\n---------------------------------------------------\n");
+  ocrPrintf(" Average atom update rate: %6.2f us/atom/task\n", rate);
+  ocrPrintf("---------------------------------------------------\n\n");
 }

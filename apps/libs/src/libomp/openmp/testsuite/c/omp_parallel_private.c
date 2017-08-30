@@ -12,9 +12,7 @@
 
 int <ompts:testcode:functionname>omp_parallel_private</ompts:testcode:functionname>(FILE * logFile)
 {
-    <ompts:orphan:vars>
 	int sum, num_threads,sum1;
-    </ompts:orphan:vars>
     int known_sum;
 
     sum = 0;
@@ -28,7 +26,6 @@ int <ompts:testcode:functionname>omp_parallel_private</ompts:testcode:functionna
 	sum1 = 7;
 	</ompts:check>
 	/*printf("sum1=%d\n",sum1);*/
-	<ompts:orphan>
 	int i;
 #pragma omp for
 	    for (i = 1; i < 1000; i++)
@@ -40,7 +37,6 @@ int <ompts:testcode:functionname>omp_parallel_private</ompts:testcode:functionna
 	    sum = sum + sum1;
             num_threads++;
 	} /*end of critical*/
-	</ompts:orphan>
     } /* end of parallel*/
     known_sum = (999 * 1000) / 2 + 7 * num_threads;
     return (known_sum == sum);

@@ -4,6 +4,9 @@ if [[ -z "${APPS_ROOT}" ]]; then
     echo "\$APPS_ROOT is not set."
     exit 1
 fi
+OCR_TOP="${APPS_ROOT}/../../ocr"
+
+nExp=1
 
 source $APPS_ROOT/tools/execution_tools/aux_bash_functions
 source ./experiments/x86/parameters.job
@@ -17,10 +20,28 @@ PHYSICAL_CORES_PER_NODE=16  #Available cores per node
 case $HOST_ID in
 edison*)
     PHYSICAL_CORES_PER_NODE=24
+    HT_CORES_PER_NODE=48
     ;;
 
-thor*)
+cori*)
+    PHYSICAL_CORES_PER_NODE=32
+    HT_CORES_PER_NODE=64
+    ;;
+
+thor*) # Not valid for all thor nodes
     PHYSICAL_CORES_PER_NODE=36
+    HT_CORES_PER_NODE=72
+    ;;
+
+bar*) # Not valid for all thor nodes
+    PHYSICAL_CORES_PER_NODE=16
+    HT_CORES_PER_NODE=32
+    ;;
+
+eln6) # Valid for only XeonPhi
+    PHYSICAL_CORES_PER_NODE=48
+    HT_CORES_PER_NODE=192
+    export CC=icc
     ;;
 esac
 
@@ -33,21 +54,8 @@ app_name=${spath[$len-4]}
 function getSizeList()
 {
     local app_name=$1
-    case ${app_name} in
 
-    "Stencil2D")
-        sizeList=(${SIZE_LIST_STENCIL2D[@]})
-        ;;
-
-    "CoMD")
-        sizeList=(${SIZE_LIST_COMD[@]})
-        ;;
-
-    *SBench)
-        sizeList=(${SIZE_LIST_BENCH[@]})
-        ;;
-
-    esac
+    sizeList=(${SIZE_LIST[@]})
 
     echo ${sizeList[@]}
 }
@@ -56,21 +64,8 @@ function getConfigFlags()
 {
     #Changed for static scheduler
     local app_name=$1
-    case ${app_name} in
 
-    "Stencil2D")
-        CONFIG_FLAGS="--guid LABELED --binding seq"  #Default work-stealing scheduler
-        ;;
-
-    "CoMD")
-        CONFIG_FLAGS="--guid LABELED --binding seq"  #Default work-stealing scheduler
-        ;;
-
-    *SBench)
-        CONFIG_FLAGS="--guid LABELED --binding seq"  #Default work-stealing scheduler
-        ;;
-
-    esac
+    CONFIG_FLAGS="--guid LABELED --binding seq"  #Default work-stealing scheduler
 
     echo $CONFIG_FLAGS
 }
@@ -177,6 +172,9 @@ function getworkloadargs()
 
     rankxyz=(1 1 1)
     rankxyz=(`splitDimensions $ranks $app_name`)
+    rx=${rankxyz[0]}
+    ry=${rankxyz[1]}
+    rz=${rankxyz[2]}
 
     if [[ "$scalingtype" == "weakscaling" ]]; then
         Nx=$(($problem_size_x*${rankxyz[0]}*${tx}))
@@ -220,6 +218,20 @@ function getworkloadargs()
         WORKLOAD_ARGS="-s $size -t $threads -l ${iter} -d"
         ;;
 
+    "miniAMR")
+        init_x=$((${problem_size_x}/${rx}/${tx}))
+        init_y=$((${problem_size_y}/${ry}/${ty}))
+        init_z=$((${problem_size_z}/${rz}/${tz}))
+        num_refine=(`getRefinements $app_name $size $scalingtype`)
+        lb=(`getlbOpt $app_name $size $scalingtype`)
+        gS=(`getGrainSizeMiniAMR $size $scalingtype`)
+
+        BASE_ARGS="--num_refine ${num_refine} --max_blocks $(((8**(${num_refine}+1))*$init_x*$init_y*$init_z)) --nx ${gS[0]} --ny ${gS[1]} --nz ${gS[2]} --init_x $init_x --init_y $init_y --init_z $init_z --npx $((${rx}*${tx})) --npy $((${ry}*${ty})) --npz $((${rz}*${tz})) --report_diffusion 1 --lb_opt ${lb}"
+        #WORKLOAD_ARGS="--num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04 0.04 1.7 1.7 1.7 0.0 0.0 0.0${BASE_ARGS}" #One sphere moving diagonally (MPI code fails for multi-rank ranks)
+        #WORKLOAD_ARGS="--num_objects 1 --object 2 0 -0.01 -0.01 -0.01 0.0 0.0 0.0 0.0 0.0 0.0 0.0009 0.0009 0.0009 ${BASE_ARGS}"  # An expanding sphere (This is stable for MPI code)
+        WORKLOAD_ARGS="--num_objects 2 --object 2 0 -1.10 -1.10 -1.10 0.030 0.030 0.030 1.5 1.5 1.5 0.0 0.0 0.0 --object 2 0 0.5 0.5 1.76 0.0 0.0 -0.025 0.75 0.75 0.75 0.0 0.0 0.0 ${BASE_ARGS}" #Two moving spheres (MPI runs are stable)
+        ;;
+
     esac
 
     echo $WORKLOAD_ARGS
@@ -230,7 +242,7 @@ function getProfilerArgs()
     local profiler=$1
     case $profiler in
 
-    noProf)
+    noProf|baseline)
         MAKE_PROFILER_ARGS=""
         ;;
 
@@ -253,7 +265,7 @@ function getOcrRootDir()
     local arch0=$2
     case $profiler in
 
-    noProf)
+    noProf|baseline)
         OCR_ROOT_DIR="${APPS_ROOT}/../../ocr"
         #OCR_ROOT_DIR="${APPS_ROOT}/../../ocr_gcc" #TODO - CoMD
         if [[ $arch0 == "x86-mpiprobe" ]]; then
@@ -267,6 +279,10 @@ function getOcrRootDir()
 
     detailedProf)
         OCR_ROOT_DIR="${APPS_ROOT}/../../ocr_detailedProf"
+        ;;
+
+    lazyDB)
+        OCR_ROOT_DIR="${APPS_ROOT}/../../ocr_lazyDB"
         ;;
 
     esac
@@ -344,6 +360,89 @@ function getSizeComd()
         large*)
             S1=288
             ;;
+        esac
+        ;;
+
+    esac
+
+    echo $S1 $S1 $S1
+}
+
+function getSizeMiniAMR()
+{
+    local size=$1
+    local scalingtype=$2
+
+    case ${scalingtype} in
+    "weakscaling") #Weak-scaling is not suported
+        case ${size} in
+        "small")
+            S1=8
+            ;;
+        "medium")
+            S1=16
+            ;;
+        "large")
+            S1=32
+            ;;
+        esac
+        ;;
+
+    "strongscaling")
+        case ${size} in
+        small*)
+            S1=8
+            ;;
+        medium*)
+            S1=16
+            ;;
+        large*)
+            S1=32
+            ;;
+        esac
+        ;;
+
+    esac
+
+    echo $S1 $S1 $S1
+}
+
+function getGrainSizeMiniAMR()
+{
+    local size=$1
+    local scalingtype=$2
+
+    case ${scalingtype} in
+    "weakscaling") #Weak-scaling is not suported
+        case ${size} in
+        "small")
+            S1=8
+            ;;
+        "medium")
+            S1=16
+            ;;
+        "large")
+            S1=32
+            ;;
+        esac
+        ;;
+
+    "strongscaling")
+        case ${size} in
+        *-gs1-*)
+            S1=8
+            ;;
+        *-gs2*)
+            S1=16
+            ;;
+        *-gs4*)
+            S1=32
+            ;;
+        *-gs5*)
+            S1=40
+            ;;
+        *-gs6*)
+            S1=48
         esac
         ;;
 
@@ -494,6 +593,64 @@ function getIterations()
     echo ${S[@]}
 }
 
+function getRefinements()
+{
+    local app_name=$1
+    local size=$2
+    local scalingtype=$3
+
+    case ${size} in
+
+    *-r0-*)
+        R=0
+        ;;
+
+    *-r1-*)
+        R=1
+        ;;
+
+    *-r2-*)
+        R=2
+        ;;
+
+    *-r3-*)
+        R=3
+        ;;
+
+    esac
+
+    echo $R
+}
+
+function getlbOpt()
+{
+    local app_name=$1
+    local size=$2
+    local scalingtype=$3
+
+    case ${size} in
+
+    *-lb0)
+        R=0
+        ;;
+
+    *-lb1)
+        R=1
+        ;;
+
+    *-lb31)
+        R=31
+        ;;
+
+    *-lb33)
+        R=33
+        ;;
+
+    esac
+
+    echo $R
+}
+
 function getSize()
 {
     local app_name=$1
@@ -508,6 +665,10 @@ function getSize()
 
     "CoMD")
         S=(`getSizeComd $size $scalingtype`)
+        ;;
+
+    "miniAMR")
+        S=(`getSizeMiniAMR $size $scalingtype`)
         ;;
 
     *SBench)   #there's no medium size; S1 is dummy for this app
@@ -533,7 +694,7 @@ function generateJobScript()
     local type=$3
 
     local queue="regular"
-    local hours="4"
+    local hours="24"
     local minutes="00"
 
     local tplName=""
@@ -548,6 +709,16 @@ function generateJobScript()
 
     thor*)
         tplName="ThorJob.template"
+        queue="XAS64"
+        ;;
+
+    bar*)
+        tplName="BarJob.template"
+        queue="XAS"
+        ;;
+
+    eln6)
+        tplName="Eln6Job.template"
         queue="XAS"
         ;;
 
@@ -594,6 +765,9 @@ for profiler in ${PROFILER_LIST[@]}; do
                     if [[ $arch0 == "x86" ]]; then
                         CONFIG_COMM_LAYER=x86
                         CONFIG_FLAGS_BASE=""
+                    elif [[ $arch0 == "x86-phi" ]]; then
+                        CONFIG_COMM_LAYER=x86
+                        CONFIG_FLAGS_BASE="--guid COUNTED_MAP"
                     elif [[ $arch0 == "x86-mpi" ]]; then
                         CONFIG_COMM_LAYER="mpi"
                         CONFIG_FLAGS_BASE="--guid COUNTED_MAP"
@@ -607,10 +781,10 @@ for profiler in ${PROFILER_LIST[@]}; do
                     for appopts in ${APPOPTS_LIST[@]}; do
 
                         CFLAGS0=""
-                        if [[ $appopts == "noEagerDB" ]]; then
-                            echo $appopts
-                        elif [[ $appopts == "wEagerDB" ]]; then
+                        if [[ $appopts == "wEagerDB" ]]; then
                             CFLAGS0="-DUSE_EAGER_DB_HINT"
+                        elif [[ $appopts == "wLazyDB" ]]; then
+                            CFLAGS0="-DUSE_LAZY_DB_HINT"
                         fi
 
                         for schedulername in ${SCHEDULER_LIST[@]}; do
@@ -646,6 +820,8 @@ for profiler in ${PROFILER_LIST[@]}; do
                             mv make.log install/$arch
 
                             if [[ $arch == "x86" ]]; then
+                                NODE_LIST=(1)
+                            elif [[ $arch == "x86-phi" ]]; then
                                 NODE_LIST=(1)
                             elif [[ $arch == "x86-mpi" ]]; then
                                 NODE_LIST=(${NODE_LIST0[@]})
@@ -683,8 +859,9 @@ for profiler in ${PROFILER_LIST[@]}; do
                                     #echo "echo $RUN_COMMAND" >> ${OUTNAME}
                                     echo $RUN_COMMAND >> ${OUTNAME}
                                     if [[ ${profiler} == "noProf" ]]; then
-                                        echo $RUN_COMMAND >> ${OUTNAME}
-                                        echo $RUN_COMMAND >> ${OUTNAME}
+                                        for(( iexp=0; iexp < $nExp; iexp++ )); do
+                                            echo $RUN_COMMAND >> ${OUTNAME}
+                                        done
                                     fi
                                     echo "" >> ${OUTNAME}
 
@@ -711,6 +888,10 @@ function getExecutableName()
 
     "CoMD")
         executable="bin/CoMD-mpi"
+        ;;
+
+    "miniAMR")
+        executable="./miniAMR.x"
         ;;
 
     "XSBench")
@@ -780,19 +961,30 @@ for scalingtype in ${SCALINGTYPE_LIST[@]}; do
 
                 WORKLOAD_ARGS=`getworkloadargs $scalingtype $nodes $computeThreads $taskfactor $size $app_name mpi`
 
+                if [[ "${SRUN_AFFINITY}" = "yes" ]]; then
+                    REM=`echo "${HT_CORES_PER_NODE}%${computeThreads}" | bc`
+                    if [[ ${REM} != 0 ]]; then
+                    echo "WARNING: srun affinity binding failed"
+                    SRUN_OPTS=""
+                    else
+                    SRUN_OPTS="-c $((${HT_CORES_PER_NODE}/${computeThreads})) "
+                    fi
+                fi
+
                 echo $scalingtype $size $nodes $computeThreads
-                RUN_COMMAND=`echo srun --mpi=pmi2 -n $(($nodes*$computeThreads)) ./$ndir/$executableName ${WORKLOAD_ARGS}`
+                RUN_COMMAND=`echo srun --mpi=pmi2 -n $(($nodes*$computeThreads)) ${SRUN_OPTS} ./$ndir/$executableName ${WORKLOAD_ARGS}`
 
                 if [[ $app_name == *SBench ]]; then
-                RUN_COMMAND=`echo "export OMP_NUM_THREADS=$(($nodes*$computeThreads)); ./$ndir/$executableName ${WORKLOAD_ARGS}"`
+                RUN_COMMAND=`echo "export OMP_NUM_THREADS=$computeThreads; ./$ndir/$executableName ${WORKLOAD_ARGS}"`
                 fi
 
                 echo $RUN_COMMAND | tee run_command
                 mv run_command $ndir/
 
                 echo "echo $scalingtype $size $nodes $computeThreads" >> ${OUTNAME}
-                echo $RUN_COMMAND >> ${OUTNAME}
-                echo $RUN_COMMAND >> ${OUTNAME}
+                for(( iexp=0; iexp < $nExp; iexp++ )); do
+                    echo $RUN_COMMAND >> ${OUTNAME}
+                done
                 echo "" >> ${OUTNAME}
 
             done #computeThreads

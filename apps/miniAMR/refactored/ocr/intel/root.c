@@ -78,7 +78,7 @@ ocrGuid_t rootLaunch_Func ( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
    rootLaunch_Deps_t * myDeps = (rootLaunch_Deps_t *) depv;
    char      ** argv      = ((char **) (myDeps->argv_Dep.ptr));
    ocrGuid_t    argv_dblk =            (myDeps->argv_Dep.guid);
-   u32 argc = getArgc(argv);
+   u32 argc = ocrGetArgc(argv);
 
    int i;
    int num_objects = -9999;
@@ -87,7 +87,7 @@ ocrGuid_t rootLaunch_Func ( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
 // Process the command line only to the extent necessary to figure out how many objects to model, and how many totally-unrefined blocks there are in the mesh..
 
    for (i = 1; i < argc; i++) {
-      if (!strcmp(getArgv(argv, i), "--num_objects")) {
+      if (!strcmp(ocrGetArgv(argv, i), "--num_objects")) {
          if (num_objects != -9999) {
             printf ("--num_objects should only appear once on the command line.\n"); fflush(stdout);
             *((int *) 123) = 456;
@@ -98,10 +98,10 @@ ocrGuid_t rootLaunch_Func ( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
             *((int *) 123) = 456;
             ocrShutdown();
          }
-         num_objects = atoi(getArgv(argv, ++i));
+         num_objects = atoi(ocrGetArgv(argv, ++i));
       }
-      if (!strcmp(getArgv(argv, i), "--npx") || !strcmp(getArgv(argv, i), "--npy") || !strcmp(getArgv(argv, i), "--npz")) {
-         num_blocks *= atoi(getArgv(argv, ++i));
+      if (!strcmp(ocrGetArgv(argv, i), "--npx") || !strcmp(ocrGetArgv(argv, i), "--npy") || !strcmp(ocrGetArgv(argv, i), "--npz")) {
+         num_blocks *= atoi(ocrGetArgv(argv, ++i));
       }
    }
    if (num_objects == -9999) num_objects = 1;
@@ -206,7 +206,7 @@ ocrGuid_t rootInit_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
    ocrGuid_t       control_dblk           =                   (myDeps->control_Dep.guid);
    AllObjects_t  * scratchAllObjects      = ((AllObjects_t *) (myDeps->scratchAllObjects_Dep.ptr));
    ocrGuid_t       scratchAllObjects_dblk =                   (myDeps->scratchAllObjects_Dep.guid);
-   u32 argc = getArgc(argv);
+   u32 argc = ocrGetArgc(argv);
 
    INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->argv_Dep,              rootInit_Deps_t, argv_Dep,              " ", "argv");
    INDUCT_DEPENDENCE(myDeps->whoAmI_Dep, myDeps->meta_Dep,              rootInit_Deps_t, meta_Dep,              " ", "meta");
@@ -245,82 +245,82 @@ ocrGuid_t rootInit_Func (u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[])
    int object_num = 0;
 
    for (i = 1; i < argc; i++) {
-      if (!strcmp(getArgv(argv, i), "--nx")) {
-         control->x_block_size = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--ny")) {
-         control->y_block_size = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--nz")) {
-         control->z_block_size = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--npx")) {
-         control->npx = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--npy")) {
-         control->npy = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--npz")) {
-         control->npz = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--num_refine")) {
-         control->num_refine = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--block_change")) {
-         control->block_change = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--uniform_refine")) {
-         control->uniform_refine = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--refine_freq")) {
-         control->refine_freq = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--num_vars")) {
-         control->num_vars = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--comm_vars")) {
-         control->comm_vars = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--num_tsteps")) {
-         control->num_tsteps = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--stages_per_ts")) {
-         control->stages_per_ts = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--checksum_freq")) {
-         control->checksum_freq = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--stencil")) {
-         control->stencil = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--error_tol")) {
-         control->error_tol = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--report_diffusion")) {
-         control->report_diffusion = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--report_perf")) {
-         control->report_perf = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--plot_freq")) {
-         control->plot_freq = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--code")) {
-         control->code = atoi(getArgv(argv, ++i));
-      } else if (!strcmp(getArgv(argv, i), "--permute")) {
+      if (!strcmp(ocrGetArgv(argv, i), "--nx")) {
+         control->x_block_size = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--ny")) {
+         control->y_block_size = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--nz")) {
+         control->z_block_size = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--npx")) {
+         control->npx = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--npy")) {
+         control->npy = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--npz")) {
+         control->npz = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--num_refine")) {
+         control->num_refine = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--block_change")) {
+         control->block_change = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--uniform_refine")) {
+         control->uniform_refine = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--refine_freq")) {
+         control->refine_freq = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--num_vars")) {
+         control->num_vars = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--comm_vars")) {
+         control->comm_vars = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--num_tsteps")) {
+         control->num_tsteps = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--stages_per_ts")) {
+         control->stages_per_ts = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--checksum_freq")) {
+         control->checksum_freq = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--stencil")) {
+         control->stencil = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--error_tol")) {
+         control->error_tol = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--report_diffusion")) {
+         control->report_diffusion = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--report_perf")) {
+         control->report_perf = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--plot_freq")) {
+         control->plot_freq = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--code")) {
+         control->code = atoi(ocrGetArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--permute")) {
          control->permute = 1;
-      } else if (!strcmp(getArgv(argv, i), "--refine_ghost")) {
+      } else if (!strcmp(ocrGetArgv(argv, i), "--refine_ghost")) {
          control->refine_ghost = 1;
-      } else if (!strcmp(getArgv(argv, i), "--num_objects")) {
-         control->num_objects = atoi(getArgv(argv, ++i));
+      } else if (!strcmp(ocrGetArgv(argv, i), "--num_objects")) {
+         control->num_objects = atoi(ocrGetArgv(argv, ++i));
          object_num = 0;
-      } else if (!strcmp(getArgv(argv, i), "--object")) {
+      } else if (!strcmp(ocrGetArgv(argv, i), "--object")) {
          if (object_num >= control->num_objects) {
             printf("object number greater than num_objects\n"); fflush(stdout);
             *((int *) 123) = 456;
             ocrShutdown();
          }
-         scratchAllObjects->object[object_num].type    = atoi(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].bounce  = atoi(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].cen[0]  = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].cen[1]  = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].cen[2]  = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].move[0] = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].move[1] = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].move[2] = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].size[0] = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].size[1] = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].size[2] = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].inc[0]  = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].inc[1]  = atof(getArgv(argv, ++i));
-         scratchAllObjects->object[object_num].inc[2]  = atof(getArgv(argv, ++i));
+         scratchAllObjects->object[object_num].type    = atoi(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].bounce  = atoi(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].cen[0]  = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].cen[1]  = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].cen[2]  = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].move[0] = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].move[1] = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].move[2] = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].size[0] = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].size[1] = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].size[2] = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].inc[0]  = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].inc[1]  = atof(ocrGetArgv(argv, ++i));
+         scratchAllObjects->object[object_num].inc[2]  = atof(ocrGetArgv(argv, ++i));
          object_num++;
-      } else if (!strcmp(getArgv(argv, i), "--help")) {
+      } else if (!strcmp(ocrGetArgv(argv, i), "--help")) {
          print_help_message();
          *((int *) 123) = 456;
          ocrShutdown();
       } else {
-         printf("** Error ** Unknown input parameter %s\n", getArgv(argv, i)); fflush(stdout);
+         printf("** Error ** Unknown input parameter %s\n", ocrGetArgv(argv, i)); fflush(stdout);
          print_help_message();
          *((int *) 123) = 456;
          ocrShutdown();

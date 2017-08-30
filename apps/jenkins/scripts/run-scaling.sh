@@ -31,11 +31,11 @@ RETURN_CODE=0
 for t in ${THREADS[*]}
 do
     rm -f $cfgFile
-    ${JJOB_SHARED_HOME}/ocr/ocr/scripts/Configs/config-generator.py --threads $t --output $cfgFile
+    WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_MODE=runApp OCR_CONFIG=$cfgFile CONFIG_NUM_THREADS=$t OCR_CONFIG=$cfgFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run_config_generator 2>&1 > /dev/null
 
     export RUN_TOOL=/usr/bin/time\ \-o\ $timeFile\ \-\-append
     for i in `seq 1 $4`; do
-         WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_MODE=runApp OCR_CONFIG=$cfgFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null
+        WORKLOAD_EXEC=${WORKLOAD_INSTALL} RUN_MODE=runApp OCR_CONFIG=$cfgFile make -f ${WORKLOAD_INSTALL}/Makefile.$2 run 2>&1 > /dev/null
         RETURN_CODE=$?
         if [ $RETURN_CODE -ne 0 ]; then
             break

@@ -1,7 +1,7 @@
 #ifndef INCLUSION_BINTREE_FORKJOIN_H
 #define INCLUSION_BINTREE_FORKJOIN_H
 
-#include "ocr.h" //ocrGuid_t, PRINTF
+#include "ocr.h" //ocrGuid_t, ocrPrintf
 #include "app_ocr_err_util.h"
 #include "spmd_global_data.h"
 

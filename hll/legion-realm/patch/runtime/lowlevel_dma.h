@@ -1,5 +1,5 @@
-/* Copyright 2016 Stanford University, NVIDIA Corporation
- * Portions Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,10 @@
 
 #include "lowlevel_impl.h"
 #include "activemsg.h"
+
+#if USE_OCR_LAYER
+#include "ocr/ocr_message.h"
+#endif // USE_OCR_LAYER
 
 namespace Realm {
   class CoreReservationSet;
@@ -44,6 +48,10 @@ namespace LegionRuntime {
 
     extern void handle_remote_fill(RemoteFillArgs args, const void *data, size_t msglen);
 
+#if USE_OCR_LAYER
+    typedef MessageHandlerMedium<RemoteCopyArgs, handle_remote_copy> RemoteCopyMessage;
+    typedef MessageHandlerMedium<RemoteFillArgs, handle_remote_fill> RemoteFillMessage;
+#else
     enum DMAActiveMessageIDs {
       REMOTE_COPY_MSGID = 200,
       REMOTE_FILL_MSGID = 201,
@@ -56,6 +64,7 @@ namespace LegionRuntime {
     typedef ActiveMessageMediumNoReply<REMOTE_FILL_MSGID,
                                        RemoteFillArgs,
                                        handle_remote_fill> RemoteFillMessage;
+#endif // USE_OCR_LAYER
 
     extern void init_dma_handler(void);
 
@@ -75,8 +84,8 @@ namespace LegionRuntime {
     */
 
     // helper methods used in other places
-    static inline off_t calc_mem_loc(off_t alloc_offset, off_t field_start, int field_size, int elmt_size,
-				     int block_size, int index)
+    static inline off_t calc_mem_loc(off_t alloc_offset, off_t field_start, int field_size, size_t elmt_size,
+				     size_t block_size, off_t index)
     {
       return (alloc_offset +                                      // start address
 	      ((index / block_size) * block_size * elmt_size) +   // full blocks
@@ -96,8 +105,11 @@ namespace LegionRuntime {
       DmaRequest(int _priority, Event _after_copy,
                  const Realm::ProfilingRequestSet &reqs);
 
+    protected:
+      // deletion performed when reference count goes to zero
       virtual ~DmaRequest(void);
 
+    public:
 #if USE_OCR_LAYER
 
       enum RequestType{
@@ -107,6 +119,12 @@ namespace LegionRuntime {
         NUM_REQUEST_TYPES
       };
 
+      struct ArgsDMAEDT {
+        RequestType r_type;
+        size_t datalen;
+        char data[0];
+      };
+
       //EDT template for the perform_dma function
       static ocrGuid_t ocr_realm_perform_dma_edt_t;
       //initialize static variables
@@ -114,8 +132,11 @@ namespace LegionRuntime {
       //cleanup static variables
       static void static_destroy(void);
       //equivalent of check_readiness() function which uses OCR
-      virtual void ocr_check_readiness(bool just_check, RequestType, size_t = 0);
-#endif //USE_OCR_LAYER
+      virtual void ocr_check_readiness(RequestType, size_t = 0);
+#endif // USE_OCR_LAYER
+
+      virtual void print(std::ostream& os) const;
+
       virtual bool check_readiness(bool just_check, DmaRequestQueue *rq) = 0;
 
       virtual bool handler_safe(void) = 0;
@@ -146,8 +167,12 @@ namespace LegionRuntime {
 
 	void sleep_on_event(Event e, Reservation l = Reservation::NO_RESERVATION);
 
-	virtual bool event_triggered(void);
-	virtual void print_info(FILE *f);
+	virtual bool event_triggered(Event e, bool poisoned);
+	virtual void print(std::ostream& os) const;
+	virtual Event get_finish_event(void) const;
+#if USE_OCR_LAYER
+        virtual size_t get_size() const;
+#endif // USE_OCR_LAYER
       };
     };
 
@@ -168,13 +193,15 @@ namespace LegionRuntime {
       InstPairCopier(void);
       virtual ~InstPairCopier(void);
     public:
-      virtual void copy_field(int src_index, int dst_index, int elem_count,
+      virtual bool copy_all_fields(Domain d) { return false; }
+
+      virtual void copy_field(off_t src_index, off_t dst_index, off_t elem_count,
                               unsigned offset_index) = 0;
 
-      virtual void copy_all_fields(int src_index, int dst_index, int elem_count) = 0;
+      virtual void copy_all_fields(off_t src_index, off_t dst_index, off_t elem_count) = 0;
 
-      virtual void copy_all_fields(int src_index, int dst_index, int count_per_line,
-				   int src_stride, int dst_stride, int lines);
+      virtual void copy_all_fields(off_t src_index, off_t dst_index, off_t count_per_line,
+				   off_t src_stride, off_t dst_stride, off_t lines);
 
       virtual void flush(void) = 0;
     };
@@ -192,13 +219,13 @@ namespace LegionRuntime {
 
       virtual ~SpanBasedInstPairCopier(void);
 
-      virtual void copy_field(int src_index, int dst_index, int elem_count,
+      virtual void copy_field(off_t src_index, off_t dst_index, off_t elem_count,
                               unsigned offset_index);
 
-      virtual void copy_all_fields(int src_index, int dst_index, int elem_count);
+      virtual void copy_all_fields(off_t src_index, off_t dst_index, off_t elem_count);
 
-      virtual void copy_all_fields(int src_index, int dst_index, int count_per_line,
-				   int src_stride, int dst_stride, int lines);
+      virtual void copy_all_fields(off_t src_index, off_t dst_index, off_t count_per_line,
+				   off_t src_stride, off_t dst_stride, off_t lines);
 
       virtual void flush(void);
 

@@ -1,404 +1,728 @@
-#define MAY_COARSEN  0
-#define WILL_COARSEN 1
-#define WONT_COARSEN 2
-
-#define MORE_REFINED -1
-#define SAME_REFINED  0
-#define LESS_REFINED  1
+#define WILL_COARSEN    2
+#define CAN_COARSEN     1
+#define CANT_COARSEN    0
 
 typedef struct{
-    ocrGuid_t channels[4];
-} bundle_t;
+    u32 canCoarsen;
+    u64 parentId;
+    u64 rootId;         //now we know who our siblings are for this generation.
+}coarsenInfo_t;
 
 typedef struct{
-    bool channelsNeeded[6];
-    s64 disposition;
-}catalog_t;
+    u64 disposition;
+    s64 neighborDisps;
+}coarsenState_t;
 
-typedef struct{
-    u32 cCount;
-    u8  disposition;
-    u8  prevDisposition;
-    s8  neighborDisps[24]; //directions in order of: left, right, up, down, front, back.
-} refineState_t;
-
-typedef struct{
-    u8 intent;
-}intent_t;
-
-ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] );
-
-ocrGuid_t haloCoarsenSend( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
+ocrGuid_t haloRestartRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv )
 {
-        ocrGuid_t *sendChannel = (ocrGuid_t *)paramv;
-        ASSERT( !ocrGuidIsNull( depv[0].guid ) );
-        if( paramc == 1 )
-            ocrEventSatisfy( *sendChannel, depv[0].guid );
-        if( /*sendCount==*/ 4) {
-            //create 4 new datablocks
-            //send refinement message to each block.
+    return NULL_GUID;
+}
+
+ocrGuid_t coalesceEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv )
+{
+    block_t * PRM_block = depv[depc-1].ptr;
+    block_t * childBlock[8];
+    //block_t * childBlock = depv[0].ptr;
+    u64 i;
+
+    if( ocrGuidIsNull( depv[1].guid ) )
+    {
+        if( !ocrGuidIsNull( PRM_block->parentEVT ) )
+        {
+            ocrEventSatisfy( PRM_block->parentEVT, NULL_GUID );
+        }
+        else
+        {
+        ocrEdtTemplateDestroy( PRM_block->blockTML);
+        ocrEdtTemplateDestroy( PRM_block->refineTML );
+        ocrEdtTemplateDestroy( PRM_block->refineRcvTML );
+        ocrEdtTemplateDestroy( PRM_block->refineCtrlTML);
+        ocrEdtTemplateDestroy( PRM_block->communicateIntentTML );
+        ocrEdtTemplateDestroy( PRM_block->willRefineTML );
+        ocrEdtTemplateDestroy( PRM_block->updateIntentTML );
+        ocrEdtTemplateDestroy( PRM_block->stencilTML );
+        ocrEdtTemplateDestroy( PRM_block->haloRcvTML);
         }
 
-    return NULL_GUID;
-}
-
-ocrGuid_t haloCoarsenRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
-{
-
-    if( depc == 1 ){
-        ocrGuid_t newDBK;
-        intent_t *tmp;
-        ocrDbCreate( &newDBK, (void **)&tmp, sizeof(intent_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
-        //ASSERT( !ocrGuidIsNull(depv[0].guid) );
-        memcpy( tmp, depv[0].ptr, sizeof(intent_t) );
-        //ocrDbDestroy( depv[0].guid );
-        return newDBK;
+        ocrDbDestroy( depv[depc-1].guid );
+        return NULL_GUID;
     }
-    else if( depc == 4 ) {
-        //do the things
-    }
-    return NULL_GUID;
-}
 
-ocrGuid_t coarsenEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
-{
+    for( i = 0; i < 8; i++ ) childBlock[i] = depv[i].ptr;
+    //ocrPrintf("%ld is coarsening!\n", PRM_block->id);
+
+    //set neighborRefinement Levels.
     //
-    //if I'm not refining, check if I can remain the same.
-    //block_t * PRM_block = (block_t *) paramv;
-    block_t PRM_block;
-    memcpy( &PRM_block, paramv, sizeof( block_t ) );
-   // PRINTF("REFINE %ld\n", PRM_block.id);
-    catalog_t *catalog = depv[0].ptr;
-    ocrGuid_t blockDriverGUID;
+    PRM_block->neighborRefineLvls[0] = childBlock[0]->neighborRefineLvls[0];
+    PRM_block->neighborRefineLvls[2] = childBlock[0]->neighborRefineLvls[2];
+    PRM_block->neighborRefineLvls[5] = childBlock[0]->neighborRefineLvls[5];
 
-    ocrEventParams_t params;
-    params.EVENT_CHANNEL.maxGen =   2;
-    params.EVENT_CHANNEL.nbSat  =   1;
-    params.EVENT_CHANNEL.nbDeps =   1;
+    PRM_block->neighborRefineLvls[1] = childBlock[7]->neighborRefineLvls[1];
+    PRM_block->neighborRefineLvls[3] = childBlock[7]->neighborRefineLvls[3];
+    PRM_block->neighborRefineLvls[4] = childBlock[7]->neighborRefineLvls[4];
 
-    //u32 dCnt = depc-1;
 
-    //we have a few cases we need to account for:
-    //
-    // 1:1
-    //  - send refinement message to neighbor.
-    //  - set up new channels in each direction. we will have a total of 4 * 6 non-local channels.
-    //  -
-    u64 i, j;
-    bool newChannels = false;
-    ocrGuid_t internalChannels[6][4];
-    //s64 difference = PRM_block.my
+    PRM_block->timestep = childBlock[0]->timestep;
+    memcpy( PRM_block->objects, childBlock[0]->objects, sizeof( object ) * childBlock[0]->numObjects );
 
-    //connect all new channels, if needed.
-    //
-    u64 ddx = 1;
-    if( catalog->disposition == WILL_REFINE ) PRM_block.refLvl++;
-    for(i = 0; i < 6; i++) //posterity check for detecting whether new events were needed.
+    ocrGuid_t driverGUID;
+
+    ocrEdtCreate( &driverGUID, PRM_block->blockTML, EDT_PARAM_DEF, NULL, 7, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+    for( i = 0; i < 6; i++ )
     {
-        if( catalog->channelsNeeded[i] )
+        u64 base = i*5;
+
+        if( PRM_block->neighborRefineLvls[i] > PRM_block->refLvl )
         {
-            //PRINTF("%ld is setting new send/rcv channels in %ld direction.\n", PRM_block.id, i);
-            bundle_t *tBundle = depv[ddx++].ptr;
+            u64 j;
             for( j = 0; j < 4; j++ )
             {
-                u64 slot = j+1;
-                memcpy( &PRM_block.comms.snd[(i*5)+slot], &tBundle->channels[j], sizeof(ocrGuid_t) ); // <--- can serialize this into one single memcpy, did this for increased readability.
+                    ocrEventSatisfy( PRM_block->rSnd[base+(j+1)], NULL_GUID );
+            }
+        }
+        else
+        {
+            ocrEventSatisfy( PRM_block->rSnd[base], NULL_GUID );
+        }
+    }
+
+    ocrGuid_t rcvTML;
+    ocrEdtTemplateCreate( &rcvTML, haloRestartRcv, EDT_PARAM_UNK, EDT_PARAM_UNK );
+
+    for( i = 0; i < 6; i++ )
+    {
+        u64 base = i*5;
+        ocrGuid_t rcvOUT, rcvGUID;
+
+        if( PRM_block->neighborRefineLvls[i] > PRM_block->refLvl )
+        {
+            ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+            ocrAddDependence( rcvOUT, driverGUID, i+1, DB_MODE_RW );
+            u64 j;
+            for( j = 0; j < 4; j++ )
+            {
+                 ocrAddDependence( PRM_block->rRcv[base+(j+1)], rcvGUID, j, DB_MODE_RW );
+            }
+        }
+        else
+        {
+            ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+            ocrAddDependence( rcvOUT, driverGUID, i+1, DB_MODE_RW );
+            ocrAddDependence( PRM_block->rRcv[base], rcvGUID, 0, DB_MODE_RW );
+        }
+    }
+    ocrEdtTemplateDestroy( rcvTML );
+
+    ocrDbRelease( depv[depc-1].guid );
+    ocrAddDependence( depv[depc-1].guid, driverGUID, 0, DB_MODE_RW );
+
+    for( i = 0; i < 8; i++ ) ocrDbDestroy( depv[i].guid );
+
+    return NULL_GUID;
+}
+
+ocrGuid_t concensusRcvEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv )
+{
+    if( depc == 1 )
+    {
+        //ocrPrintf("recvd 1\n");
+        return depv[0].guid;
+    }
+    else if( depc == 4 )
+    {
+        u64 i;
+        coarsenInfo_t * inf;
+        ocrGuid_t infDBK;
+        //ocrPrintf("rcvd 4\n");
+
+        ocrDbCreate( &infDBK, (void **)&inf, sizeof(coarsenInfo_t) * 4, DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+        for( i = 0; i < 4; i++ )
+        {
+            memcpy( &inf[i], depv[i].ptr, sizeof(coarsenInfo_t) );
+            ocrDbDestroy( depv[i].guid );
+        }
+
+        return infDBK;
+    }
+    else ocrPrintf("wtf?\n");
+    return NULL_GUID;
+}
+
+
+ocrGuid_t finalConsensus( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv )
+{
+    block_t * PRM_block = depv[depc-1].ptr;
+    coarsenInfo_t * myInfo = depv[0].ptr;
+
+    u64 i;
+
+    for( i = 0; i < 6; i++ )
+    {
+        coarsenInfo_t * tmp = depv[i+1].ptr;
+        if( tmp->parentId == PRM_block->parent )
+        {
+            if( tmp->rootId == PRM_block->rootId )
+            {
+                if( tmp->canCoarsen == CANT_COARSEN )
+                    myInfo->canCoarsen = CANT_COARSEN;
             }
         }
     }
 
-    /*
-     * At this point, the new channels are connected to the parent's PRM_block. This is exactly what we want, for a couple of reasons:
-     *  Reason 1:
-     *      we have a way to keep track of the channels once this block joins (coarsens) again, and just in case the neighbors have not coarsened.
-     *  Reason 2:
-     *      once those neighbors are also coarsened, we can destroy our send/rcvs (based on ownership).
-     */
+    if( myInfo->canCoarsen == CAN_COARSEN )
+    {
+        ocrGuid_t coalesceEVT;
+        //ocrPrintf("%ld child of %ld root %ld will coarsen.\n", PRM_block->id, PRM_block->parent, PRM_block->rootId);
+        memcpy( &coalesceEVT, &PRM_block->parentEVT, sizeof(ocrGuid_t) );
 
+        for( i = 0; i < 6; i++ )
+        {
+            if( ocrGuidIsNull( depv[i+1].guid ) ) continue;
+            coarsenInfo_t * tmp = depv[i+1].ptr;
 
-    switch( catalog->disposition ) {
-
-        case WILL_COARSEN:
-            break;
-        case WONT_COARSEN:
-            for( i = 0; i < 6; i++ )
+            if( PRM_block->neighborRefineLvls[i] > PRM_block->refLvl )
             {
-                if( catalog->channelsNeeded[i] == WILL_REFINE ) newChannels = true;
+                bool isCoarsening = true;
+                u64 j;
+                for( j = 0; j < 4; j++ )
+                {
+                    if( tmp[j].canCoarsen == CAN_COARSEN ) continue;
+
+                    isCoarsening = false;
+                    break;
+                }
+                if( isCoarsening )
+                {
+                    //ocrPrintf("%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
+
+                    PRM_block->neighborRefineLvls[i]--;
+                    ocrAssert( PRM_block->neighborRefineLvls[i] >= 0 );
+                }
             }
-            if( newChannels ) PRINTF("%ld is not refining, but has new channels incoming.\n", PRM_block.id);
             else
             {
-                //PRINTF("no new connections to be made; falling back to driverEdt\n");
-                ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 0,
-                    NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-                    return NULL_GUID;
+                if( tmp->canCoarsen == CAN_COARSEN )
+                {
+                    //ocrPrintf("%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
+                    PRM_block->neighborRefineLvls[i]--;
+                    ocrAssert( PRM_block->neighborRefineLvls[i] >= 0 );
+                }
             }
-            break;
-        case MAY_COARSEN:
-            PRINTF("block fell to refine while still in the MAY_REFINE state.\n");
-            ASSERT(0);
-            break;
-        default:
-            break;
+            ocrDbDestroy( depv[i+1].guid );
+        }
+
+        ocrDbRelease( depv[depc-1].guid );
+        ocrEventSatisfy( coalesceEVT, depv[depc-1].guid );
+    }
+    else
+    {
+        for( i = 0; i < 6; i++ )
+        {
+            if( ocrGuidIsNull( depv[i+1].guid ) ) continue;
+
+            coarsenInfo_t * tmp = depv[i+1].ptr;
+
+            if( PRM_block->neighborRefineLvls[i] > PRM_block->refLvl ) //if I have a finer neighbor...
+            {
+                bool isCoarsening = true;
+                u64 j;
+                for(j = 0; j < 4; j++)
+                {
+                    if( tmp[j].canCoarsen == CAN_COARSEN ) continue;
+
+                    isCoarsening = false;
+                    break;
+                }
+                if( isCoarsening )
+                {
+                    //ocrPrintf( "%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
+
+                    PRM_block->neighborRefineLvls[i]--;
+                    ocrAssert( PRM_block->neighborRefineLvls[i] >= 0 );
+                }
+                //TODO sever ties, if need be.
+            }
+            else
+            {
+                if( tmp->canCoarsen == CAN_COARSEN )
+                {
+                    //ocrPrintf( "%ld neighbor in %ld direction is coarsening into parent %ld.\n", PRM_block->id, i, tmp->parentId );
+                    PRM_block->neighborRefineLvls[i]--;
+                    ocrAssert( PRM_block->neighborRefineLvls[i] >= 0 );
+                }
+            }
+            ocrDbDestroy( depv[i+1].guid );
+        }
+        ocrGuid_t driverGUID;
+        ocrEdtCreate( &driverGUID, PRM_block->blockTML, EDT_PARAM_DEF, NULL, 7, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+
+        for( i = 0; i < 6; i++ )
+        {
+            u64 base = i*5;
+
+            if( PRM_block->neighborRefineLvls[i] > PRM_block->refLvl )
+            {
+                u64 j;
+                for( j = 0; j < 4; j++ )
+                {
+                    ocrEventSatisfy( PRM_block->rSnd[base+(j+1)], NULL_GUID );
+                }
+            }
+            else
+            {
+
+                ocrEventSatisfy( PRM_block->rSnd[base], NULL_GUID );
+            }
+        }
+
+        ocrGuid_t rcvTML;
+        ocrEdtTemplateCreate( &rcvTML, haloRestartRcv, EDT_PARAM_UNK, EDT_PARAM_UNK );
+
+        for( i = 0; i < 6; i++ )
+        {
+            u64 base = i*5;
+            ocrGuid_t rcvOUT, rcvGUID;
+
+            if( PRM_block->neighborRefineLvls[i] > PRM_block->refLvl )
+            {
+                ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+                ocrAddDependence( rcvOUT, driverGUID, i+1, DB_MODE_RW );
+                u64 j;
+                for( j = 0; j < 4; j++ )
+                {
+                     ocrAddDependence( PRM_block->rRcv[base+(j+1)], rcvGUID, j, DB_MODE_RW );
+                }
+            }
+            else
+            {
+                ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+                ocrAddDependence( rcvOUT, driverGUID, i+1, DB_MODE_RW );
+                ocrAddDependence( PRM_block->rRcv[base], rcvGUID, 0, DB_MODE_RW );
+            }
+        }
+
+        ocrEdtTemplateDestroy( rcvTML );
+
+        ocrDbRelease( depv[depc-1].guid );
+        ocrAddDependence( depv[depc-1].guid, driverGUID, 0, DB_MODE_RW );
+    }
+    ocrDbDestroy(depv[0].guid);
+    return NULL_GUID;
+}
+
+ocrGuid_t confirmConsensus( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv )
+{
+    block_t * PRM_block = depv[depc-1].ptr;
+    coarsenInfo_t * myInfo = depv[0].ptr;
+
+    u64 i; //if I can't coarsen, I still need to see if any of my finer neighbors will coarsen.
+
+    for( i = 0; i < 6; i++ )
+    {
+        if( ocrGuidIsNull( depv[i+1].guid ) ) continue;
+        coarsenInfo_t * tmp = depv[i+1].ptr;
+        if( tmp->parentId == PRM_block->parent )
+        {
+            if( tmp->rootId == PRM_block->rootId )
+            {
+                if( tmp->canCoarsen == CANT_COARSEN )
+                    myInfo->canCoarsen = CANT_COARSEN;
+            }
+        }
+        ocrDbDestroy( depv[i+1].guid );
     }
 
+
+    ocrGuid_t confConGUID, confConTML;
+    ocrEdtTemplateCreate( &confConTML, finalConsensus, 0, 8 );
+
+    ocrEdtCreate( &confConGUID, confConTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+    ocrEdtTemplateDestroy( confConTML );
+
+
+    ocrGuid_t rcvTML;
+    ocrEdtTemplateCreate( &rcvTML, concensusRcvEdt, EDT_PARAM_UNK, EDT_PARAM_UNK );
+
+    for( i = 0; i < 6; i++ ) //send confirmation that I can/can't coarsen.
+    {
+        u64 j;
+        if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
+        {
+                coarsenInfo_t * tmp;
+                ocrGuid_t tmpDBK;
+                ocrDbCreate( &tmpDBK, (void **)&tmp, sizeof( coarsenInfo_t ), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+                memcpy( tmp, myInfo, sizeof( coarsenInfo_t ) );
+                ocrEventSatisfy( PRM_block->rSnd[i*5], tmpDBK );
+        }
+        else
+        {
+            for( j = 0; j < 4; j++ )
+            {
+                ocrGuid_t tmpDBK;
+                coarsenInfo_t * tmp;
+                ocrDbCreate( &tmpDBK, (void **)&tmp, sizeof( coarsenInfo_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+                memcpy( tmp, myInfo, sizeof( coarsenInfo_t ) );
+                ocrEventSatisfy( PRM_block->rSnd[(i*5)+(j+1)], tmpDBK );
+            }
+        }
+    }
+
+    for( i = 0; i < 6; i++ )
+    {
+        ocrGuid_t rcvGUID, rcvOUT;
+        if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
+        {
+                ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+                ocrAddDependence( rcvOUT, confConGUID, i+1, DB_MODE_RW );
+                ocrAddDependence( PRM_block->rRcv[i*5], rcvGUID, 0, DB_MODE_RW );
+
+        }
+        else
+        {
+            ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+            ocrAddDependence( rcvOUT, confConGUID, i+1, DB_MODE_RW );
+            u64 base = i*5, offs;
+            for( offs = 0; offs < 4; offs++ )
+            {
+                ocrAddDependence( PRM_block->rRcv[base+(offs+1)], rcvGUID, offs, DB_MODE_RW );
+            }
+        }
+    }
+    ocrEdtTemplateDestroy( rcvTML );
+
+    ocrDbRelease( depv[0].guid );
+    ocrDbRelease( depv[depc-1].guid );
+    ocrAddDependence( depv[0].guid, confConGUID, 0, DB_MODE_RW );
+    ocrAddDependence( depv[depc-1].guid, confConGUID, 7, DB_MODE_RW );
+
+    return NULL_GUID;
+
+}
+
+ocrGuid_t doubleCheckConsensus( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv )
+{
+    block_t * PRM_block = depv[depc-1].ptr;
+    coarsenInfo_t * myInfo = depv[0].ptr;
+
+    u64 i; //if I can't coarsen, I still need to see if any of my finer neighbors will coarsen.
+
+    for( i = 0; i < 6; i++ )
+    {
+        if( ocrGuidIsNull( depv[i+1].guid ) ) continue;
+        coarsenInfo_t * tmp = depv[i+1].ptr;
+        if( tmp->parentId == PRM_block->parent )
+        {
+            if( tmp->rootId == PRM_block->rootId )
+            {
+                if( tmp->canCoarsen == CANT_COARSEN )
+                    myInfo->canCoarsen = CANT_COARSEN;
+            }
+        }
+        ocrDbDestroy( depv[i+1].guid );
+    }
+
+
+    ocrGuid_t confConGUID, confConTML;
+    ocrEdtTemplateCreate( &confConTML, confirmConsensus, 0, 8 );
+
+    ocrEdtCreate( &confConGUID, confConTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+    ocrEdtTemplateDestroy( confConTML );
+
+
+    ocrGuid_t rcvTML;
+    ocrEdtTemplateCreate( &rcvTML, concensusRcvEdt, EDT_PARAM_UNK, EDT_PARAM_UNK );
+
+    for( i = 0; i < 6; i++ ) //send confirmation that I can/can't coarsen.
+    {
+        u64 j;
+        if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
+        {
+                coarsenInfo_t * tmp;
+                ocrGuid_t tmpDBK;
+                ocrDbCreate( &tmpDBK, (void **)&tmp, sizeof( coarsenInfo_t ), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+                memcpy( tmp, myInfo, sizeof( coarsenInfo_t ) );
+                ocrEventSatisfy( PRM_block->rSnd[i*5], tmpDBK );
+        }
+        else
+        {
+            for( j = 0; j < 4; j++ )
+            {
+                ocrGuid_t tmpDBK;
+                coarsenInfo_t * tmp;
+                ocrDbCreate( &tmpDBK, (void **)&tmp, sizeof( coarsenInfo_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+                memcpy( tmp, myInfo, sizeof( coarsenInfo_t ) );
+                ocrEventSatisfy( PRM_block->rSnd[(i*5)+(j+1)], tmpDBK );
+            }
+        }
+    }
+
+    for( i = 0; i < 6; i++ )
+    {
+        ocrGuid_t rcvGUID, rcvOUT;
+        if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
+        {
+                ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+                ocrAddDependence( rcvOUT, confConGUID, i+1, DB_MODE_RW );
+                ocrAddDependence( PRM_block->rRcv[i*5], rcvGUID, 0, DB_MODE_RW );
+        }
+        else
+        {
+            ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+            ocrAddDependence( rcvOUT, confConGUID, i+1, DB_MODE_RW );
+            u64 base = i*5, offs;
+            for( offs = 0; offs < 4; offs++ )
+            {
+                ocrAddDependence( PRM_block->rRcv[base+(offs+1)], rcvGUID, offs, DB_MODE_RW );
+            }
+        }
+    }
+    ocrEdtTemplateDestroy( rcvTML );
+
+    ocrDbRelease( depv[0].guid );
+    ocrDbRelease( depv[depc-1].guid );
+    ocrAddDependence( depv[0].guid, confConGUID, 0, DB_MODE_RW );
+    ocrAddDependence( depv[depc-1].guid, confConGUID, 7, DB_MODE_RW );
 
     return NULL_GUID;
 }
 
-ocrGuid_t coarsenUpdateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
+ocrGuid_t checkConsensus( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv)
 {
+    block_t * PRM_block = depv[depc-1].ptr;
+    coarsenInfo_t * myInfo = depv[0].ptr;
 
-    bool stable = true;
+    u64 i; //if I can't coarsen, I still need to see if any of my finer neighbors will coarsen.
 
-    block_t PRM_block;
-    memcpy( &PRM_block, paramv, sizeof( block_t ) );
-    refineState_t *rState = (refineState_t *)depv[0].ptr;
+    for( i = 0; i < 6; i++ )
+    {
+        if( ocrGuidIsNull( depv[i+1].guid ) ) continue;
+        coarsenInfo_t * tmp = depv[i+1].ptr;
+        if( tmp->parentId == PRM_block->parent )
+        {
+            if( tmp->rootId == PRM_block->rootId )
+            {
+                if( tmp->canCoarsen == CANT_COARSEN )
+                    myInfo->canCoarsen = CANT_COARSEN;
+            }
+        }
+        ocrDbDestroy( depv[i+1].guid );
+    }
+
+
+    ocrGuid_t confConGUID, confConTML;
+    ocrEdtTemplateCreate( &confConTML, doubleCheckConsensus, 0, 8 );
+
+    ocrEdtCreate( &confConGUID, confConTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+    ocrEdtTemplateDestroy( confConTML );
+
+
+    ocrGuid_t rcvTML;
+    ocrEdtTemplateCreate( &rcvTML, concensusRcvEdt, EDT_PARAM_UNK, EDT_PARAM_UNK );
+
+    for( i = 0; i < 6; i++ ) //send confirmation that I can/can't coarsen.
+    {
+        u64 j;
+        if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
+        {
+                coarsenInfo_t * tmp;
+                ocrGuid_t tmpDBK;
+                ocrDbCreate( &tmpDBK, (void **)&tmp, sizeof( coarsenInfo_t ), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+                memcpy( tmp, myInfo, sizeof( coarsenInfo_t ) );
+                ocrEventSatisfy( PRM_block->rSnd[i*5], tmpDBK );
+        }
+        else
+        {
+            for( j = 0; j < 4; j++ )
+            {
+                ocrGuid_t tmpDBK;
+                coarsenInfo_t * tmp;
+                ocrDbCreate( &tmpDBK, (void **)&tmp, sizeof( coarsenInfo_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+                memcpy( tmp, myInfo, sizeof( coarsenInfo_t ) );
+                ocrEventSatisfy( PRM_block->rSnd[(i*5)+(j+1)], tmpDBK );
+            }
+        }
+    }
+
+    for( i = 0; i < 6; i++ )
+    {
+        ocrGuid_t rcvGUID, rcvOUT;
+        if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
+        {
+                ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+                ocrAddDependence( rcvOUT, confConGUID, i+1, DB_MODE_RW );
+                ocrAddDependence( PRM_block->rRcv[i*5], rcvGUID, 0, DB_MODE_RW );
+
+        }
+        else
+        {
+            ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+            ocrAddDependence( rcvOUT, confConGUID, i+1, DB_MODE_RW );
+            u64 base = i*5, offs;
+            for( offs = 0; offs < 4; offs++ )
+            {
+                ocrAddDependence( PRM_block->rRcv[base+(offs+1)], rcvGUID, offs, DB_MODE_RW );
+            }
+        }
+    }
+    ocrEdtTemplateDestroy( rcvTML );
+
+    ocrDbRelease( depv[0].guid );
+    ocrDbRelease( depv[depc-1].guid );
+    ocrAddDependence( depv[0].guid, confConGUID, 0, DB_MODE_RW );
+    ocrAddDependence( depv[depc-1].guid, confConGUID, 7, DB_MODE_RW );
+
+    return NULL_GUID;
+}
+
+ocrGuid_t coarsenIntent( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv )
+{
+    coarsenInfo_t * intent = depv[0].ptr;
+    block_t * PRM_block = depv[1].ptr;
+
+    ocrGuid_t checkConcensusGUID, checkConsensusTML;
+    ocrGuid_t rcvTML;
+
+   // ocrPrintf("%ld coarsenIntent!\n", PRM_block->id);
+
+    ocrEdtTemplateCreate( &checkConsensusTML, checkConsensus, 0, 8 );
+    ocrEdtCreate( &checkConcensusGUID, checkConsensusTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NO_ALLOC );
+    ocrEdtTemplateDestroy( checkConsensusTML );
+    ocrEdtTemplateCreate( &rcvTML, concensusRcvEdt, EDT_PARAM_UNK, EDT_PARAM_UNK );
 
     u32 i;
-    u32 nDir = 0;
-    u32 subIdx = 0;
-
-    for( i = 1; i < depc; i++ )
+    for( i = 0; i < 6; i++ ) //set up the sends.
     {
-        intent_t *tmp = (intent_t *)depv[i].ptr;
-        s32 difference = PRM_block.comms.neighborRefineLvls[nDir] - PRM_block.refLvl;
-
-        if( !ocrGuidIsNull(depv[i].guid) )
+        u64 j;
+        if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
         {
-            switch( difference )
+                coarsenInfo_t * tmp;
+                ocrGuid_t tmpDBK;
+                ocrDbCreate( &tmpDBK, (void **)&tmp, sizeof( coarsenInfo_t ), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+                memcpy( tmp, depv[0].ptr, sizeof( coarsenInfo_t ) );
+                ocrEventSatisfy( PRM_block->rSnd[i*5], tmpDBK );
+        }
+        else
+        {
+            for( j = 0; j < 4; j++ ) //we do not need the same guard as the single send case above.
             {
-                case  1: //I am less refined.
-                    rState->neighborDisps[(i-1) * 4] = tmp->intent;
-                    nDir++;
-                    break;
-                case  0:
-                case -1:
-                    rState->neighborDisps[(i-1) * 4] = tmp->intent;
-                    nDir++;
-                    subIdx = 0;
-                    break;
+                ocrGuid_t tmpDBK;
+                coarsenInfo_t * tmp;
+                ocrDbCreate( &tmpDBK, (void **)&tmp, sizeof( coarsenInfo_t ), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+                memcpy( tmp, intent, sizeof( coarsenInfo_t ) );
+                ocrEventSatisfy( PRM_block->rSnd[(i*5)+(j+1)], tmpDBK );
             }
-        } else continue; //this neighbor is already stable from a previous communicate step.
+        }
+    }
 
-        if( tmp->intent != MAY_REFINE )
+    for( i = 0; i < 6; i++ ) //set up the receives.
+    {
+        ocrGuid_t rcvGUID, rcvOUT;
+        if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl )
         {
-            subIdx++;
-            if( subIdx == 4 )
-            {
-                subIdx = 0;
-                nDir++;
-            }
-            continue;
+            //ocrPrintf("%d difference\n", difference);
+                ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+                ocrAddDependence( rcvOUT, checkConcensusGUID, i+1, DB_MODE_RW );
+                ocrAddDependence( PRM_block->rRcv[i*5], rcvGUID, 0, DB_MODE_RW );
         }
-        stable = false;
-    }
-
-    if( stable && rState->disposition != MAY_REFINE )
-    {
-        //PRINTF("%ld stable and establishing new connections.\n", PRM_block.id);
-        ocrGuid_t newConnectionsGUID, newConnectionsTML;
-        u32 pCount = sizeof(block_t)/sizeof(u64);
-        ocrEdtTemplateCreate( &newConnectionsTML, establishNewConnections, pCount, 1 );
-        ocrEdtCreate( &newConnectionsGUID, newConnectionsTML, EDT_PARAM_DEF, (u64 *)&PRM_block, EDT_PARAM_DEF,
-                            &depv[0].guid, EDT_PROP_NONE, NULL_HINT, NO_ALLOC );
-    } else {
-        //decide if neighbors have decided to refine, and if I should refine, because of it.
-        //PRINTF("Block %ld isn't stable.\n", PRM_block.id);
-        if( rState->disposition == MAY_REFINE ){
-            u8 newDecision = WILL_REFINE; //placeholder for now.
-            rState->prevDisposition = rState->disposition;
-            rState->disposition = newDecision;
-        } else
+        else
         {
-            rState->prevDisposition = rState->disposition;
-        }
-        ocrGuid_t commIntentGUID;
-        ocrEdtCreate( &commIntentGUID, PRM_block.communicateIntentTML, EDT_PARAM_DEF, (u64 *)&PRM_block,
-                                EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NO_ALLOC );
-
-        rState->cCount++;
-        ocrDbRelease( depv[0].guid );
-        ocrAddDependence( depv[0].guid, commIntentGUID, 0, DB_MODE_RW );
-    }
-
-    return NULL_GUID;
-}
-
-ocrGuid_t coarsenCommunicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
-{
-    //stay inside of communicate intent until "stable."
-    //This means that if any neighbor has identified itself as a block that "could be" refining, all of its
-    //neighbors must await its decision.
-
-    block_t PRM_block;
-    memcpy( &PRM_block, paramv, sizeof( block_t ) );
-    refineState_t *rState = (refineState_t *)depv[0].ptr;
-
-    u64 i;
-
-    u64 updateDepc = 0;
-    for( i = 0; i < 6; i++ )
-    {
-        s32 difference = PRM_block.comms.neighborRefineLvls[i] - PRM_block.refLvl;
-        switch(difference) {
-            case 1: //I am less refined.
-                updateDepc += 4;
-                break;
-            case 0:
-            case -1:
-                updateDepc++;
-                break;
-            default:
-                PRINTF("EDT %ld has a relation that is %ld. this is not allowed!\n", PRM_block.id, difference);
-                ocrShutdown();
-                return NULL_GUID;
-                break;
+           // ocrPrintf("%d difference\n", difference);
+            ocrEdtCreate( &rcvGUID, rcvTML, 0, NULL, 4, NULL, EDT_PROP_NONE, NULL_HINT, &rcvOUT );
+            ocrAddDependence( rcvOUT, checkConcensusGUID, i+1, DB_MODE_RW );
+            u64 base = i*5, offs;
+            for( offs = 0; offs < 4; offs++ )
+                ocrAddDependence( PRM_block->rRcv[base+(offs+1)], rcvGUID, offs, DB_MODE_RW );
         }
     }
-
-    ASSERT( updateDepc >= 6 );
-
-    ocrGuid_t updateIntentGUID, updateIntentTML;
-    u32 pSize = ( sizeof( block_t ) / sizeof( u64 ) ) + 1;
-
-    ocrEdtTemplateCreate( &updateIntentTML, coarsenUpdateIntentEdt,
-    ocrEdtCreate( &updateIntentGUID, PRM_block.updateIntentTML, EDT_PARAM_DEF, (u64 *)&PRM_block,
-                            updateDepc + 1, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-
-    u64 iDep = 1;
-    for( i = 0; i < 6; i++ )
-    {
-        s32 difference = PRM_block.comms.neighborRefineLvls[i] - PRM_block.refLvl;
-
-        ASSERT( iDep <= updateDepc );
-
-        ocrGuid_t rcvGUID;
-        ocrGuid_t rcvOUT;
-        switch( difference ) {
-            case 1: //I am less refined.
-                //set to receive from 4 receive channels (1 Edt, 4 rcv Evts).
-                break;
-            case 0: //I am at the same level.
-            case -1: //I am more refined.
-                //set to receive from 1 receive channel (1 Edt, 1 receive Evt).
-                if( rState->neighborDisps[i*4] == MAY_COARSEN )
-                {
-                    //if( rState->cCount > 0 ) PRINTF("%ld's %ld neighbor may refine.\n", PRM_block.id, i );
-                    ocrEdtCreate( &rcvGUID, PRM_block.refineRcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE,
-                            NULL_HINT, &rcvOUT );
-                    ocrAddDependence( rcvOUT, updateIntentGUID, iDep++, DB_MODE_RW );
-                    ocrAddDependence( PRM_block.comms.rcv[i*5], rcvGUID, 0, DB_MODE_RO );
-                }
-                else if( rState->prevDisposition == MAY_COARSEN && rState->cCount > 0 )
-                {
-                   ocrEdtCreate( &rcvGUID, PRM_block.refineRcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE,
-                        NULL_HINT, &rcvOUT );
-                    ocrAddDependence( rcvOUT, updateIntentGUID, iDep++, DB_MODE_RW );
-                    ocrAddDependence( PRM_block.comms.rcv[i*5], rcvGUID, 0, DB_MODE_RO );
-                }
-                else ocrAddDependence( NULL_GUID, updateIntentGUID, iDep++, DB_MODE_RW );
-                break;
-            default:
-                PRINTF("EDT %ld has a relation that is %ld. This is not allowed!\n", PRM_block.id, difference );
-                ocrShutdown();
-                return NULL_GUID;
-        }
-    }
+    ocrEdtTemplateDestroy( rcvTML );
 
 
-    u32 pCount = sizeof(ocrGuid_t)/sizeof(u64);
-    for( i = 0; i < 6; i++ )
-    {
-        s32 difference = PRM_block.comms.neighborRefineLvls[i] - PRM_block.refLvl;
-
-        ocrGuid_t sndGUID;
-        switch(difference) {
-            case  1: //I am less refined.
-                break;
-            case  0:
-            case -1:
-                if( rState->prevDisposition == MAY_COARSEN )
-                {
-                    ocrEdtCreate( &sndGUID, PRM_block.refineSndTML, pCount, (u64 *)&PRM_block.comms.snd[i*5],
-                                                                    1, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-                    ocrGuid_t intentDBK;
-                    intent_t *tmp;
-
-                    ocrDbCreate( &intentDBK, (void **)&tmp, sizeof(intent_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
-                    tmp->intent = rState->disposition;
-
-                    ocrDbRelease( intentDBK );
-                    ocrAddDependence( intentDBK, sndGUID, 0, DB_MODE_RW );
-                }
-                else if( rState->cCount > 0 && rState->neighborDisps[i*4] == MAY_COARSEN )
-                {
-                    ocrEdtCreate( &sndGUID, PRM_block.refineSndTML, pCount, (u64 *)&PRM_block.comms.snd[i*5],
-                                                                    1, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
-                    ocrGuid_t intentDBK;
-                    intent_t *tmp;
-
-                    ocrDbCreate( &intentDBK, (void **)&tmp, sizeof(intent_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
-                    tmp->intent = rState->disposition;
-
-                    ocrDbRelease( intentDBK );
-                    ocrAddDependence( intentDBK, sndGUID, 0, DB_MODE_RW );
-                }
-
-                break;
-        }
-    }
     ocrDbRelease( depv[0].guid );
-    ocrAddDependence( depv[0].guid, updateIntentGUID, 0, DB_MODE_RW );
+    ocrDbRelease( depv[1].guid );
+    ocrAddDependence( depv[0].guid, checkConcensusGUID, 0, DB_MODE_RW );
+    ocrAddDependence( depv[1].guid, checkConcensusGUID, 7, DB_MODE_RW );
 
     return NULL_GUID;
 }
 
-ocrGuid_t willCoarsenEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
+ocrGuid_t canCoarsenEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t * depv )
 {
-    block_t PRM_block;
-    memcpy( &PRM_block, paramv, sizeof(block_t) );
-    refineState_t *rState = (refineState_t *)depv[0].ptr;
+
+    block_t * PRM_block = depv[0].ptr;
+
+    coarsenInfo_t * intent;
+    ocrGuid_t intentDBK;
+
+    ocrDbCreate( &intentDBK, (void **)&intent, sizeof( coarsenInfo_t ), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
+
+    intent->canCoarsen = CAN_COARSEN;
+    intent->parentId = PRM_block->parent;
+    intent->rootId = PRM_block->rootId;
+
+    if( PRM_block->refLvl == 0 ) intent->canCoarsen = CANT_COARSEN;
+
     u64 i;
-    for( i = 0; i < 24; i++ ) rState->neighborDisps[i] = MAY_COARSEN; //set all neighbor states to MAY_REFINE.
-    if( 0/*I will refine*/ ){
-        rState->disposition = WILL_COARSEN;
-    } else if( 1/*all neighbors are at a point where I won't need to refine, regardless*/ ){
-        rState->disposition = WONT_COARSEN;
-    } else { //we have neighbors at a lower refinement level than us.
-        rState->disposition = MAY_COARSEN;
+
+    for( i = 0; i < 6; i++ )
+    {
+        if( PRM_block->neighborRefineLvls[i] <= PRM_block->refLvl ) continue;
+
+        intent->canCoarsen = CANT_COARSEN;
+        break;
     }
 
-    if( PRM_block.id == 13 ) rState->disposition = MAY_COARSEN;
-    rState->prevDisposition = MAY_COARSEN;
-    rState->cCount = 0;
-    return depv[0].guid;
+    if( intent->canCoarsen != CANT_COARSEN )
+    {
+        #ifdef OBJECT_DRIVEN
+        bool decision = false;
+        for( i = 0; i < PRM_block->numObjects; i++ )
+        {
+            if(!decision)
+            {
+                double xMin = PRM_block->objects[i].cen[0]-(PRM_block->objects[i].size[0]/2.0f), xMax = PRM_block->objects[i].cen[0] + (PRM_block->objects[i].size[0]/2.0f);
+                double yMin = PRM_block->objects[i].cen[1]-(PRM_block->objects[i].size[1]/2.0f), yMax = PRM_block->objects[i].cen[1] + (PRM_block->objects[i].size[1]/2.0f);
+                double zMin = PRM_block->objects[i].cen[2]-(PRM_block->objects[i].size[2]/2.0f), zMax = PRM_block->objects[i].cen[2] + (PRM_block->objects[i].size[2]/2.0f);
+
+                bool dX, dY, dZ;
+
+                dX = ((xMin >= PRM_block->pos.x - PRM_block->halfSize.x) && (xMin < PRM_block->pos.x + PRM_block->halfSize.x)) ||
+                                ((xMax >=PRM_block->pos.x - PRM_block->halfSize.x) && (xMax < PRM_block->pos.x + PRM_block->halfSize.x) );
+                dY = ((yMin >= PRM_block->pos.y - PRM_block->halfSize.y) && (yMin < PRM_block->pos.y + PRM_block->halfSize.y)) ||
+                                    ((yMax >= PRM_block->pos.y - PRM_block->halfSize.y) && (yMax < PRM_block->pos.y + PRM_block->halfSize.y) );
+                dZ = ((zMin >= PRM_block->pos.z - PRM_block->halfSize.z) && (zMin < PRM_block->pos.z + PRM_block->halfSize.z)) ||
+                                    ((zMax >= PRM_block->pos.z - PRM_block->halfSize.z) && (zMax < PRM_block->pos.z + PRM_block->halfSize.z) );
+
+                decision = dX && dY && dZ;
+                continue;
+            }
+            break;
+        }
+        if (decision) intent->canCoarsen = CANT_COARSEN;
+        #endif
+    }
+
+    return intentDBK;
 }
 
 ocrGuid_t coarsenControlEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    block_t PRM_block;
-    memcpy( &PRM_block, paramv, sizeof(block_t) );
+    ocrGuid_t canCoarsenGUID, canCoarsenTML, canCoarsenOUT;
+    ocrGuid_t coarsenIntentGUID, coarsenIntentTML;
 
-    ocrGuid_t intentGUID, rStateDBK;
-    ocrGuid_t willCoarsenGUID, willCoarsenEVT, willCoarsenTML;
-    ocrGuid_t intentGUID, intentTML;
-    refineState_t *myState;
+    ocrEdtTemplateCreate( &canCoarsenTML, canCoarsenEdt, 0, 1 );
+    ocrEdtTemplateCreate( &coarsenIntentTML, coarsenIntent, 0, 2 );
 
-    u32 pSize = ( sizeof(block_t) / sizeof(u64) ) + 1;
+    ocrEdtCreate( &canCoarsenGUID, canCoarsenTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, &canCoarsenOUT );
+    ocrEdtCreate( &coarsenIntentGUID, coarsenIntentTML, EDT_PARAM_DEF, NULL, EDT_PARAM_DEF, NULL, EDT_PROP_NONE, NULL_HINT, NULL );
+    ocrEdtTemplateDestroy( canCoarsenTML );
+    ocrEdtTemplateDestroy( coarsenIntentTML );
 
-    ocrEdtTemplateCreate( &willCoarsenTML, willCoarsenEdt, pSize, 1 );
-    ocrEdtTemplateCreate( &intentTML, coarsenUpdateIntentEdt, pSize, 1 );
+    ocrAddDependence( canCoarsenOUT, coarsenIntentGUID, 0, DB_MODE_RW );
 
-    ocrDbCreate( &rStateDBK, (void **)&myState, sizeof(refineState_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
-    ocrEdtCreate( &willCoarsenGUID, willCoarsenTML, EDT_PARAM_DEF, (u64 *)&PRM_block, EDT_PARAM_DEF, NULL,
-                    EDT_PROP_NONE, NULL_HINT, &willRefineEVT ); //we care about the returnEVT of this Edt.
-    ocrEdtCreate( &intentGUID, , EDT_PARAM_DEF, (u64 *)&PRM_block, EDT_PARAM_DEF, NULL,
-                        EDT_PROP_NONE, NULL_HINT, NULL );
+    ocrDbRelease(depv[0].guid);
+    ocrAddDependence( depv[0].guid, coarsenIntentGUID, 1, DB_MODE_RW );
 
-    ocrAddDependence( willRefineEVT, intentGUID, 0, DB_MODE_RW );
-
-    ocrAddDependence( rStateDBK, willRefineGUID, 0, DB_MODE_RW );
+    ocrAddDependence( depv[0].guid, canCoarsenGUID, 0, DB_MODE_RW );
 
     return NULL_GUID;
 }

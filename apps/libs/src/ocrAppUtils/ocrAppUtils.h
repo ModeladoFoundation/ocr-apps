@@ -2,18 +2,15 @@
 #define __OCRAPPUTILS_HEADER_H__
 
 #include "ocr.h"
-#include "ocr-std.h"
-
-#include "extensions/ocr-affinity.h" //needed for affinity
-
-#include <math.h>
 
 #define _OCR_TASK_FNC_(X) ocrGuid_t X( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 #define EDT_ARGS u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]
 #define MOD(a,b) ((((a)%(b))+(b))%(b))
 
+#define PARAMC_U64(name) ((sizeof(name) + sizeof(u64) -1)/sizeof(u64))
+
 #ifdef DEBUG_APP
-    #define DEBUG_PRINTF(X) PRINTF X
+    #define DEBUG_PRINTF(X) ocrPrintf X
 #else
     #define DEBUG_PRINTF(X) do {} while(0)
 #endif
@@ -22,6 +19,7 @@ typedef ocrGuid_t ocrDBK_t;
 typedef ocrGuid_t ocrEVT_t;
 typedef ocrGuid_t ocrEDT_t;
 typedef ocrGuid_t ocrTML_t;
+typedef ocrHint_t ocrHNT_t;
 
 typedef struct
 {
@@ -51,6 +49,7 @@ typedef struct
 
 void createEventHelper(ocrGuid_t * evtGuid, u32 nbDeps);
 void getAffinityHintsForDBandEdt( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PTR_myEdtAffinityHNT );
+void getAffinityHintsForDBandEdtAtPD( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PTR_myEdtAffinityHNT, int pd );
 
 void partition_bounds(u64 id, u64 lb_g, u64 ub_g, u64 R, u64* s, u64* e);
 void getPartitionID(u64 i, u64 lb_g, u64 ub_g, u64 R, u64* id);
@@ -72,5 +71,9 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
 
 void forkSpmdEdts_staticScheduler_Cart2D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u64* edtGridDims, ocrGuid_t* spmdDepv );
 void forkSpmdEdts_staticScheduler_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u64* edtGridDims, ocrGuid_t* spmdDepv );
+
+int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGridDims );
+int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridDims );
+int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGridDims );
 
 #endif

@@ -8,6 +8,6 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     ocxxr::NestedRelPtr<int, 3> p3 = &p2;
     ocxxr::NestedRelPtr<int, 4> p4 = &p3;
     PRINTF("x = %d\n", ****p4);
-    ASSERT(****p4 == kPayload);
+    assert(****p4 == kPayload);
     ocxxr::Shutdown();
 }

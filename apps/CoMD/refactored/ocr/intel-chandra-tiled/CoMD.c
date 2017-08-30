@@ -19,6 +19,9 @@ Copywrite Intel Corporation 2015
 #include "mycommand.h"
 #include "timestep.h"
 #include "constants.h"
+#ifdef ENABLE_SPAWNING_HINT
+#include "priority.h"
+#endif
 
 void initSpecies(SpeciesData* species, BasePotential* pot)
 {
@@ -48,7 +51,7 @@ void sanityChecks(u64 id, Command cmd, double cutoff, double latticeConst, char 
    {
       failCode |= 2;
       if (id==0)
-         PRINTF( "\nSimulation too small.\n"
+         ocrPrintf( "\nSimulation too small.\n"
                  "  Increase the number of unit cells to make the simulation\n"
                  "  at least (%3.2f, %3.2f. %3.2f) Ansgstroms in size\n",
                  minx, miny, minz);
@@ -59,11 +62,11 @@ void sanityChecks(u64 id, Command cmd, double cutoff, double latticeConst, char 
    {
       failCode |= 4;
       if (id==0)
-         PRINTF( "\nOnly FCC Lattice type supported, not %s. Fatal Error.\n",
+         ocrPrintf( "\nOnly FCC Lattice type supported, not %s. Fatal Error.\n",
                  latticeType);
    }
    int checkCode = failCode;
-   ASSERT(checkCode == failCode);
+   ocrAssert(checkCode == failCode);
 
    if (failCode != 0)
       ocrShutdown();
@@ -79,7 +82,7 @@ ocrDBK_t initPotential(
    else
       DBK_pot = initLjPot(pot);
 
-   ASSERT(pot);
+   ocrAssert(pot);
    return DBK_pot;
 }
 
@@ -242,30 +245,30 @@ void printSimulationData(Command* PTR_cmd, SimFlat* s, int maxOcc)
     if(s->PTR_rankH->myRank != 0 )
        return;
 
-    PRINTF("Simulation data: \n");
-    PRINTF("  Total atoms        : %d\n",
+    ocrPrintf("Simulation data: \n");
+    ocrPrintf("  Total atoms        : %d\n",
             s->atoms->nGlobal);
-    PRINTF("  Min global bounds  : [ %14.10f, %14.10f, %14.10f ]\n",
+    ocrPrintf("  Min global bounds  : [ %14.10f, %14.10f, %14.10f ]\n",
             s->domain->globalMin[0], s->domain->globalMin[1], s->domain->globalMin[2]);
-    PRINTF("  Max global bounds  : [ %14.10f, %14.10f, %14.10f ]\n",
+    ocrPrintf("  Max global bounds  : [ %14.10f, %14.10f, %14.10f ]\n",
             s->domain->globalMax[0], s->domain->globalMax[1], s->domain->globalMax[2]);
     printSeparator();
-    PRINTF("Decomposition data: \n");
-    PRINTF("  Processors         : %6d,%6d,%6d\n",
+    ocrPrintf("Decomposition data: \n");
+    ocrPrintf("  Processors         : %6d,%6d,%6d\n",
             s->domain->procGrid[0], s->domain->procGrid[1], s->domain->procGrid[2]);
-    PRINTF("  Local boxes        : %6d,%6d,%6d = %8d\n",
+    ocrPrintf("  Local boxes        : %6d,%6d,%6d = %8d\n",
             s->boxes->gridSize[0], s->boxes->gridSize[1], s->boxes->gridSize[2],
             s->boxes->gridSize[0]*s->boxes->gridSize[1]*s->boxes->gridSize[2]);
-    PRINTF("  Box size           : [ %14.10f, %14.10f, %14.10f ]\n",
+    ocrPrintf("  Box size           : [ %14.10f, %14.10f, %14.10f ]\n",
             s->boxes->boxSize[0], s->boxes->boxSize[1], s->boxes->boxSize[2]);
-    PRINTF("  Box factor         : [ %14.10f, %14.10f, %14.10f ] \n",
+    ocrPrintf("  Box factor         : [ %14.10f, %14.10f, %14.10f ] \n",
             s->boxes->boxSize[0]/s->pot->cutoff,
             s->boxes->boxSize[1]/s->pot->cutoff,
             s->boxes->boxSize[2]/s->pot->cutoff);
-    PRINTF( "  Max Link Cell Occupancy: %d of %d\n",
+    ocrPrintf( "  Max Link Cell Occupancy: %d of %d\n",
             maxOcc, MAXATOMS);
     printSeparator();
-    PRINTF("Potential data: \n");
+    ocrPrintf("Potential data: \n");
     s->pot->print(s->pot);
 
     // Memory footprint diagnostics
@@ -281,11 +284,11 @@ void printSimulationData(Command* PTR_cmd, SimFlat* s, int maxOcc)
     float paddedMemTotal = (float) nTotalBoxes*(perAtomSize*MAXATOMS)/1024/1024;
 
     printSeparator();
-    PRINTF("Memory data: \n");
-    PRINTF( "  Intrinsic atom footprint = %4d B/atom \n", perAtomSize);
-    PRINTF( "  Total atom footprint     = %7.3f MB (%6.2f MB/node)\n", totalMemGlobal, totalMemLocal);
-    PRINTF( "  Link cell atom footprint = %7.3f MB/node\n", paddedMemLocal);
-    PRINTF( "  Link cell atom footprint = %7.3f MB/node (including halo cell data\n", paddedMemTotal);
+    ocrPrintf("Memory data: \n");
+    ocrPrintf( "  Intrinsic atom footprint = %4d B/atom \n", perAtomSize);
+    ocrPrintf( "  Total atom footprint     = %7.3f MB (%6.2f MB/node)\n", totalMemGlobal, totalMemLocal);
+    ocrPrintf( "  Link cell atom footprint = %7.3f MB/node\n", paddedMemLocal);
+    ocrPrintf( "  Link cell atom footprint = %7.3f MB/node (including halo cell data\n", paddedMemTotal);
 }
 
 ocrGuid_t printSimulationData1Edt( EDT_ARGS )
@@ -413,6 +416,11 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
 
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinitySpawnHNT, OCR_HINT_EDT_SPAWNING, 0);
+#endif
 
     Command* PTR_cmd = &(PTR_rankH->globalParamH.cmdParamH);
     globalOcrParamH_t* PTR_globalOcrParamH = &(PTR_rankH->globalParamH.ocrParamH);
@@ -555,9 +563,17 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrGuid_t redistributeAtomsEDT, redistributeAtomsOEVT, redistributeAtomsOEVTS;
 
     u64 itimestep = 0;
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t redistributeAtomsHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&redistributeAtomsHNT, OCR_HINT_EDT_SPAWNING, RedistributeAtomsEdt_PRIORITY);
+    ocrEdtCreate( &redistributeAtomsEDT, redistributeAtomsTML, //redistributeAtomsEdt
+                  EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &redistributeAtomsHNT, &redistributeAtomsOEVT );
+#else
     ocrEdtCreate( &redistributeAtomsEDT, redistributeAtomsTML, //redistributeAtomsEdt
                   EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &redistributeAtomsOEVT );
+#endif
 
     createEventHelper( &redistributeAtomsOEVTS, 1);
     ocrAddDependence( redistributeAtomsOEVT, redistributeAtomsOEVTS, 0, DB_MODE_NULL );
@@ -571,9 +587,15 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     ocrGuid_t computeForceEDT, computeForceOEVT, computeForceOEVTS;
 
     //computeForceEdt
+#ifdef ENABLE_SPAWNING_HINT
+    ocrEdtCreate( &computeForceEDT, computeForceTML,
+                  EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &myEdtAffinitySpawnHNT, &computeForceOEVT );
+#else
     ocrEdtCreate( &computeForceEDT, computeForceTML,
                   EDT_PARAM_DEF, &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &computeForceOEVT );
+#endif
 
     createEventHelper( &computeForceOEVTS, 1);
     ocrAddDependence( computeForceOEVT, computeForceOEVTS, 0, DB_MODE_NULL );
@@ -609,9 +631,17 @@ _OCR_TASK_FNC_( FNC_initSimulation )
 
     ocrEdtTemplateCreate( &printSimulationDataTML, printSimulationDataEdt, 1, 5 );
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t printSimHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&printSimHNT, OCR_HINT_EDT_SPAWNING, PrintSimulationDataEdt_PRIORITY);
+    ocrEdtCreate( &printSimulationDataEDT, printSimulationDataTML,
+                  EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &printSimHNT, &printSimulationDataOEVT );
+#else
     ocrEdtCreate( &printSimulationDataEDT, printSimulationDataTML,
                   EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &printSimulationDataOEVT );
+#endif
 
     ocrEdtTemplateDestroy( printSimulationDataTML );
 
@@ -647,9 +677,17 @@ _OCR_TASK_FNC_( FNC_initSimulation )
     {
         ocrGuid_t timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrHint_t timestepLoopHnt = myEdtAffinityHNT;
+        ocrSetHintValue(&timestepLoopHnt, OCR_HINT_EDT_SPAWNING, TimestepLoopEdt_PRIORITY);
+        ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
+                      EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, &timestepLoopHnt, NULL );
+#else
         ocrEdtCreate( &timestepLoopEDT, timestepLoopTML,
                       EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &myEdtAffinityHNT, NULL );
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RW );
@@ -678,6 +716,11 @@ _OCR_TASK_FNC_( FNC_comdMain )
 
     ocrHint_t myDbkAffinityHNT, myEdtAffinityHNT;
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t myEdtAffinitySpawnHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&myEdtAffinityHNT , OCR_HINT_EDT_SPAWNING, FNC_initSimulation_PRIORITY);
+#endif
+    ocrHint_t spawnHint;
 
     ocrDBK_t DBK_sim;
     SimFlat* sim;
@@ -763,6 +806,9 @@ _OCR_TASK_FNC_( channelSetupEdt )
     ocrHint_t myDbkAffinityHNT, myEdtAffinityHNT;
 
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+#ifdef ENABLE_SPAWNING_HINT
+    ocrSetHintValue(&myEdtAffinityHNT, OCR_HINT_EDT_SPAWNING, 0);
+#endif
 
     MyOcrTaskStruct_t TS_comdMain; _paramc = 1; _depc = 1;
 
@@ -801,6 +847,9 @@ _OCR_TASK_FNC_( initEdt )
 
     ocrHint_t myEdtAffinityHNT, myDbkAffinityHNT;
     getAffinityHintsForDBandEdt( &myDbkAffinityHNT, &myEdtAffinityHNT );
+#ifdef ENABLE_SPAWNING_HINT
+    ocrSetHintValue(&myEdtAffinityHNT, OCR_HINT_EDT_SPAWNING, 0);
+#endif
 
     s32 gx = PTR_PRM_initEdt->edtGridDims[0];
     s32 gy = PTR_PRM_initEdt->edtGridDims[1];
@@ -923,7 +972,7 @@ _OCR_TASK_FNC_( initEdt )
         ocrEventCreate( &stickyEVT_new, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG );
 
         //DEBUG_PRINTF(("s %d se %d r %d re %d s(%d %d %d) r(%d %d %d)\n", id, nbr, nbrRank, nbrImage, ix0, iy0, iz0, ix, iy, iz ));
-        //PRINTF("Send rank %d %d "GUIDF" \n", id, nbr, PTR_rankH->haloSendEVTs[nbr]);
+        //ocrPrintf("Send rank %d %d "GUIDF" \n", id, nbr, PTR_rankH->haloSendEVTs[nbr]);
 
         ocrAddDependence( stickyEVT_new, channelSetupEDT, nbr, DB_MODE_RW ); //TODO
     }
@@ -937,7 +986,7 @@ _OCR_TASK_FNC_( initEdt )
 
 ocrGuid_t wrapUpEdt( u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    PRINTF("Shutting down\n");
+    ocrPrintf("Shutting down\n");
     ocrShutdown();
     return NULL_GUID;
 }
@@ -949,14 +998,14 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
     ocrGuid_t DBK_cmdLineArgs = depv[0].guid;
 
     void * PTR_cmdLineArgs = depv[0].ptr;
-    u32 argc = getArgc( PTR_cmdLineArgs );
+    u32 argc = ocrGetArgc( PTR_cmdLineArgs );
 
     //Pack the PTR_cmdLineArgs into the "cannonical" char** argv
     ocrGuid_t argv_g;
     char** argv;
     ocrDbCreate( &argv_g, (void**)&argv, sizeof(char*)*argc, DB_PROP_NONE, PICK_1_1(NULL_HINT,NULL_GUID), NO_ALLOC );
     for( u32 a = 0; a < argc; ++a )
-       argv[a] = getArgv( PTR_cmdLineArgs, a );
+       argv[a] = ocrGetArgv( PTR_cmdLineArgs, a );
 
     Command cmd = parseCommandLine(argc, argv);
     printCmd(&cmd);
@@ -1001,10 +1050,10 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
     //2-D Cartesian grid of SPMD EDTs get mapped to a 2-D Cartesian grid of PDs
 #ifdef USE_STATIC_SCHEDULER
-    PRINTF("Using STATIC scheduler\n");
+    ocrPrintf("Using STATIC scheduler\n");
     forkSpmdEdts_staticScheduler_Cart3D( initEdt, edtGridDims, spmdDepv );
 #else
-    PRINTF("NOT Using STATIC scheduler\n");
+    ocrPrintf("NOT Using STATIC scheduler\n");
     forkSpmdEdts_Cart3D( initEdt, edtGridDims, spmdDepv );
 #endif
 

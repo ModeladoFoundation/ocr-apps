@@ -1,0 +1,14 @@
+# Definitions for ROSE Tools
+
+SHELL=/bin/bash
+
+# Jenkins needs to have the ROSE area defined.
+ROSE_INS ?=
+
+# Set the boost include dir and lib dir for linking with -lrose
+BOOST_INCLUDE_DIR ?= /usr/include
+BOOST_LIB_DIR ?= /usr/lib64
+
+ROSE_INC=-I$(ROSE_INS)/include/rose  -I$(BOOST_INCLUDE_DIR)
+
+ROSE_LNK=-L$(ROSE_INS)/lib -lrose -pthread -L$(BOOST_LIBDIR) -lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system-mt -lboost_serialization-mt -lboost_wave-mt -lboost_iostreams-mt -lboost_chrono-mt   -ldl -ldl -lm

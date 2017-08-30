@@ -27,7 +27,6 @@ INSTALL_HEADERS := $(patsubst $(SRC_DIR)%.h,$(APPS_LIBS_INSTALL)/include/%.h, $(
 INSTALL_LIBS    := $(APPS_LIBS_INSTALL)/lib/$(LIB)
 
 ### Compilation rules ####
-PREFIX := $(TG_INSTALL)/bin/xstg-linux-elf
 
 CC     ?= gcc
 AR     := ar
@@ -40,7 +39,7 @@ OPT_FLAGS := -O3
 
 INC_FLAGS := -I$(SRC_DIR) -I$(OCR_INSTALL)/include -I$(APPS_LIBS_INSTALL)/include
 
-CFLAGS    := -g
+CFLAGS    += -g
 CFLAGS    += -DENABLE_EXTENSION_PARAMS_EVT
 CFLAGS    += -DENABLE_EXTENSION_COUNTED_EVT
 CFLAGS    += -DENABLE_EXTENSION_CHANNEL_EVT

@@ -4,7 +4,7 @@
 
 //Removed for runs on TG> #include <string.h> //memset. memcpy
 
-//#define GLOBAL_DATA_VERBOSE //Define this macro in order to get many PRINTF activated.
+//#define GLOBAL_DATA_VERBOSE //Define this macro in order to get many ocrPrintf activated.
                             //Otherwise, to keep silent, undefine the macro.
 
 void init_SPMDglobals(SPMD_GlobalData_t * io_gdata)
@@ -35,7 +35,7 @@ void print_SPMDglobals(SPMD_GlobalData_t * in_gdata, const char * in_text)
         if(!t){
             t = defaultt;
         }
-        PRINTF("TESTIO> SPMD GLOBAL DATA overall_mpi_count=%u iterationCountOnEachRank=%u %s\n",
+        ocrPrintf("TESTIO> SPMD GLOBAL DATA overall_mpi_count=%u iterationCountOnEachRank=%u %s\n",
                 in_gdata->overall_mpi_count,
                 in_gdata->iterationCountOnEachRank,
                 t

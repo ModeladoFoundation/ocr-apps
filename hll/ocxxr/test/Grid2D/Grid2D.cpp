@@ -54,7 +54,7 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     // Read current grid
     double *data = &grid.at(5, 6);
     PRINTF("Item at orig (5, 6) = %.1f (@ %p)\n", *data, data);
-    ASSERT(*data == 5.6);
+    assert(*data == 5.6);
     // Copy current grid
     auto copy = ocxxr::Arena<Grid2D>::Create(ARENA_SIZE);
     memcpy(copy.base_ptr(), arena.base_ptr(), arena.size());
@@ -62,19 +62,19 @@ void ocxxr::Main(ocxxr::Datablock<ocxxr::MainTaskArgs>) {
     // Wipe old grid
     memset(arena.base_ptr(), 0, arena.size());
     PRINTF("Wiped original: val = %.1f (@ %p)\n", *data, data);
-    ASSERT(*data == 0.0);
+    assert(*data == 0.0);
     // Read new grid
     data = &grid2.at(5, 6);
     PRINTF("Item at orig (5, 6) = %.1f (@ %p)\n", *data, data);
-    ASSERT(*data == 5.6);
+    assert(*data == 5.6);
     // Update current arena to the copy (since we clobbered the original)
     ocxxr::SetImplicitArena(copy);
     // Try a non-scalar array
     Grid2D *grids = ocxxr::NewArray<Grid2D>(5);
     PRINTF("Grid of grids (1,2,3) = %.1f\n", grids[1].at(2, 3));
-    ASSERT(grids[1].at(2, 3) == 2.3);
+    assert(grids[1].at(2, 3) == 2.3);
     PRINTF("Grid of grids (2,3,4) = %.1f\n", grids[2].at(3, 4));
-    ASSERT(grids[2].at(3, 4) == 3.4);
+    assert(grids[2].at(3, 4) == 3.4);
     // Done
     ocxxr::Shutdown();
 }

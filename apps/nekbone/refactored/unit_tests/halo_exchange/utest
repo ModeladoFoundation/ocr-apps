@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#Date: 2017Feb22
+#Author: Donald H Villeneuve (dvillen)
+#Goal: Get the internal and external halo book-keeping function
+#Methodology:
+#1)The reference file was done by hand
+#2)Run the code and compare with the reference file.
+#
+
+CC=icc
+
+CEXEC="./z_ccode.x"
+OUTC="./z_ccode.out"
+
+OPT="-g -O0 -Wall"
+
+ALL_IS_OK=1
+
+#----- Preliminary clean-up
+rm -f z_*
+
+#----- Make the executables
+rm -f "$CEXEC"
+$CC -o "$CEXEC" $OPT neko_halo_util.c nekos_triplet.c main2d3d.c &> z_compil.log
+if [ ! -x "$CEXEC" ]
+then
+echo "ERROR: C code build failure"
+ALL_IS_OK=0
+fi
+
+#----- Run the C code
+$CEXEC &> $OUTC
+if [ ! -r "$OUTC" ]
+then
+echo "ERROR: Missing C output file"
+ALL_IS_OK=0
+fi
+
+#----- Compare
+if [ "$(diff -w --brief $OUTC y_ref_file)" ] || [ "$ALL_IS_OK" -eq 0 ]
+then
+echo "ERROR: Unit test halo_exchange failed."
+else
+echo "Successful run"
+fi
+
+#----- Clean-up
+rm -f z_*
+rm -f core*

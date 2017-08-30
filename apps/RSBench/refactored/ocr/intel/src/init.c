@@ -59,13 +59,13 @@ void generate_poles( Inputs input, int * n_poles, ocrGuid_t* PTR_pole_DBguids_nu
     for( int i = 0; i < input.n_nuclides; i++ )
     {
         Pole* R_i;
-        //PRINTF( " i %d poles %d\n", i, n_poles[i] );
+        //ocrPrintf( " i %d poles %d\n", i, n_poles[i] );
         ocrDbCreate( &(PTR_pole_DBguids_nuclide[i]), (void **) &R_i, sizeof(Pole)*(n_poles[i]),
                      DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 
         for( int j = 0; j < n_poles[i]; j++ )
         {
-            //PRINTF( "j = %d %d\n", j, input.numL );
+            //ocrPrintf( "j = %d %d\n", j, input.numL );
             R_i[j].MP_EA = f*((double) rand() / RAND_MAX + (double) rand() / RAND_MAX * I);
             R_i[j].MP_RT = f*(double) rand() / RAND_MAX + (double) rand() / RAND_MAX * I;
             R_i[j].MP_RA = f*(double) rand() / RAND_MAX + (double) rand() / RAND_MAX * I;
@@ -89,7 +89,7 @@ void generate_window_params( Inputs input, int * n_windows, int * n_poles, ocrGu
     for( int i = 0; i < input.n_nuclides; i++ )
     {
         Window* R_i;
-        //PRINTF( " i %d windows %d\n", i, n_windows[i] );
+        //ocrPrintf( " i %d windows %d\n", i, n_windows[i] );
         ocrDbCreate( &(PTR_window_DBguids_nuclide[i]), (void **) &R_i, sizeof(Window)*(n_windows[i]),
                      DB_PROP_NONE, NULL_HINT, NO_ALLOC );
 

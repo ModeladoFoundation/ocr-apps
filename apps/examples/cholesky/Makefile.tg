@@ -50,7 +50,12 @@ TARGET := cholesky
 
 # Space separated list of directory names in apps/libs/src
 # that need to be built. These will be built for ARCH
-REQ_LIBS := libc macros
+REQ_LIBS := macros libc
+
+ifeq ($(WITH_NEWLIB), yes)
+  REQ_LIBS += newlib
+#  $(error newlib doesn't support file IO (see bug #1007))
+endif
 
 # Space separated list of source files
 SRCS := cholesky.c
@@ -64,6 +69,10 @@ CFLAGS :=
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
 LDFLAGS :=
+
+ifeq ($(WITH_NEWLIB), yes)
+  LDFLAGS += -lc
+endif
 
 # Targets:
 #   - all:     Build the application.

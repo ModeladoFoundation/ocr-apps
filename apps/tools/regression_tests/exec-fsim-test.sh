@@ -17,6 +17,8 @@
 #   OUTPUT_FILE      - Log file (no path) to use as output instead of stdout
 #   TIMEOUT_SECONDS  - Number of seconds to allow the test to execute before
 #                      aborting. If empty, 0 or unset then no timeout.
+#   PRERUN_COMMAND   - This command gets run just before starting fsim (and
+#                      before starting the timeout timer if there is one).
 #
 # This script accepts command line parameters which are all regular
 # expressions. The output of the fsim simulation must contain lines
@@ -81,6 +83,17 @@ function activate_timeout() {
   TIMEOUT_PID=$!
 }
 
+function fail_test() {
+  echo " !!! Test $TEST_NAME failed !!!" 1>&2
+  echo
+  #
+  # guarantee fsim is no longer running
+  #
+  kill_fsim
+
+  exit 1
+}
+
 echo "Running test $TEST_NAME"
 
 #
@@ -111,6 +124,10 @@ kill_fsim
 # Make sure that the timeout timer will get killed when the test finishes.
 trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
 
+cd $WORKLOAD_INSTALL || fail_test
+
+[ "$PRERUN_COMMAND" ] && { $PRERUN_COMMAND || fail_test; }
+
 # Start the timeout timer if there is one specified
 [ "${TIMEOUT_SECONDS:-0}" != 0 ] && activate_timeout
 
@@ -118,9 +135,11 @@ trap 'kill -9 $(jobs -p) 2>/dev/null' EXIT
 # Actually run fsim
 #
 SECONDS=0
-FSIM_CMD="$TG_INSTALL/bin/$FSIM_EXE -L $LOGS_DIR $FSIM_ARGS"
-
-cd $WORKLOAD_INSTALL
+if [ "$FSIM_EXE" == 'fsim-swtest' ]; then
+  FSIM_CMD="$TG_INSTALL/bin/$FSIM_EXE -L $LOGS_DIR $FSIM_ARGS"
+else
+  FSIM_CMD="$TG_INSTALL/bin/scripts/mpi_launch.sh -L $LOGS_DIR $FSIM_ARGS"
+fi
 
 [ "$VERBOSE" ] && echo "Running fsim command '$FSIM_CMD'"
 
@@ -154,10 +173,7 @@ fi
 
 [ "$VERBOSE" ] || [ "$TIME_TESTS" ] && echo "Test took $SECONDS sec"
 
-if [ $RET -ne 0 ]; then
-  echo " !!! Test $TEST_NAME failed !!!" 1>&2
-  echo
-fi
+[ $RET -eq 0 ] || fail_test
 #
 # guarantee fsim is no longer running
 #

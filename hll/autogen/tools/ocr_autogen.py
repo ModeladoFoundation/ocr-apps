@@ -2001,7 +2001,7 @@ def assign_slots_for_literals_and_dereferenceds(io_G):
                 events = getEvents(io_G, edg)
                 sharedEV = getEvents(io_G, shared_conx)
 
-                if 1 == 1:
+                if False:
                     print('DBG1745> events   = ' + str(events))
                     print('DBG1745> sharedEV = ' + str(sharedEV))
                     print('DBG1745> lits = ' + str(lits))
@@ -2015,7 +2015,7 @@ def assign_slots_for_literals_and_dereferenceds(io_G):
                         if deref in sharedEV:  # 2016Sept12: This is a hack in order to allow the proper functioning of shared edges
                                                #             without having the full labeled edge info.
                             events[deref].calculatedSlot = sharedEV[deref].calculatedSlot
-                            print('DBG1758> events[deref].calculatedSlot = ' + str(events[deref].calculatedSlot))
+                            #print('DBG1758> events[deref].calculatedSlot = ' + str(events[deref].calculatedSlot))
 
             if erri: break  # for p2 in getNodeparents(io_G,n):
 
@@ -2104,7 +2104,7 @@ def find_destroy_outgoing_release_forELSEedt(io_G, in_nodeIndex):
         if not getNode(io_G, in_nodeIndex)["istheELSEclause"]:
             break
 
-        print("DEV-DBG1849> hook for node 17\n")
+        #print("DEV-DBG1849> hook for node 17\n")
         if in_nodeIndex == 17:
             #import pdb
             #pdb.set_trace()

@@ -1,8 +1,7 @@
-#include "ocrAppUtils.h"
+#include <math.h>
 
-static inline int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGridDims );
-static inline int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridDims );
-static inline int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGridDims );
+#include "ocrAppUtils.h"
+#include "extensions/ocr-affinity.h" //needed for affinity
 
 #ifdef USE_STATIC_SCHEDULER
 typedef struct
@@ -45,6 +44,21 @@ void getAffinityHintsForDBandEdt( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PT
     ocrAffinityGetCurrent(&currentAffinity);
     ocrSetHintValue( PTR_myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
     ocrSetHintValue( PTR_myDbkAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(currentAffinity) );
+#endif
+
+}
+
+void getAffinityHintsForDBandEdtAtPD( ocrHint_t* PTR_myDbkAffinityHNT, ocrHint_t* PTR_myEdtAffinityHNT, int pd )
+{
+    ocrGuid_t PDaffinityGuid;
+
+    ocrHintInit( PTR_myEdtAffinityHNT, OCR_HINT_EDT_T );
+    ocrHintInit( PTR_myDbkAffinityHNT, OCR_HINT_DB_T );
+
+#ifdef ENABLE_EXTENSION_AFFINITY
+    ocrAffinityGetAt( AFFINITY_PD, pd, &(PDaffinityGuid) );
+    ocrSetHintValue( PTR_myEdtAffinityHNT, OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
+    ocrSetHintValue( PTR_myDbkAffinityHNT, OCR_HINT_DB_AFFINITY, ocrAffinityToHintValue(PDaffinityGuid) );
 #endif
 
 }
@@ -108,7 +122,7 @@ void globalCoordsFromRank_Cart3D( int id, int NR_X, int NR_Y, int NR_Z, int* id_
     *id_z = (id / NR_X) / NR_Y;
 }
 
-static inline int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGridDims )
+int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGridDims )
 {
     int id_x = b%edtGridDims[0];
 
@@ -123,7 +137,7 @@ static inline int getPolicyDomainID_Cart1D( int b, u64* edtGridDims, u64* pdGrid
     return mapToPD;
 }
 
-static inline int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridDims )
+int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGridDims )
 {
     int id_x = b%edtGridDims[0];
     int id_y = b/edtGridDims[0];
@@ -143,7 +157,7 @@ static inline int getPolicyDomainID_Cart2D( int b, u64* edtGridDims, u64* pdGrid
     return mapToPD;
 }
 
-static inline int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGridDims )
+int getPolicyDomainID_Cart3D( int b, u64* edtGridDims, u64* pdGridDims )
 {
     int id_x = b%edtGridDims[0];
     int id_y = (b/edtGridDims[0])%edtGridDims[1];
@@ -243,9 +257,9 @@ void forkSpmdEdts_Cart1D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
+    ocrPrintf("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
 #else
-    PRINTF("NOT Using affinity API\n");
+    ocrPrintf("NOT Using affinity API\n\n");
 #endif
     u64 PD_X = affinityCount;
 
@@ -298,9 +312,9 @@ void forkSpmdEdts_Cart2D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
+    ocrPrintf("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
 #else
-    PRINTF("NOT Using affinity API\n");
+    ocrPrintf("NOT Using affinity API\n\n");
 #endif
     u64 PD_X, PD_Y;
     splitDimension_Cart2D( affinityCount, &PD_X, &PD_Y ); //Split available PDs into a 2-D grid
@@ -355,9 +369,9 @@ void forkSpmdEdts_Cart3D( ocrGuid_t (*initEdt)(u32, u64*, u32, ocrEdtDep_t*), u6
     u64 affinityCount=1;
 #ifdef ENABLE_EXTENSION_AFFINITY
     ocrAffinityCount( AFFINITY_PD, &affinityCount );
-    PRINTF("Using affinity API: Count %"PRIu64"\n", affinityCount);
+    ocrPrintf("Using affinity API: Count %"PRIu64"\n\n", affinityCount);
 #else
-    PRINTF("NOT Using affinity API\n");
+    ocrPrintf("NOT Using affinity API\n\n");
 #endif
     u64 PD_X, PD_Y, PD_Z;
     splitDimension_Cart3D( affinityCount, &PD_X, &PD_Y, &PD_Z ); //Split available PDs into a 3-D grid

@@ -79,7 +79,7 @@ int nbb_init_mesh(int in_ifbrick, //Set to 1 for a brick; otherwise zero.
                        unsigned int eg;
                        eg = offs + i + (j * (*o_nelx)) + (k*(*o_nelx)*(*o_nely)) + 1;
                        o_lglel[e] = eg;
-                       //DBG> PRINTF("DBG lglel> Rid i,j,k,e,offs o_lglel  Rid=%u %u,%u,%u e=%u offs=%u  lglel[e]=%u\n", in_nid, i,j,k,e, offs,  eg);
+                       //DBG> ocrPrintf("DBG lglel> Rid i,j,k,e,offs o_lglel  Rid=%u %u,%u,%u e=%u offs=%u  lglel[e]=%u\n", in_nid, i,j,k,e, offs,  eg);
                        ++e;
                     }
                 }

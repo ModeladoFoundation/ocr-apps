@@ -12,16 +12,16 @@ struct complexData** DigSpot(float xc, float yc, struct DigSpotVars *dig_spot, s
 	fftwf_plan plan_backward;
 	fftwf_complex *ifft_input, *ifft_result; ocrGuid_t ifft_input_dbg, ocrGuid_t ifft_result_dbg;
 #ifdef DEBUG
-PRINTF("DigSpot P1, S1 <%3d,%3d>\n",image_params->P1, image_params->S1);
-PRINTF("DigSpot P2, S2 <%3d,%3d>\n",image_params->P2, image_params->S2);
-PRINTF("DigSpot P3, S3 <%3d,%3d>\n",image_params->P3, image_params->S3);
+ocrPrintf("DigSpot P1, S1 <%3d,%3d>\n",image_params->P1, image_params->S1);
+ocrPrintf("DigSpot P2, S2 <%3d,%3d>\n",image_params->P2, image_params->S2);
+ocrPrintf("DigSpot P3, S3 <%3d,%3d>\n",image_params->P3, image_params->S3);
 RAG_FLUSH;
 #endif
 	ifft_input  = (fftwf_complex*)fftwf_malloc(&ifft_input_dbg, image_params->S1 * sizeof(fftwf_complex));
 	ifft_result = (fftwf_complex*)fftwf_malloc(&ifft_results_dbg, image_params->S1 * sizeof(fftwf_complex));
 	plan_backward = fftwf_plan_dft_1d(image_params->S1, ifft_input, ifft_result, FFTW_BACKWARD, FFTW_ESTIMATE);
 
-	PRINTF("Xc = %7.2fm Yc = %7.2fm\n", xc, yc);RAG_FLUSH;
+	ocrPrintf("Xc = %7.2fm Yc = %7.2fm\n", xc, yc);RAG_FLUSH;
 
 	// FFTW doesn't perform normalization
 	scale = 1/(float)image_params->S1;

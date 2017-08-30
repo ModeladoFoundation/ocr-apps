@@ -46,9 +46,9 @@ RUN_TORQUE ?= no
 RUN_MODE ?=
 
 ## END of variables coming from user/environment
-CC := icc
+#CC := icc
 
-CONFIG_FLAGS=--guid LABELED --binding seq
+CONFIG_FLAGS +=--guid LABELED --binding seq
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
@@ -76,6 +76,8 @@ timers.c
 CFLAGS += -g -std=c99
 #CFLAGS += -DSCHEDULER_TYPE=1 -DCHUNK_SIZE=1000
 CFLAGS += -DENABLE_EXTENSION_AFFINITY
+CFLAGS += -DSINGLE_RUN_ACROSS_PD
+#CFLAGS += -DENABLE_SPAWNING_HINT
 #CFLAGS += -DVERIFICATION
 #CFLAGS += -DDEBUG_APP
 # Additional LDFLAGS. By default, it includes

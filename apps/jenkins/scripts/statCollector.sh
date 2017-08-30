@@ -7,7 +7,7 @@ fi
 
 SCRIPT_FOLDER=${JJOB_SHARED_HOME}/apps/apps/jenkins/scripts
 
-# Create archive dirs if the framework is being run manually ( i.e. local run and not by jenkin)
+# Create archive dirs if the framework is being run manually ( i.e. local run and not by jenkins)
 if [ -z $WORKSPACE ]; then
     echo "---- Local execution of Regression Framework . Creating Archive dirs ----"
     mkdir ${JJOB_SHARED_HOME}/../performanceResults
@@ -27,7 +27,7 @@ fi
 # Generate plotGraph.py parsable stat file
 
 if [ -z $WORKSPACE ]; then
-    #  Manually execution of framework( i.e. local run and not by jenkin)
+    #  Manually execution of framework( i.e. local run and not by jenkins)
     python ${SCRIPT_FOLDER}/statFileFolderParser.py ${JJOB_SHARED_HOME}/../performanceResults/NightlyPerfStatApps/ ${JJOB_SHARED_HOME}/../NightlyPerfStatApps.txt
 else
     python ${SCRIPT_FOLDER}/statFileFolderParser.py ${WORKSPACE}/performanceResults/NightlyPerfStatApps/ ${WORKSPACE}/NightlyPerfStatApps.txt
@@ -41,7 +41,7 @@ else
 fi
 
 if [ -z $WORKSPACE ]; then
-    #  Manually execution of framework( i.e. local run and not by jenkin)
+    #  Manually execution of framework( i.e. local run and not by jenkins)
     python ${SCRIPT_FOLDER}/statFileFolderParser.py ${JJOB_SHARED_HOME}/../performanceResults/NightlyPerfStatAppsScaling/ ${JJOB_SHARED_HOME}/../NightlyPerfStatAppsScaling.txt
 else
     python ${SCRIPT_FOLDER}/statFileFolderParser.py ${WORKSPACE}/performanceResults/NightlyPerfStatAppsScaling/ ${WORKSPACE}/NightlyPerfStatAppsScaling.txt
@@ -59,7 +59,7 @@ YMIN="0"
 YMAX="4"
 
 if [ -z $WORKSPACE ]; then
-    #  Manually execution of framework( i.e. local run and not by jenkin)
+    #  Manually execution of framework( i.e. local run and not by jenkins)
     cat ${JJOB_SHARED_HOME}/../NightlyPerfStatApps.txt
     python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyPerfStatApps.txt "Application Performance Trend Line" "Build" "Normalized Execution Time" "${YMIN}" "${YMAX}" "${JJOB_SHARED_HOME}/../perfStatAppsTrend.png"
 else
@@ -78,7 +78,7 @@ fi
 YMAX="1"
 
 if [ -z $WORKSPACE ]; then
-    #  Manually execution of framework( i.e. local run and not by jenkin)
+    #  Manually execution of framework( i.e. local run and not by jenkins)
     cat ${JJOB_SHARED_HOME}/../NightlyPerfStatAppsScaling.txt
     python ${SCRIPT_FOLDER}/plotGraph.py ${JJOB_SHARED_HOME}/../NightlyPerfStatAppsScaling.txt "Application Scaling Trend Line" "Build" "Scaling Slope [ Higher the better ]"  "${YMIN}" "${YMAX}" "${JJOB_SHARED_HOME}/../perfStatAppsScalingTrend.png"
 else

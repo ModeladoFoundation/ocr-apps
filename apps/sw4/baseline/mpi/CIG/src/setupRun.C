@@ -285,7 +285,7 @@ void EW::setupRun( vector<Source*> & a_GlobalUniqueSources )
 
 //tmp : make sure that all bc print statements are done. Then abort
 //   MPI_Barrier(MPI_COMM_WORLD);
-//   ASSERT(0)
+//   ocrAssert(0)
 
 //    if( m_output_load )
 //       print_loadbalance_info();

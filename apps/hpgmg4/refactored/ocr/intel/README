@@ -1,0 +1,53 @@
+Beginnings of an OCR implementation of fourth order HPGMG
+Author David S. Scott
+
+The algorithm does RedBlack smoothing at every level of Full Multigrid:
+
+
+9                                                       9
+ 8                                         8           8
+  7                             7         7 7         7
+   6                   6       6 6       6   6       6
+    5           5     5 5     5   5     5     5     5
+     4     4   4 4   4   4   4     4   4       4   4
+      3 3 3 3 3   3 3     3 3       3 3         3 3
+       2 2   2     2       2         2           2
+
+Every step involves smoothing.  Going down involves computing a residual, restricting
+it to half size and passing it down.  Going up adds the halfsized solution as a correction
+to the previous solution
+
+the code does not go below a 2x2x2 cube because it needs to support
+periodic boundary conditions
+
+The code does not go below AGGLOMERATION_SIZE (current 8) on a distributed grid
+Instead the number of participants shrinks by a factor of 8.
+
+
+
+It started with the hpcg code and the following changes were made:
+
+Added MAXLEVEL and AGGLOMERATION_SIZE
+Changed "4" to MAXLEVEL in many places (HPCG uses 4 levels of MG)
+Added nlevels and boxsize
+Added coarsenRangeGUID and refineRangeGUID for setting up halo exchange
+Made myrank an array of size MAXLEVEL (since coarsening will lead to smaller numbers of nodes participating
+Because of the aliasing of node numbers, I made the channel events different
+for each level
+This changed the channel event initialization code significantly
+
+Created a separate reductionPrivateDBK for each level (since the number
+of participants changes)
+
+Changed the input parsing code
+
+TODO
+
+Actually implementing the halo exchange which must put the received pieces into
+the correct locations in the (M+2)^3 cube for smoothing to work correctly
+
+Interpolating the ghost values at the global boundary
+
+RedBlack smoothing (requires 2 halo exchanges, one for red and one for black)
+
+The phase control for Full MG

@@ -20,7 +20,7 @@ Copyright Intel Corporation 2015
 #include "time.h"
 #endif
 #include "timers.h"
-#include "string.h"
+#include <string.h>
 #include <stdlib.h>
 #include <math.h>
 
@@ -41,12 +41,12 @@ Copyright Intel Corporation 2015
 static void timestamp(const char* msg)
 {
 #ifdef TG_ARCH
-  PRINTF(msg);
+  ocrPrintf(msg);
 #else
   time_t t= time(NULL);
   char* timeString = ctime(&t);
   timeString[24] = '\0';
-  PRINTF("%s: %s\n", timeString, msg);
+  ocrPrintf("%s: %s\n", timeString, msg);
 #endif
 }
 
@@ -88,7 +88,7 @@ _OCR_TASK_FNC_( FNC_Lsend )
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    //ocrPrintf("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
 #if FULL_APP==1
     int i, j;
@@ -100,7 +100,7 @@ _OCR_TASK_FNC_( FNC_Lsend )
         }
 #endif
     ocrGuid_t retGuid = (id_x != 0) ? DBK_Lsend : NULL_GUID;
-    //PRINTF("ID=%d FNC_Lsend lsend guid is %lu\n", id, retGuid);
+    //ocrPrintf("ID=%d FNC_Lsend lsend guid is %lu\n", id, retGuid);
 
     RETURN(retGuid);
 }
@@ -133,7 +133,7 @@ _OCR_TASK_FNC_( FNC_Rsend )
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    //ocrPrintf("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
 #if FULL_APP==1
     int i, j;
@@ -146,7 +146,7 @@ _OCR_TASK_FNC_( FNC_Rsend )
 #endif
 
     ocrGuid_t retGuid = (id_x != NR_X - 1) ? DBK_Rsend : NULL_GUID;
-    //PRINTF("ID=%d FNC_Rsend rsend guid is %lu\n", id, retGuid);
+    //ocrPrintf("ID=%d FNC_Rsend rsend guid is %lu\n", id, retGuid);
 
     RETURN(retGuid);
 }
@@ -179,7 +179,7 @@ _OCR_TASK_FNC_( FNC_Lrecv )
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    //ocrPrintf("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
 #if FULL_APP==1
     int i, j;
@@ -191,7 +191,7 @@ _OCR_TASK_FNC_( FNC_Lrecv )
             {
                 IN(i,j) = rsent[kk++];
             }
-        //PRINTF("ID=%d FNC_Lrecv lrecv guid is %lu\n", id, DBK_Rsend);
+        //ocrPrintf("ID=%d FNC_Lrecv lrecv guid is %lu\n", id, DBK_Rsend);
     }
 #endif
 
@@ -226,7 +226,7 @@ _OCR_TASK_FNC_( FNC_Rrecv )
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    //ocrPrintf("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
 #if FULL_APP==1
     int i, j;
@@ -239,7 +239,7 @@ _OCR_TASK_FNC_( FNC_Rrecv )
                 IN(i,j) = lsent[kk++];
             }
 
-        //PRINTF("ID=%d FNC_Rrecv rrecv guid is %lu\n", id, DBK_Lsend);
+        //ocrPrintf("ID=%d FNC_Rrecv rrecv guid is %lu\n", id, DBK_Lsend);
     }
 #endif
 
@@ -273,7 +273,7 @@ _OCR_TASK_FNC_( FNC_Bsend )
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    //ocrPrintf("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
 #if FULL_APP==1
     int i, j;
@@ -286,7 +286,7 @@ _OCR_TASK_FNC_( FNC_Bsend )
 #endif
 
     ocrGuid_t retGuid = (id_y != 0) ? DBK_Bsend : NULL_GUID;
-    //PRINTF("ID=%d FNC_Bsend bsend guid is %lu\n", id, retGuid);
+    //ocrPrintf("ID=%d FNC_Bsend bsend guid is %lu\n", id, retGuid);
 
     RETURN(retGuid);
 }
@@ -318,7 +318,7 @@ _OCR_TASK_FNC_( FNC_Tsend )
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    //ocrPrintf("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
 #if FULL_APP==1
     int i, j;
@@ -331,7 +331,7 @@ _OCR_TASK_FNC_( FNC_Tsend )
 #endif
 
     ocrGuid_t retGuid = (id_y != NR_Y - 1) ? DBK_Tsend : NULL_GUID;
-    //PRINTF("ID=%d FNC_Tsend tsend guid is %lu\n", id, retGuid);
+    //ocrPrintf("ID=%d FNC_Tsend tsend guid is %lu\n", id, retGuid);
 
     RETURN(retGuid);
 }
@@ -363,7 +363,7 @@ _OCR_TASK_FNC_( FNC_Brecv )
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    //ocrPrintf("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
 #if FULL_APP==1
     int i, j;
@@ -376,7 +376,7 @@ _OCR_TASK_FNC_( FNC_Brecv )
                 IN(i,j) = tsent[kk++];
             }
 
-        //PRINTF("ID=%d FNC_Brecv lrecv guid is %lu\n", id, DBK_Tsend);
+        //ocrPrintf("ID=%d FNC_Brecv lrecv guid is %lu\n", id, DBK_Tsend);
     }
 #endif
 
@@ -410,7 +410,7 @@ _OCR_TASK_FNC_( FNC_Trecv )
     s64 jb = (s64) PTR_rankParamH->jb;
     s64 je = (s64) PTR_rankParamH->je;
 
-    //PRINTF("ID:%d %s timestep %d\n", id, __func__, itimestep);
+    //ocrPrintf("ID:%d %s timestep %d\n", id, __func__, itimestep);
 
 #if FULL_APP==1
     int i, j;
@@ -423,7 +423,7 @@ _OCR_TASK_FNC_( FNC_Trecv )
                 IN(i,j) = bsent[kk++];
             }
 
-        //PRINTF("ID=%d FNC_Trecv rrecv guid is %lu\n", id, DBK_Bsend);
+        //ocrPrintf("ID=%d FNC_Trecv rrecv guid is %lu\n", id, DBK_Bsend);
     }
 #endif
 
@@ -477,7 +477,7 @@ _OCR_TASK_FNC_( FNC_update )
     s64 je = (s64) PTR_rankParamH->je;
 
     DEBUG_PRINTF(("ID:%d %s timestep %d\n", id, __func__, itimestep));
-    //PRINTF("ID: %d ib %d ie %d jb %d je %d\n", id, ib, ie, jb, je);
+    //ocrPrintf("ID: %d ib %d ie %d jb %d je %d\n", id, ib, ie, jb, je);
 
     /* Apply the stencil operator */
 #if FULL_APP==1
@@ -557,15 +557,15 @@ _OCR_TASK_FNC_( FNC_summary )
     PTR_norm[0] /= f_active_points;
 
     if( ABS( PTR_norm[0] - reference_norm ) > EPSILON )
-        PRINTF( "ERROR: L1 norm = %f, Reference L1 norm = %f\n", PTR_norm[0], reference_norm);
+        ocrPrintf( "ERROR: L1 norm = %f, Reference L1 norm = %f\n", PTR_norm[0], reference_norm);
     else
-        PRINTF( "Solution validates\n" );
+        ocrPrintf( "Solution validates\n" );
 #endif
 
     double avgtime = stencil_time[0]/(double)NT;
 
     double flops = (double) (2*stencil_size+1) * f_active_points;
-    PRINTF("Rate (MFlops/s): %f  Avg time (s): %f\n",
+    ocrPrintf("Rate (MFlops/s): %f  Avg time (s): %f\n",
            1.0E-06 * flops/avgtime, avgtime);
     print_throughput_custom_name("Stencil2D", NULL, stencil_size, NULL, avgtime, "MFlops/s", 1.0E-06*(flops/avgtime));
     }
@@ -612,7 +612,7 @@ _OCR_TASK_FNC_( timestepEdt )
     if(itimestep==1) //Do not time iteration 0
     {
         profile_start( total_timer, PTR_timers );
-        //PRINTF("Starting profile\n");
+        //ocrPrintf("Starting profile\n");
         ocrDbRelease( DBK_timers );
     }
 
@@ -644,7 +644,7 @@ _OCR_TASK_FNC_( timestepEdt )
     ocrAddDependence( DBK_xIn, TS_Lsend.EDT, _idep++, DB_MODE_RO );
     // The buffer to fill in
     ocrAddDependence( PTR_rankH->DBK_LsendBufs[phase], TS_Lsend.EDT, _idep++, DB_MODE_RW );
-    // PRINTF("ID=%d id_x=%d id_y=%d, lsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
+    // ocrPrintf("ID=%d id_x=%d id_y=%d, lsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
     //         (id_x!=0) ? GUIDA(PTR_rankH->DBK_LsendBufs[phase]) : GUIDA(NULL_GUID), GUIDA(PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(0, phase)]));
     //------ End left send
 
@@ -663,7 +663,7 @@ _OCR_TASK_FNC_( timestepEdt )
     ocrAddDependence( PTR_rankH->DBK_RsendBufs[phase], TS_Rsend.EDT, _idep++, DB_MODE_RW );
     if( id_x != NR_X - 1 ) ocrAddDependence( EVT_Rsend_fin, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(1, phase)], 0, DB_MODE_RO );
 
-    // PRINTF("ID=%d id_x=%d id_y=%d, rsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
+    // ocrPrintf("ID=%d id_x=%d id_y=%d, rsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
     //         (id_x != NR_X - 1) ? GUIDA(PTR_rankH->DBK_RsendBufs[phase]) : GUIDA(NULL_GUID), GUIDA(PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(1, phase)]));
 
     //------ End right send
@@ -714,7 +714,7 @@ _OCR_TASK_FNC_( timestepEdt )
     ocrAddDependence( PTR_rankH->DBK_BsendBufs[phase], TS_Bsend.EDT, _idep++, DB_MODE_RW );
     if( id_y!=0 ) ocrAddDependence( EVT_Bsend_fin, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(2, phase)], 0, DB_MODE_RO );
 
-    // PRINTF("ID=%d id_x=%d id_y=%d, bsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
+    // ocrPrintf("ID=%d id_x=%d id_y=%d, bsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
     //         (id_y!=0) ? GUIDA(PTR_rankH->DBK_BsendBufs[phase]) : GUIDA(NULL_GUID), GUIDA(PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(2, phase)]));
 
     MyOcrTaskStruct_t TS_Tsend; _paramc = 0; _depc = 3;
@@ -730,7 +730,7 @@ _OCR_TASK_FNC_( timestepEdt )
     ocrAddDependence( PTR_rankH->DBK_TsendBufs[phase], TS_Tsend.EDT, _idep++, DB_MODE_RW );
     if( id_y != NR_Y - 1 ) ocrAddDependence( EVT_Tsend_fin, PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(3, phase)], 0, DB_MODE_RO );
 
-    // PRINTF("ID=%d id_x=%d id_y=%d, tsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
+    // ocrPrintf("ID=%d id_x=%d id_y=%d, tsend guid is "GUIDF" on channel "GUIDF"\n", id, id_x, id_y,
     //         (id_y != NR_Y - 1) ? GUIDA(PTR_rankH->DBK_TsendBufs[phase]) : GUIDA(NULL_GUID), GUIDA(PTR_rankH->haloSendEVTs[GET_CHANNEL_IDX(3, phase)]));
 
     MyOcrTaskStruct_t TS_Brecv; _paramc = 0; _depc = 3;
@@ -1145,7 +1145,7 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
         ocrEventDestroy(eventsPTR[2]);
         ocrDbRelease(curDb);
         ocrDbDestroy(curDb);
-        //PRINTF("Recv rank %d %d "GUIDF" \n", id, i, PTR_rankH->haloRecvEVTs[i]);
+        //ocrPrintf("Recv rank %d %d "GUIDF" \n", id, i, PTR_rankH->haloRecvEVTs[i]);
     }
 
     partition_bounds( PTR_rankParamH->id_x, 0, PTR_globalParamH->NP_X-1, PTR_globalParamH->NR_X,
@@ -1191,7 +1191,7 @@ ocrGuid_t channelSetupEdt(u32 paramc, u64 *paramv, u32 depc, ocrEdtDep_t depv[])
                  DB_PROP_NONE, &myDbkAffinityHNT, NO_ALLOC );
 
 #ifdef USE_EAGER_DB_HINT
-    if(id==0) PRINTF("Using Eager DB hint\n");
+    if(id==0) ocrPrintf("Using Eager DB hint\n");
     ocrSetHintValue(&myDbkAffinityHNT, OCR_HINT_DB_EAGER, 1);
 #endif
 
@@ -1377,7 +1377,7 @@ _OCR_TASK_FNC_( initEdt )
         ocrGuidFromIndex(&(stickyEVT), PTR_rankH->globalParamH.ocrParamH.haloRangeGUID, nbrUb*id + nbr);//send
         ocrEventCreate( &stickyEVT, OCR_EVENT_STICKY_T, GUID_PROP_CHECK | EVT_PROP_TAKES_ARG );
 
-        //PRINTF("s %d r %d se %d re %d s(%d %d) r(%d %d)\n", id, nbrRank, nbr, nbrImage, ix0, iy0, ix, iy );
+        //ocrPrintf("s %d r %d se %d re %d s(%d %d) r(%d %d)\n", id, nbrRank, nbr, nbrImage, ix0, iy0, ix, iy );
 
 #ifdef CHANNEL_EVENTS_AT_RECEIVER
         ocrEventCreateParams( &(PTR_rankH->haloRecvEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
@@ -1386,7 +1386,7 @@ _OCR_TASK_FNC_( initEdt )
         ocrEventCreateParams( &(PTR_rankH->haloRecvEVTs[nbrUb+nbr]), OCR_EVENT_CHANNEL_T, false, &params );
         eventsPTR[1] = PTR_rankH->haloRecvEVTs[nbrUb+nbr]; //channel event of the recv operation to get data from nbrRank
 #endif
-        //PRINTF("Recv rank %d %d "GUIDF" \n", id, nbr, PTR_rankH->haloRecvEVTs[nbr]);
+        //ocrPrintf("Recv rank %d %d "GUIDF" \n", id, nbr, PTR_rankH->haloRecvEVTs[nbr]);
 #else
         ocrEventCreateParams( &(PTR_rankH->haloSendEVTs[nbr]), OCR_EVENT_CHANNEL_T, false, &params );
         eventsPTR[0] = PTR_rankH->haloSendEVTs[nbr]; //channel event of the send operation from rank i to nbrRank
@@ -1394,7 +1394,7 @@ _OCR_TASK_FNC_( initEdt )
         ocrEventCreateParams( &(PTR_rankH->haloSendEVTs[nbrUb+nbr]), OCR_EVENT_CHANNEL_T, false, &params );
         eventsPTR[1] = PTR_rankH->haloSendEVTs[nbrUb+nbr]; //channel event of the recv operation to get data from nbrRank
 #endif
-        //PRINTF("Send rank %d %d "GUIDF" \n", id, nbr, PTR_rankH->haloSendEVTs[nbr]);
+        //ocrPrintf("Send rank %d %d "GUIDF" \n", id, nbr, PTR_rankH->haloSendEVTs[nbr]);
 #endif
         eventsPTR[2] = stickyEVT;
 
@@ -1421,7 +1421,7 @@ _OCR_TASK_FNC_( initEdt )
 
 void init_settings( void* PTR_cmdLineArgs, globalCmdParamH_t* PTR_cmdParamH )
 {
-    u32 argc = getArgc(PTR_cmdLineArgs);
+    u32 argc = ocrGetArgc(PTR_cmdLineArgs);
 
     s64 npoints, nRanks, ntimesteps;
 
@@ -1434,9 +1434,9 @@ void init_settings( void* PTR_cmdLineArgs, globalCmdParamH_t* PTR_cmdParamH )
     if (argc == 4)
     {
         u32 i = 1;
-        npoints = (s64) atoi(getArgv(PTR_cmdLineArgs, i++));
-        nRanks = (s64) atoi(getArgv(PTR_cmdLineArgs, i++));
-        ntimesteps = (s64) atoi(getArgv(PTR_cmdLineArgs, i++));
+        npoints = (s64) atoi(ocrGetArgv(PTR_cmdLineArgs, i++));
+        nRanks = (s64) atoi(ocrGetArgv(PTR_cmdLineArgs, i++));
+        ntimesteps = (s64) atoi(ocrGetArgv(PTR_cmdLineArgs, i++));
 
         npoints = (npoints != -1) ? npoints : NPOINTS;
         nRanks = (nRanks != -1) ? nRanks : NRANKS;
@@ -1457,18 +1457,18 @@ void init_settings( void* PTR_cmdLineArgs, globalCmdParamH_t* PTR_cmdParamH )
 
     PTR_cmdParamH->NR_X = (s64) Num_procsx;
     PTR_cmdParamH->NR_Y = (s64) Num_procsy;
-    //PRINTF("NR_X = %d NR_Y = %d\n", PTR_cmdParamH->NR_X, PTR_cmdParamH->NR_Y);
+    //ocrPrintf("NR_X = %d NR_Y = %d\n", PTR_cmdParamH->NR_X, PTR_cmdParamH->NR_Y);
 
-    PRINTF("\n");
-    PRINTF("OCR stencil execution on 2D grid\n");
-    PRINTF("Grid size                   = %ldx%ld\n", PTR_cmdParamH->NP_X, PTR_cmdParamH->NP_Y);
-    PRINTF("Number of tiles             = %ld\n", PTR_cmdParamH->NR);
-    PRINTF("Tiles in x & y-directions   = %ldx%ld\n", PTR_cmdParamH->NR_X, PTR_cmdParamH->NR_Y);
-    PRINTF("Radius of stencil           = %d\n", HALO_RADIUS);
-    PRINTF("Type of stencil             = star\n");
-    PRINTF("Data type                   = double precision\n");
-    PRINTF("Number of iterations        = %ld\n", PTR_cmdParamH->NT);
-    PRINTF("\n");
+    ocrPrintf("\n");
+    ocrPrintf("OCR stencil execution on 2D grid\n");
+    ocrPrintf("Grid size                   = %ldx%ld\n", PTR_cmdParamH->NP_X, PTR_cmdParamH->NP_Y);
+    ocrPrintf("Number of tiles             = %ld\n", PTR_cmdParamH->NR);
+    ocrPrintf("Tiles in x & y-directions   = %ldx%ld\n", PTR_cmdParamH->NR_X, PTR_cmdParamH->NR_Y);
+    ocrPrintf("Radius of stencil           = %d\n", HALO_RADIUS);
+    ocrPrintf("Type of stencil             = star\n");
+    ocrPrintf("Data type                   = double precision\n");
+    ocrPrintf("Number of iterations        = %ld\n", PTR_cmdParamH->NT);
+    ocrPrintf("\n");
 
 }
 
@@ -1522,7 +1522,7 @@ ocrGuid_t mainEdt( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
     //2-D Cartesian grid of SPMD EDTs get mapped to a 2-D Cartesian grid of PDs
 #ifdef USE_STATIC_SCHEDULER
-    PRINTF("Using STATIC scheduler\n");
+    ocrPrintf("Using STATIC scheduler\n");
     forkSpmdEdts_staticScheduler_Cart2D( initEdt, edtGridDims, spmdDepv );
 #else
     forkSpmdEdts_Cart2D( initEdt, edtGridDims, spmdDepv );

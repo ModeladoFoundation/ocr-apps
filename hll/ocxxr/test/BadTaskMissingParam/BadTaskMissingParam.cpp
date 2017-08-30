@@ -4,7 +4,7 @@ constexpr double kPayload = 123.45;
 
 ocxxr::NullHandle ChildTask(double param) {
     PRINTF("Child task ran! (param=%.2f)\n", param);
-    ASSERT(param == kPayload);
+    assert(param == kPayload);
     PRINTF("Shutting down...\n");
     ocxxr::Shutdown();
     return ocxxr::NullHandle();

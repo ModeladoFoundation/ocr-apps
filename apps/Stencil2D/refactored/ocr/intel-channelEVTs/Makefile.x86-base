@@ -49,14 +49,14 @@ RUN_MODE ?=
 STATIC_SCHEDULER ?= 0
 
 # With "restrict" keyword, icc is 1.5x faster for than gcc
-CC := icc
+#CC := icc
 
 ## END of variables coming from user/environment
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
 # Name of the application to build
-TARGET := stencil_2d
+TARGET ?= stencil_2d
 
 # With "restrict" keyword, icc is 1.5x faster for than gcc
 # Space separated list of directory names in apps/libs/src
@@ -94,7 +94,7 @@ endif
 # the required OCR library path and $(APPS_LIBS_INSTALL)/lib
 # Note that none of the specific libraries specified in
 # REQ_LIBS are included.
-LDFLAGS := -lpthread -lm -lreduction -ltimer -locrAppUtils
+LDFLAGS := -lpthread -lm -lreduction -ltimer -locrAppUtils $(EXTRALDFLAGS)
 
 # Targets:
 #   - all:     Build the application.

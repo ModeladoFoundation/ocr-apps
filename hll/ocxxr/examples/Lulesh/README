@@ -1,0 +1,34 @@
+===============================
+ x86
+===============================
+To run
+	1. source setup_env.sh (located in xstack/hll/cnc)
+	2. ucnc_t lulesh.cnc
+	3. make run
+
+Domain size is set to 4, modify this in lulesh_defs.h
+
+The expected output for a domain size of 4 is included below.
+
+Hello!
+
+Domain Size = 4
+Final Origin Energy =  2.435243e+04
+
+===============================
+ TG (FSim)
+===============================
+To run
+	1. source setup_env.sh (located in xstack/hll/cnc)
+	2. ucnc_t --platform=ocr/tg lulesh.cnc
+	3. make -f Makefile.tg run
+	4. cat install/tg/console.out
+
+Domain size is set to 2, modify this in lulesh_defs.h
+
+The expected output for a domain size of 2 is included below.
+
+Hello!
+
+Domain Size = 2
+Final Origin Energy =  3.044054e+03

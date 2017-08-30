@@ -8,6 +8,9 @@
 #include "linkCells.h"
 #include "performanceTimers.h"
 #include "constants.h"
+#ifdef ENABLE_SPAWNING_HINT
+#include "priority.h"
+#endif
 
 static void advanceVelocity(SimFlat* s, int nBoxes, real_t dt);
 static void advancePosition(SimFlat* s, int nBoxes, real_t dt);
@@ -285,9 +288,17 @@ ocrGuid_t timestepEdt( EDT_ARGS )
     //redistribute atoms
     ocrGuid_t redistributeAtomsTML, redistributeAtomsEDT, redistributeAtomsOEVT, redistributeAtomsOEVTS;
 
-    ocrEdtCreate( &redistributeAtomsEDT, PTR_rankTemplateH->redistributeAtomsTML, //redistributeAtomsEdt
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t redistributeAtomsHNT = myEdtAffinityHNT;
+    ocrSetHintValue(&redistributeAtomsHNT, OCR_HINT_EDT_SPAWNING, TimestepEdt_PRIORITY);
+    ocrEdtCreate(&redistributeAtomsEDT, PTR_rankTemplateH->redistributeAtomsTML, //redistributeAtomsEdt
+                  EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &redistributeAtomsHNT, &redistributeAtomsOEVT );
+#else
+    ocrEdtCreate(&redistributeAtomsEDT, PTR_rankTemplateH->redistributeAtomsTML, //redistributeAtomsEdt
                   EDT_PARAM_DEF, paramv, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &redistributeAtomsOEVT );
+#endif
 
     createEventHelper( &redistributeAtomsOEVTS, 1);
     ocrAddDependence( redistributeAtomsOEVT, redistributeAtomsOEVTS, 0, DB_MODE_NULL );
@@ -461,12 +472,12 @@ void printThings(SimFlat* s, int iStep, double elapsedTime)
     {
         timestamp( "Starting simulation\n");
 
-        PRINTF(
+        ocrPrintf(
          "#                                                                                         Performance\n"
          "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
     }
 
-    PRINTF(" %6d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
+    ocrPrintf(" %6d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
             iStep, time, eTotal, eU, eK, Temp, timePerAtom, s->atoms->nGlobal);
 
     if(iStep==s->nSteps)
@@ -480,11 +491,11 @@ void initValidate(Validate* val, SimFlat* sim)
 
    if (sim->PTR_rankH->myRank == 0)
    {
-      PRINTF("\n");
+      ocrPrintf("\n");
       printSeparator();
-      PRINTF("Initial energy : %14.12f, atom count : %d \n",
+      ocrPrintf("Initial energy : %14.12f, atom count : %d \n",
             val->eTot0, val->nAtoms0);
-      PRINTF("\n");
+      ocrPrintf("\n");
    }
 }
 
@@ -496,23 +507,23 @@ void validateResult(const Validate* val, SimFlat* sim)
 
       int nAtomsDelta = (sim->atoms->nGlobal - val->nAtoms0);
 
-      PRINTF("\n");
-      PRINTF("\n");
-      PRINTF("Simulation Validation:\n");
+      ocrPrintf("\n");
+      ocrPrintf("\n");
+      ocrPrintf("Simulation Validation:\n");
 
-      PRINTF("  Initial energy  : %14.12f\n", val->eTot0);
-      PRINTF("  Final energy    : %14.12f\n", eFinal);
-      PRINTF("  eFinal/eInitial : %f\n", eFinal/val->eTot0);
+      ocrPrintf("  Initial energy  : %14.12f\n", val->eTot0);
+      ocrPrintf("  Final energy    : %14.12f\n", eFinal);
+      ocrPrintf("  eFinal/eInitial : %f\n", eFinal/val->eTot0);
       if ( nAtomsDelta == 0)
       {
-         PRINTF("  Final atom count : %d, no atoms lost\n",
+         ocrPrintf("  Final atom count : %d, no atoms lost\n",
                sim->atoms->nGlobal);
       }
       else
       {
-         PRINTF("#############################\n");
-         PRINTF("# WARNING: %6d atoms lost #\n", nAtomsDelta);
-         PRINTF("#############################\n");
+         ocrPrintf("#############################\n");
+         ocrPrintf("# WARNING: %6d atoms lost #\n", nAtomsDelta);
+         ocrPrintf("#############################\n");
       }
    }
 }
@@ -604,10 +615,18 @@ _OCR_TASK_FNC_( timestepLoopEdt )
     // Do one timestep
     ocrGuid_t timestepTML, timestepEDT, timestepOEVT, timestepOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t timestepHNT = PTR_rankH->myEdtAffinityHNT;
+    ocrSetHintValue(&timestepHNT, OCR_HINT_EDT_SPAWNING, TimestepEdt_PRIORITY);
+
+    ocrEdtCreate( &timestepEDT, PTR_rankTemplateH->timestepTML,
+                  EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &timestepHNT, &timestepOEVT );
+#else
     ocrEdtCreate( &timestepEDT, PTR_rankTemplateH->timestepTML,
                   EDT_PARAM_DEF, (u64*) &itimestep, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &PTR_rankH->myEdtAffinityHNT, &timestepOEVT );
-
+#endif
     createEventHelper( &timestepOEVTS, 1);
     ocrAddDependence( timestepOEVT, timestepOEVTS, 0, DB_MODE_NULL );
 
@@ -626,10 +645,17 @@ _OCR_TASK_FNC_( timestepLoopEdt )
         //start next timestep
         ocrGuid_t timestepLoopTML, timestepLoopEDT, timestepLoopOEVT, timestepLoopOEVTS;
 
+#ifdef ENABLE_SPAWNING_HINT
+        ocrHint_t timestepLoopHNT = PTR_rankH->myEdtAffinityHNT;
+        ocrSetHintValue(&timestepLoopHNT, OCR_HINT_EDT_SPAWNING, TimestepLoopEdt_PRIORITY);
+        ocrEdtCreate( &timestepLoopEDT, PTR_rankTemplateH->timestepLoopTML,
+                      EDT_PARAM_DEF, (u64*)&itimestep, EDT_PARAM_DEF, NULL,
+                      EDT_PROP_NONE, &timestepLoopHNT, &timestepLoopOEVT );
+#else
         ocrEdtCreate( &timestepLoopEDT, PTR_rankTemplateH->timestepLoopTML,
                       EDT_PARAM_DEF, (u64*)&itimestep, EDT_PARAM_DEF, NULL,
                       EDT_PROP_NONE, &PTR_rankH->myEdtAffinityHNT, &timestepLoopOEVT );
-
+#endif
 
         _idep = 0;
         ocrAddDependence( DBK_rankH, timestepLoopEDT, _idep++, DB_MODE_RO );
@@ -881,9 +907,17 @@ ocrGuid_t redistributeAtomsEdt( EDT_ARGS )
 
     u64 iAxis = 0;
     u64 paramv_haloExchange[2] = {iAxis, itimestep};
+#ifdef ENABLE_SPAWNING_HINT
+    ocrHint_t haloExchangeHNT = sim->PTR_rankH->myEdtAffinityHNT;
+    ocrSetHintValue(&haloExchangeHNT, OCR_HINT_EDT_SPAWNING, HaloExchangeEdt_PRIORITY);
+    ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML, //haloExchangeEdt
+                  EDT_PARAM_DEF, paramv_haloExchange, EDT_PARAM_DEF, NULL,
+                  EDT_PROP_FINISH, &haloExchangeHNT, &haloExchangeOEVT );
+#else
     ocrEdtCreate( &haloExchangeEDT, PTR_rankTemplateH->haloExchangeTML, //haloExchangeEdt
                   EDT_PARAM_DEF, paramv_haloExchange, EDT_PARAM_DEF, NULL,
                   EDT_PROP_FINISH, &myEdtAffinityHNT, &haloExchangeOEVT );
+#endif
 
     createEventHelper( &haloExchangeOEVTS, 1);
     ocrAddDependence( haloExchangeOEVT, haloExchangeOEVTS, 0, DB_MODE_NULL );

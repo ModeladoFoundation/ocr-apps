@@ -33,7 +33,7 @@ static void add_arg(const char* long_option, const char short_option,
 static void print_args(command_t* cmd)
 {
   char s[16];
-  PRINTF("\n  Arguments are: \n");
+  ocrPrintf("\n  Arguments are: \n");
 #ifdef TG_ARCH
   strcpy(s,"   --%%-9s");
 #else
@@ -41,11 +41,11 @@ static void print_args(command_t* cmd)
 #endif
   int o;
   for(o = 0; o < cmd->options_num; ++o) {
-    PRINTF(s,cmd->options[o].long_arg);
-    PRINTF(" -%c  arg=%1d type=%c  %s\n", cmd->options[o].short_arg, cmd->long_opt[o].has_arg,
+    ocrPrintf(s,cmd->options[o].long_arg);
+    ocrPrintf(" -%c  arg=%1d type=%c  %s\n", cmd->options[o].short_arg, cmd->long_opt[o].has_arg,
                                           cmd->options[o].type, cmd->options[o].help);
   }
-  PRINTF("\n\n");
+  ocrPrintf("\n\n");
 }
 
 static int find_option(option_t* o, u32 o_num, char c)
@@ -63,7 +63,7 @@ static void process_args(int argc, char** argv, command_t* cmd)
     if(c == -1) break;
     option_index = find_option(cmd->options, cmd->options_num, c);
     if(option_index == cmd->options_num) {
-      PRINTF("\n\ninvalid switch : -%c in getopt()\n\n", c);
+      ocrPrintf("\n\ninvalid switch : -%c in getopt()\n\n", c);
       continue;
     }
 
@@ -127,7 +127,7 @@ static void process_args(int argc, char** argv, command_t* cmd)
         *(char*)cmd->options[option_index].ptr = *optarg;
         break;
       default:
-        PRINTF("\n\n    invalid type : %c in getopt()\n    valid values are"
+        ocrPrintf("\n\n    invalid type : %c in getopt()\n    valid values are"
                " 'e', 'z'. 'i','d','f','s', and 'c'\n\n\n", c);
       }
     }
@@ -183,21 +183,21 @@ void parse_command(int argc, char** argv, command_t* cmd)
   if(help)
     print_args(cmd);
   else
-    PRINTF("Command Line Parameters:\n");
-    PRINTF("  doeam: %u\n", cmd->doeam);
-    PRINTF("  pot_dir: %s\n", cmd->pot_dir);
-    PRINTF("  pot_name: %s\n", cmd->pot_name);
-    PRINTF("  pot_type: %s\n", cmd->pot_type);
-    PRINTF("  nx: %u\n", cmd->nx);
-    PRINTF("  ny: %u\n", cmd->ny);
-    PRINTF("  nz: %u\n", cmd->nz);
-    PRINTF("  Lattice constant: %f Angstroms\n", cmd->lat);
-    PRINTF("  Steps: %u\n",                      cmd->steps);
-    PRINTF("  Period: %u\n",                     cmd->period);
-    PRINTF("  Time step: %f fs\n",               cmd->dt);
-    PRINTF("  Initial Temperature: %f K\n",      cmd->temperature);
-    PRINTF("  Initial Delta: %f Angstroms\n",    cmd->delta);
-    PRINTF("\n");
+    ocrPrintf("Command Line Parameters:\n");
+    ocrPrintf("  doeam: %u\n", cmd->doeam);
+    ocrPrintf("  pot_dir: %s\n", cmd->pot_dir);
+    ocrPrintf("  pot_name: %s\n", cmd->pot_name);
+    ocrPrintf("  pot_type: %s\n", cmd->pot_type);
+    ocrPrintf("  nx: %u\n", cmd->nx);
+    ocrPrintf("  ny: %u\n", cmd->ny);
+    ocrPrintf("  nz: %u\n", cmd->nz);
+    ocrPrintf("  Lattice constant: %f Angstroms\n", cmd->lat);
+    ocrPrintf("  Steps: %u\n",                      cmd->steps);
+    ocrPrintf("  Period: %u\n",                     cmd->period);
+    ocrPrintf("  Time step: %f fs\n",               cmd->dt);
+    ocrPrintf("  Initial Temperature: %f K\n",      cmd->temperature);
+    ocrPrintf("  Initial Delta: %f Angstroms\n",    cmd->delta);
+    ocrPrintf("\n");
     //       "  doeam: %d\n"
     //       "  pot_dir: %s\n"
     //       "  pot_name: %s\n"

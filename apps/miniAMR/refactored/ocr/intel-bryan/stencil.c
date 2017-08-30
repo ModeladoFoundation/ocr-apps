@@ -103,3 +103,16 @@ void stencil_calc(int var)
       }
    }
 }
+
+double stencil_calcOCR( double * arr, u64 points )
+{
+    u64 i;
+    double work, sum = 0.0f;
+
+    for( i = 0; i < points; i++ ) sum += arr[i];
+
+    work = sum / (double)points;
+
+    return work;
+}
+

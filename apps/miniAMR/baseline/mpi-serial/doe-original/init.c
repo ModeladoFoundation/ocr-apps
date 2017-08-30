@@ -210,8 +210,12 @@ void init(void)
                            for (ib = 1; ib <= x_block_size; ib++)
                               for (jb = 1; jb <= y_block_size; jb++)
                                  for (kb = 1; kb <= z_block_size; kb++)
-                                    bp->array[var][ib][jb][kb] =
-                                       ((double) rand())/((double) RAND_MAX);
+                                    #ifdef COMPARISONWITHOCR //Intel specific changes: Added by Chandra
+                                    bp->array[var][ib][jb][kb] = pow(8.0,(num_refine))+var;
+                                    #else
+                                    bp->array[var][ib][jb][kb] = ((double) rand())/((double) RAND_MAX);
+                                    #endif
+
                         if (i2 == 0)
                            if (i == 0) { /* 0 boundary */
                               bp->nei_level[0] = -2;

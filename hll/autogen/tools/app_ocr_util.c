@@ -22,7 +22,11 @@ Err_t ocrEdtXCreate(ocrEdt_t in_funcPtr,
     return err;
 }
 
-//DBG> #ifdef OMIT_FOR_RUN_OB_TG
+#undef OMIT_FOR_RUN_OB_TG
+#ifdef TG_ARCH
+#define OMIT_FOR_RUN_OB_TG
+#endif // TG_ARCH
+#ifndef OMIT_FOR_RUN_OB_TG
 Err_t ocrXIndexedEdtCreate(ocrEdt_t in_funcPtr, u32 in_paramc, u64 * in_paramv, u32 in_depc,
                            u16 in_flags, ocrHint_t * in_hint, unsigned long in_index, ocrGuid_t * in_EDTmap,
                            ocrGuid_t * o_guid, ocrGuid_t * io_outputEvent
@@ -48,7 +52,7 @@ Err_t ocrXIndexedEdtCreate(ocrEdt_t in_funcPtr, u32 in_paramc, u64 * in_paramv, 
         }
 //        PRINTF("DEVDBG45 after> o_guid="GUIDF"\n", GUIDA(*o_guid));
 
-        //With labeled EDt, one cannot specify the depv at creation time.
+        //With labeled EDTs, one cannot specify the depv at creation time.
         ocrGuid_t * depv = NULL;
 
         //GUID_PROP_IS_LABELED is required for labeled guids.
@@ -91,7 +95,7 @@ Err_t ocrXIndexedEdtCreate(ocrEdt_t in_funcPtr, u32 in_paramc, u64 * in_paramv, 
     }
     return err;
 }
-//DBG> #endif //OMIT_FOR_RUN_OB_TG
+#endif //OMIT_FOR_RUN_OB_TG
 
 Err_t ocrXHookup(ocrEventTypes_t in_eventType,
                  u16 in_eventFlags,
@@ -103,11 +107,7 @@ Err_t ocrXHookup(ocrEventTypes_t in_eventType,
 {
     Err_t err=0;
     while(!err){
-        ocrGuid_t eventGuid = NULL_GUID;
-        err = ocrEventCreate( &eventGuid, in_eventType, in_eventFlags); IFEB;
-        err = ocrAddDependence( eventGuid, in_EDTguid, in_slotNumber, in_accessMode); IFEB;
-        err = ocrEventSatisfy( eventGuid, in_DBKguid); IFEB;
-
+        err = ocrAddDependence( in_DBKguid, in_EDTguid, in_slotNumber, in_accessMode); IFEB;
         break;
     }
     return err;

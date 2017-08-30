@@ -116,7 +116,7 @@ if [ -e "$LOGS_DIR" ]; then
   fi
 
   # Check if the logs directory contains non-log files.
-  LOG_FILES_RE="log\|out\|err\|cfg\|rck\|top\.network\|core"
+  LOG_FILES_RE="log\|out\|err\|cfg\|rck\|top\.network\|core\|test\|fsim"
   if find $LOGS_DIR -exec basename {} \; | grep -q -v "$LOG_FILES_RE"; then
     echo "Logs directory '$LOGS_DIR' exists and appears to contain non-log files." 1>&2
     echo "Cowardly refusing to delete." 1>&2

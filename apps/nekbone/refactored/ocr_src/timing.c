@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #endif
 
-#include "ocr.h" //PRINTF
+#include "ocr.h" //ocrPrintf
 
 TimeMark_t nekbone_getTime(void)
 {

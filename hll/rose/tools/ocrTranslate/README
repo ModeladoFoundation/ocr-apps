@@ -1,0 +1,18 @@
+# OCR Translator
+OCR Translator is a source-to-source translator for converting C/MPI programs guided by annotations.
+
+### Pre-requisites
+Install ROSE version 0.9.9.96 or above
+Install MPI
+Set the install path for MPI in Makefile-mpi.def
+Set the install path for ROSE in Makefile-rose.df
+
+### Getting Started
+Install the translator
+cd src
+make install
+
+### Running the tests
+cd into any test directory under tests
+OCR_TYPE=x86 make run
+OCR_TYPE=x86-mpi make run

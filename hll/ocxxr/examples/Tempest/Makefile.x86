@@ -1,0 +1,23 @@
+export OCR_TYPE := x86
+
+CFLAGS += -DUSE_OCR=1 -DUSE_OCR_TEST=1
+CFLAGS += -DOCR_TYPE_H=$(OCR_TYPE).h
+export CFLAGS
+
+debug: CFLAGS += -g -O0
+debug: run
+
+.PHONY: lib install
+
+install: lib
+	make -C test/hpc -f Makefile.x86 $@
+
+run: lib install
+	make -C test/hpc -f Makefile.x86 $@
+
+clean:
+	make -C test/hpc -f Makefile.x86 $@
+	make clean
+
+lib:
+	make

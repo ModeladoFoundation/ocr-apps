@@ -449,7 +449,7 @@ void fillEdges(FILE* f, u64* M, u64 N, u64 MAX_EDGE_SIZE) {
 		size_t written = fwrite(&A, sizeof(edge), 1, f);
 		assert(written == 1);
 #ifdef PRINT_DEBUG_INFORMATION
-		PRINTF("[%" PRId64 " %" PRId64 "]\n", A.source, A.destination);
+		ocrPrintf("[%" PRId64 " %" PRId64 "]\n", A.source, A.destination);
 #endif
 	}
 	*M = MAX_EDGE_SIZE;
@@ -541,7 +541,7 @@ ocrGuid_t loadEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//cr
 	ocrGuid_t arrayDBK;
 
 #ifndef EDGE_MODE_LIST
-	PRINTF("ERR (loadEdt): this EDGE_MODE is not implemented\n");
+	ocrPrintf("ERR (loadEdt): this EDGE_MODE is not implemented\n");
 	assert(0);
 #endif
 
@@ -577,20 +577,20 @@ ocrGuid_t loadEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//cr
 			arrayPTR[index++] = A.source;
 			arrayPTR[index++] = A.destination;
 #ifdef PRINT_DEBUG_INFORMATION
-			PRINTF("(%" PRId64 ",%" PRId64 ") ", A.source, A.destination);
+			ocrPrintf("(%" PRId64 ",%" PRId64 ") ", A.source, A.destination);
 #endif
 		}
 		if (myId == worker2) {
 			arrayPTR[index++] = A.destination;
 			arrayPTR[index++] = A.source;
 #ifdef PRINT_DEBUG_INFORMATION
-			PRINTF("(%" PRId64 ",%" PRId64 ") ", A.destination, A.source);
+			ocrPrintf("(%" PRId64 ",%" PRId64 ") ", A.destination, A.source);
 #endif
 		}
 	}
 	qsort(arrayPTR + 1, myEdgeCount, 2 * sizeof(vertexType), &edgeCompare);
 #ifdef PRINT_DEBUG_INFORMATION
-	PRINTF("\n");
+	ocrPrintf("\n");
 #endif
 
 #else
@@ -658,7 +658,7 @@ ocrGuid_t loadEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//cr
 		arrayPTR[0] = (vertexType)myEdgeCount;
 		u64 index = 1;
 #ifdef PRINT_DEBUG_INFORMATION
-		PRINTF("Load %" PRId64 ": ", myId);
+		ocrPrintf("Load %" PRId64 ": ", myId);
 #endif
 		for (u64 i = 0; i<EDGE_SIZE; i++) {
 			edge A;
@@ -671,20 +671,20 @@ ocrGuid_t loadEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//cr
 				arrayPTR[index++] = A.source;
 				arrayPTR[index++] = A.destination;
 #ifdef PRINT_DEBUG_INFORMATION
-				PRINTF("(%" PRId64 ",%" PRId64 ") ", A.source, A.destination);
+				ocrPrintf("(%" PRId64 ",%" PRId64 ") ", A.source, A.destination);
 #endif
 			}
 			if (myId == worker2) {
 				arrayPTR[index++] = A.destination;
 				arrayPTR[index++] = A.source;
 #ifdef PRINT_DEBUG_INFORMATION
-				PRINTF("(%" PRId64 ",%" PRId64 ") ", A.destination, A.source);
+				ocrPrintf("(%" PRId64 ",%" PRId64 ") ", A.destination, A.source);
 #endif
 			}
 		}
 		qsort(arrayPTR + 1, myEdgeCount, 2 * sizeof(vertexType), &edgeCompare);
 #ifdef PRINT_DEBUG_INFORMATION
-		PRINTF("\n");
+		ocrPrintf("\n");
 #endif
 		fclose(f);
 		if (SAVE_CHUNKS) {
@@ -728,7 +728,7 @@ ocrGuid_t createEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) { 	//
 	u64 myId = paramv[0];
 	vertexType ROOT = (vertexType)paramv[1];
 #ifdef PRINT_DEBUG_INFORMATION
-	PRINTF("Create %" PRId64 "", myId); FLUSH;
+	ocrPrintf("Create %" PRId64 "", myId); FLUSH;
 #endif
 	u64* paramPTR = (u64*)depv[CREATE_SLOT_PARAM].ptr;
 	u64 SIZE = paramPTR[0]; u64 R = paramPTR[1]; u64 C = paramPTR[2]; u64 aSIZE = paramPTR[3]; u64 vSIZE = paramPTR[4];
@@ -786,7 +786,7 @@ ocrGuid_t createEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) { 	//
 	ocrDbRelease(visitedDBK);
 
 #ifdef PRINT_DEBUG_INFORMATION
-	if (myId == ROOT_WORKER) PRINTF("*"); FLUSH;
+	if (myId == ROOT_WORKER) ocrPrintf("*"); FLUSH;
 #endif
 
 	// create Level0 (distribute, search, apply)
@@ -847,7 +847,7 @@ ocrGuid_t startEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//s
 		struct timeval t1;
 		gettimeofday(&t1, 0);
 		double elapsed = (double)((t1.tv_sec - t0sec) * 1000000 + t1.tv_usec - t0usec);
-		PRINTF("[kernel1 time %f]\n", elapsed / 1000000); FLUSH;
+		ocrPrintf("[kernel1 time %f]\n", elapsed / 1000000); FLUSH;
 	}
 	// create finish, stop etc.
 	ocrGuid_t* constguidPTR = (ocrGuid_t*)depv[START_SLOT_CONSTGUID].ptr;
@@ -890,7 +890,7 @@ ocrGuid_t startEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {		//s
 
 	ocrAddDependence(stopEVT, finishEDT, FINISH_SLOT_FROMSTOP, DB_MODE_EW);
 
-	PRINTF("START Kernel 2 (id=%" PRId64 ")\n", searchId);
+	ocrPrintf("START Kernel 2 (id=%" PRId64 ")\n", searchId);
 
 	gettimeofday(pt0, 0);
 	ocrDbRelease(depv[START_SLOT_TIME].guid);
@@ -949,7 +949,7 @@ ocrGuid_t distributeEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		assert(f);
 		int cislo = 47;
 		fread(&cislo, sizeof(int), 1, f);
-		PRINTF("%" PRId64 ": %" PRId64 "\n", myId, cislo);
+		ocrPrintf("%" PRId64 ": %" PRId64 "\n", myId, cislo);
 		fclose(f);
 	}
 #endif
@@ -966,9 +966,9 @@ ocrGuid_t distributeEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	//depv3 event
 
 #ifdef PRINT_DEBUG_INFORMATION
-	PRINTF("L%" PRId64 ": distribute%" PRId64 " (", Level, myId);
-	PRINTF(GUIDF, GUIDA(depv[DISTRIBUTE_SLOT_TORUN].guid));
-	PRINTF(")[size%" PRId64 "]\n", toRunGuidPTR[0]);
+	ocrPrintf("L%" PRId64 ": distribute%" PRId64 " (", Level, myId);
+	ocrPrintf(GUIDF, GUIDA(depv[DISTRIBUTE_SLOT_TORUN].guid));
+	ocrPrintf(")[size%" PRId64 "]\n", toRunGuidPTR[0]);
 #endif
 
 	//create nextEVT if you are worker 0
@@ -990,7 +990,7 @@ ocrGuid_t distributeEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	ocrGroupBegin();
 #endif
 	for (u64 col = 0; col<C; col++) {
-		//		PRINTF("DAddDep -> %" PRId64 " (sl%" PRId64 ")\n",3*id+1,myColumn);
+		//		ocrPrintf("DAddDep -> %" PRId64 " (sl%" PRId64 ")\n",3*id+1,myColumn);
 		ocrGuid_t searchEDT;
 		//		ocrGuidFromIndex(&searchEDT, constguidPTR[INDEX_OF_SEARCH_MAP], id);
 		searchEDT = getSearch(constguidPTR, Level, id, R, C);
@@ -1039,7 +1039,7 @@ ocrGuid_t searchEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	u64 Level = paramv[1];
 
 #ifdef PRINT_DEBUG_INFORMATION
-	PRINTF("L%" PRId64 ": search%" PRId64 " ", Level, myId);
+	ocrPrintf("L%" PRId64 ": search%" PRId64 " ", Level, myId);
 #endif
 
 	u64* paramPTR = (u64*)depv[SEARCH_SLOT_PARAM1].ptr;
@@ -1051,7 +1051,7 @@ ocrGuid_t searchEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	vertexType* edges = (vertexType*)depv[SEARCH_SLOT_EDGES].ptr;
 	u64 myEdgeCount = edges[0];
 #else
-	PRINTF("ERR(searchEdt): this EDGE_MODE is not implemented\n");
+	ocrPrintf("ERR(searchEdt): this EDGE_MODE is not implemented\n");
 	assert(0);
 #endif
 #endif
@@ -1080,7 +1080,7 @@ ocrGuid_t searchEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		assert((s64)vertex > lastVertex);
 		lastVertex = vertex;
 #ifdef PRINT_DEBUG_INFORMATION
-		PRINTF("%" PRId64 ", ", vertex);
+		ocrPrintf("%" PRId64 ", ", vertex);
 #endif
 
 #ifdef EDGE_MODE_LIST
@@ -1095,7 +1095,7 @@ ocrGuid_t searchEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 			}
 		}
 #else
-		PRINTF("this EDGE_MODE is not implemented");
+		ocrPrintf("this EDGE_MODE is not implemented");
 		assert(0);
 #endif
 #endif
@@ -1105,13 +1105,13 @@ ocrGuid_t searchEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		assert(counts[c] == 0);
 	}
 #ifdef PRINT_DEBUG_INFORMATION
-	PRINTF(" -> ");
+	ocrPrintf(" -> ");
 	for (u64 i = 0; i<SIZE / C; i++) {
 		if (destVertices[i] != -1) {
-			PRINTF("%" PRId64 "(%" PRId64 "),", i, (myColumn)*(SIZE / C) + i);
+			ocrPrintf("%" PRId64 "(%" PRId64 "),", i, (myColumn)*(SIZE / C) + i);
 		}
 	}
-	PRINTF("\n");
+	ocrPrintf("\n");
 #endif
 
 	//divide the found work to be done on next level among workers in my column
@@ -1235,7 +1235,7 @@ ocrGuid_t applyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 	u64 index = 0;
 #ifdef PRINT_DEBUG_INFORMATION
-	PRINTF("ToRun %" PRId64 "", myId);
+	ocrPrintf("ToRun %" PRId64 "", myId);
 #endif
 	for (u64 i = 0; i<vSIZE; i++) {
 		if (toRunBool[i]) {
@@ -1243,12 +1243,12 @@ ocrGuid_t applyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 			toRunPTR[index + 1] = vertex;
 			index++;
 #ifdef PRINT_DEBUG_INFORMATION
-			PRINTF("%" PRId64 " ", vertex);
+			ocrPrintf("%" PRId64 " ", vertex);
 #endif
 		}
 	}
 #ifdef PRINT_DEBUG_INFORMATION
-	PRINTF("\n");
+	ocrPrintf("\n");
 #endif
 	assert(index == count);
 	assert(fitsInVertexType(count));
@@ -1301,11 +1301,11 @@ ocrGuid_t applyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 #endif
 
 #ifdef PRINT_DEBUG_INFORMATION
-	PRINTF("L%" PRId64 ": apply%" PRId64 " SUM=%" PRId64 " Vis ", Level, myId, SUM_COUNT);
+	ocrPrintf("L%" PRId64 ": apply%" PRId64 " SUM=%" PRId64 " Vis ", Level, myId, SUM_COUNT);
 	for (u64 i = 0; i<vSIZE; i++) {
-		if (visitedPTR[i].level != (u64)-1) PRINTF("%" PRId64 "(%" PRId64 ") {l%" PRId64 "p%" PRId64 "} ", i, vIndex2vertex(myId, i, R, C, SIZE), visitedPTR[i].level, visitedPTR[i].parent);
+		if (visitedPTR[i].level != (u64)-1) ocrPrintf("%" PRId64 "(%" PRId64 ") {l%" PRId64 "p%" PRId64 "} ", i, vIndex2vertex(myId, i, R, C, SIZE), visitedPTR[i].level, visitedPTR[i].parent);
 	}
-	PRINTF("\n");
+	ocrPrintf("\n");
 #endif
 
 	//destroy LOCAL_ARRAYS
@@ -1314,7 +1314,7 @@ ocrGuid_t applyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	ocrGuid_t* constguidPTR = (ocrGuid_t*)depv[APPLY_SLOT_CONSTGUID].ptr;
 	ocrGuid_t finishEDT = constguidPTR[INDEX_OF_FINISHEDT];
 	ocrGuid_t stopEDT = constguidPTR[INDEX_OF_STOPEDT];
-	if (myId == 0) PRINTF("%" PRId64 ": %" PRId64 "\n", Level, SUM_COUNT);
+	if (myId == 0) ocrPrintf("%" PRId64 ": %" PRId64 "\n", Level, SUM_COUNT);
 	if (SUM_COUNT == 0) { // whole level had nothing to do - THE END
 #ifdef HAND_OVER_TORUN_IN_DISTRIBUTE
 		ocrDbDestroy(toRunDBK);
@@ -1323,14 +1323,14 @@ ocrGuid_t applyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		myAddDependence(depv[APPLY_SLOT_TORUNGUID].guid, finishEDT, FINISH_SLOT_TORUNGUID(myId), DB_MODE_CONST);
 
 		ocrAddDependence(NULL_GUID, stopEDT, STOP_SLOT_FROMAPPLY(myId), DB_MODE_NULL);
-		//		PRINTF("AAddDep -> Stop(sl%" PRId64 ")\n",myId);
+		//		ocrPrintf("AAddDep -> Stop(sl%" PRId64 ")\n",myId);
 #if VALIDATION_MODE<2
 		u64 cVisited = 0;
 		for (u64 i = 0; i<vSIZE; i++)
 			if (visitedPTR[i].level != (u64)-1) {
 				cVisited++;
 #if VALIDATION_MODE==1
-				PRINTF("WARNING:Print to file not implemented yet\n");
+				ocrPrintf("WARNING:Print to file not implemented yet\n");
 #endif
 			}
 		ocrDbDestroy(depv[APPLY_SLOT_VISITED].guid);
@@ -1347,7 +1347,7 @@ ocrGuid_t applyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 		// the Neighborhood matrix should not be destroyed, but if you want to destroy it use (only for last search!!)
 		//	ocrDbDestroy(depv[APPLY_SLOT_EDGES].guid);
-		//		PRINTF("AAddDep -> Finish(sl%" PRId64 ")\n",0);
+		//		ocrPrintf("AAddDep -> Finish(sl%" PRId64 ")\n",0);
 		return NULL_GUID;
 	}
 
@@ -1369,7 +1369,7 @@ ocrGuid_t applyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	ocrEdtCreate(&aEDT, applyTMP, EDT_PARAM_DEF, PRM, EDT_PARAM_DEF, NULL, GUID_PROP_IS_LABELED, NULL_HINT, NULL);
 #endif
 
-	//PRINTF("AAddDep -> %" PRId64 " (sl0-3)\n",3*myId);
+	//ocrPrintf("AAddDep -> %" PRId64 " (sl0-3)\n",3*myId);
 #ifdef TORUN_DESTROY_MODE
 	myAddDependence(toRunDBK, dEDT, DISTRIBUTE_SLOT_TORUN, DB_MODE_CONST);
 #else
@@ -1378,9 +1378,9 @@ ocrGuid_t applyEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	myAddDependence(depv[APPLY_SLOT_PARAM].guid, dEDT, DISTRIBUTE_SLOT_PARAM, PARAMDBK_MODE);
 	myAddDependence(depv[APPLY_SLOT_TORUNGUID].guid, dEDT, DISTRIBUTE_SLOT_TORUNGUID, DB_MODE_CONST);
 
-	//PRINTF("AAddDep -> %" PRId64 " (sl%" PRId64 ")\n",3*myId+1,C);
+	//ocrPrintf("AAddDep -> %" PRId64 " (sl%" PRId64 ")\n",3*myId+1,C);
 	myAddDependence(depv[APPLY_SLOT_EDGES].guid, sEDT, SEARCH_SLOT_EDGES, ARRAYDBK_MODE);
-	//PRINTF("AAddDep -> %" PRId64 " (sl%" PRId64 ")\n",3*myId+2,R);
+	//ocrPrintf("AAddDep -> %" PRId64 " (sl%" PRId64 ")\n",3*myId+2,R);
 	ocrDbRelease(depv[APPLY_SLOT_VISITED].guid);
 	myAddDependence(depv[APPLY_SLOT_VISITED].guid, aEDT, APPLY_SLOT_VISITED, DB_MODE_EW);
 
@@ -1411,7 +1411,7 @@ ocrGuid_t stopEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	gettimeofday(&t1, 0);
 
 	double etime = (double)((t1.tv_sec - t0sec) * 1000000 + t1.tv_usec - t0usec);
-	PRINTF("[kernel2 time %f]\n", (etime) / 1000000); FLUSH;
+	ocrPrintf("[kernel2 time %f]\n", (etime) / 1000000); FLUSH;
 
 	if (paramv[0] == 1) ocrDbDestroy(depv[STOP_SLOT_TIME1].guid);
 
@@ -1471,7 +1471,7 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 	if (SIZE <= 64) {
 		for (vertexType i = 0; i < SIZE; i++)
-			if (visited[i].level != (u64)-1) PRINTF("%" PRId64 ": level=%" PRId64 " parent=%" PRId64 "\n", i, visited[i].level, visited[i].parent);
+			if (visited[i].level != (u64)-1) ocrPrintf("%" PRId64 ": level=%" PRId64 " parent=%" PRId64 "\n", i, visited[i].level, visited[i].parent);
 	}
 
 	u64 vertex_count = 0;
@@ -1480,7 +1480,7 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 	// ROOT has level 0 and parent itself
 	if ((visited[ROOT].level != 0) || (visited[ROOT].parent != ROOT))
-		PRINTF("ERR: ROOT INCORRECT %" PRId64 "", ROOT);
+		ocrPrintf("ERR: ROOT INCORRECT %" PRId64 "", ROOT);
 	assert((visited[ROOT].level == 0) && (visited[ROOT].parent == ROOT));
 
 	// each tree edge connects vertices whose BFS levels differ by exactly one (VAL2), parent having smaller level
@@ -1490,11 +1490,11 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 			vertexType parent = visited[vertex].parent;
 			assert((parent >= 0) && (parent<SIZE));
 			if ((visited[vertex].level - visited[parent].level) != 1)
-				PRINTF("ERR:PARENT LEVEL DIF vertex %" PRId64 "(l%" PRId64 ") parent %" PRId64 "(l%" PRId64 ")\n", vertex, visited[vertex].level, parent, visited[parent].level);
+				ocrPrintf("ERR:PARENT LEVEL DIF vertex %" PRId64 "(l%" PRId64 ") parent %" PRId64 "(l%" PRId64 ")\n", vertex, visited[vertex].level, parent, visited[parent].level);
 			assert(visited[vertex].level - visited[parent].level == 1);
 		}
 	}
-	PRINTF("VAL1 OK\nVAL2 OK\n");
+	ocrPrintf("VAL1 OK\nVAL2 OK\n");
 
 #ifdef NO_FILES
 	u64 edge_count = 0;
@@ -1507,18 +1507,18 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		if ((visited[A.destination].level != (u64)-1) || (visited[A.source].level != (u64)-1)) {
 			// the BFS tree spans an entire connected component's vertices (VAL4)
 			if ((visited[A.destination].level == (u64)-1) || (visited[A.source].level == (u64)-1))
-				PRINTF("ERR:NOT IN COMP vertex %" PRId64 " or vertex %" PRId64 "\n", A.source, A.destination);
+				ocrPrintf("ERR:NOT IN COMP vertex %" PRId64 " or vertex %" PRId64 "\n", A.source, A.destination);
 			assert((visited[A.destination].level != (u64)-1) && (visited[A.source].level != (u64)-1));
 			// every edge in the input list has vertices with levels that differ by at most one (or that both are not in the BFS tree) (VAL3)
 			u64 level1 = visited[A.destination].level;
 			u64 level2 = visited[A.source].level;
 			if (abs((int)(level1 - level2))>1)
-				PRINTF("ERR:EDGE LEVEL DIF vertex %" PRId64 "(l%" PRId64 ") and vertex %" PRId64 "(l%" PRId64 ")\n", A.source, level2, A.destination, level1);
+				ocrPrintf("ERR:EDGE LEVEL DIF vertex %" PRId64 "(l%" PRId64 ") and vertex %" PRId64 "(l%" PRId64 ")\n", A.source, level2, A.destination, level1);
 			assert(abs((int)(level1 - level2)) <= 1);
 			++edge_count;
 		}
 	}
-	PRINTF("VAL3 OK\nVAL4 OK\n");
+	ocrPrintf("VAL3 OK\nVAL4 OK\n");
 
 	copyseed = SEED;
 	for (u64 i = 0; i < EDGE_SIZE; i++) {
@@ -1538,10 +1538,10 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 	for (vertexType i = 0; i<SIZE; i++) {
 		if ((visited[i].level != 0) && (visited[i].level != (u64)-1))
-			PRINTF("ERR:PARENT-CHILD EDGE MISSING vertex %" PRId64 " and parent %" PRId64 "\n", i, visited[i].parent);
+			ocrPrintf("ERR:PARENT-CHILD EDGE MISSING vertex %" PRId64 " and parent %" PRId64 "\n", i, visited[i].parent);
 		assert((visited[i].level == 0) || (visited[i].level == (u64)-1));
 	}
-	PRINTF("VAL5 OK\n");
+	ocrPrintf("VAL5 OK\n");
 
 #else
 	FILE *f = fopen(FILE_NAME_READ, "rb");
@@ -1554,19 +1554,19 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		if ((visited[A.destination].level != (u64)-1) || (visited[A.source].level != (u64)-1)) {
 			// the BFS tree spans an entire connected component's vertices (VAL4)
 			if ((visited[A.destination].level == (u64)-1) || (visited[A.source].level == (u64)-1))
-				PRINTF("ERR:NOT IN COMP vertex %" PRId64 " or vertex %" PRId64 "\n", A.source, A.destination);
+				ocrPrintf("ERR:NOT IN COMP vertex %" PRId64 " or vertex %" PRId64 "\n", A.source, A.destination);
 			assert((visited[A.destination].level != (u64)-1) && (visited[A.source].level != (u64)-1));
 			// every edge in the input list has vertices with levels that differ by at most one (or that both are not in the BFS tree) (VAL3)
 			u64 level1 = visited[A.destination].level;
 			u64 level2 = visited[A.source].level;
 			if (abs((int)(level1 - level2))>1)
-				PRINTF("ERR:EDGE LEVEL DIF vertex %" PRId64 "(l%" PRId64 ") and vertex %" PRId64 "(l%" PRId64 ")\n", A.source, level2, A.destination, level1);
+				ocrPrintf("ERR:EDGE LEVEL DIF vertex %" PRId64 "(l%" PRId64 ") and vertex %" PRId64 "(l%" PRId64 ")\n", A.source, level2, A.destination, level1);
 			assert(abs((int)(level1 - level2)) <= 1);
 			++edge_count;
 		}
 	}
 	fclose(f);
-	PRINTF("VAL3 OK\nVAL4 OK\n");
+	ocrPrintf("VAL3 OK\nVAL4 OK\n");
 
 	// a node and its parent are joined by an edge of the original graph (VAL5)
 	f = fopen(FILE_NAME_READ, "rb");
@@ -1587,10 +1587,10 @@ ocrGuid_t finishEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 	for (vertexType i = 0; i<SIZE; i++) {
 		if ((visited[i].level != 0) && (visited[i].level != (u64)-1))
-			PRINTF("ERR:PARENT-CHILD EDGE MISSING vertex %" PRId64 " and parent %" PRId64 "\n", i, visited[i].parent);
+			ocrPrintf("ERR:PARENT-CHILD EDGE MISSING vertex %" PRId64 " and parent %" PRId64 "\n", i, visited[i].parent);
 		assert((visited[i].level == 0) || (visited[i].level == (u64)-1));
 	}
-	PRINTF("VAL5 OK\n");
+	ocrPrintf("VAL5 OK\n");
 #endif
 	LOCAL_VAR_ARRAY_DESTROY(visited);
 #endif
@@ -1645,12 +1645,12 @@ ocrGuid_t shutDownEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		double elapsed = dat->kernel_2_time;
 		mean += 1 / (((double)edge_count) / elapsed);
 
-		PRINTF("--------------SEARCH %" PRId64 "\n", s);
-		PRINTF("nodes %" PRId64 " edges %" PRId64 " edge factor %f root %" PRId64 "\n", vertex_count, edge_count, ((double)edge_count) / vertex_count, (u64)dat->ROOT);
-		PRINTF("MTEPS %f\n", ((double)edge_count) / elapsed);
-		PRINTF("\n");
+		ocrPrintf("--------------SEARCH %" PRId64 "\n", s);
+		ocrPrintf("nodes %" PRId64 " edges %" PRId64 " edge factor %f root %" PRId64 "\n", vertex_count, edge_count, ((double)edge_count) / vertex_count, (u64)dat->ROOT);
+		ocrPrintf("MTEPS %f\n", ((double)edge_count) / elapsed);
+		ocrPrintf("\n");
 	}
-	PRINTF("mean MTEPS %f\n", NUMBER_OF_SEARCH / mean);
+	ocrPrintf("mean MTEPS %f\n", NUMBER_OF_SEARCH / mean);
 	//BEGIN CLEANING
 	// destroy templates and events
 	//ocrGuid_t nextEVT;
@@ -1674,18 +1674,18 @@ ocrGuid_t shutDownEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 extern "C"
 #endif
 ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
-	if (getArgc(depv[0].ptr) < 5) {
-		//PRINTF("%i\n",(int)getArgc(depv[0].ptr));
-		//for(int i=0;i<getArgc(depv[0].ptr);++i) PRINTF("%i: %s\n",i,getArgv(depv[0].ptr, i));
-		PRINTF("arguments are: SCALE EDGEFACTOR R C\n");
+	if (ocrGetArgc(depv[0].ptr) < 5) {
+		//ocrPrintf("%i\n",(int)ocrGetArgc(depv[0].ptr));
+		//for(int i=0;i<ocrGetArgc(depv[0].ptr);++i) ocrPrintf("%i: %s\n",i,ocrGetArgv(depv[0].ptr, i));
+		ocrPrintf("arguments are: SCALE EDGEFACTOR R C\n");
 		ocrShutdown();
 		return NULL_GUID;
 	}
-	u64 SCALE = atoi(getArgv(depv[0].ptr, 1));
-	u64 EDGEFACTOR = atoi(getArgv(depv[0].ptr, 2));
+	u64 SCALE = atoi(ocrGetArgv(depv[0].ptr, 1));
+	u64 EDGEFACTOR = atoi(ocrGetArgv(depv[0].ptr, 2));
 	// row and column number of workers (the number of workers is R*C)
-	u64 R = atoi(getArgv(depv[0].ptr, 3));
-	u64 C = atoi(getArgv(depv[0].ptr, 4));
+	u64 R = atoi(ocrGetArgv(depv[0].ptr, 3));
+	u64 C = atoi(ocrGetArgv(depv[0].ptr, 4));
 
 	u64 NUMBER_OF_SEARCH = 1;
 #ifdef NO_MAP
@@ -1699,26 +1699,26 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	u64 MAX_EDGE_SIZE = SIZE*EDGEFACTOR;
 	u64 EDGE_SIZE;
 
-	PRINTF("STARTING Graph 500 SCALE=%" PRId64 " SIZE=%lld NUMBER_OF_SEARCH=%" PRId64 "\n", SCALE, SIZE, NUMBER_OF_SEARCH); FLUSH;
-	PRINTF("WORKERS %" PRId64 ": R=%" PRId64 " C=%" PRId64 "\n", R*C, R, C); FLUSH;
+	ocrPrintf("STARTING Graph 500 SCALE=%" PRId64 " SIZE=%lld NUMBER_OF_SEARCH=%" PRId64 "\n", SCALE, SIZE, NUMBER_OF_SEARCH); FLUSH;
+	ocrPrintf("WORKERS %" PRId64 ": R=%" PRId64 " C=%" PRId64 "\n", R*C, R, C); FLUSH;
 
 #ifdef HAND_OVER_TORUN_IN_SEARCH
-	PRINTF("using DB handover in search\n");
+	ocrPrintf("using DB handover in search\n");
 #endif
 #ifdef HAND_OVER_TORUN_IN_DISTRIBUTE
-	PRINTF("using DB handover in distribute\n");
+	ocrPrintf("using DB handover in distribute\n");
 #endif
 	if (sizeof(vertexType) == sizeof(u32)) {
-		PRINTF("using u32 vertices\n");
+		ocrPrintf("using u32 vertices\n");
 	}
 #ifdef __cplusplus
 	if (sizeof(vertexType) == sizeof(u48)) {
-		PRINTF("using u48 C++ vertices\n");
+		ocrPrintf("using u48 C++ vertices\n");
 	}
 #endif
 
 #ifdef NO_FILES
-	PRINTF("using on-the-fly graph generation (no files)\n");
+	ocrPrintf("using on-the-fly graph generation (no files)\n");
 	EDGE_SIZE = MAX_EDGE_SIZE;
 #else
 	bool generate = true;
@@ -1729,7 +1729,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		if (f) {
 			generate = false;
 			fclose(f);
-			PRINTF("will REUSE saved data\n");
+			ocrPrintf("will REUSE saved data\n");
 		}
 	}
 
@@ -1742,7 +1742,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		EDGE_SIZE = MAX_EDGE_SIZE;
 	}
 #endif
-	PRINTF("EDGE_SIZE=%" PRId64 "\n", EDGE_SIZE);
+	ocrPrintf("EDGE_SIZE=%" PRId64 "\n", EDGE_SIZE);
 
 	u64 aSIZE = (SIZE / C)*(SIZE / R);  	//array size for worker
 	u64 vSIZE = SIZE / (R*C);			//vertex amount for worker
@@ -1755,32 +1755,32 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 	vertex2vIndex(ROOT, &ROOT_WORKER, &ROOT_ID, R, C, SIZE);
 
 #ifdef PRINT_DEBUG_INFORMATION_MORE
-	PRINTF("SIZE=%" PRId64 " EDGE_SIZE=%" PRId64 " asize=%" PRId64 " vsize=%" PRId64 "\n", SIZE, EDGE_SIZE, aSIZE, vSIZE); FLUSH;
-	PRINTF("ROOT=%" PRId64 " ROOT_WORKER=%" PRId64 " ROOT_ID=%" PRId64 "\n", ROOT, ROOT_WORKER, ROOT_ID); FLUSH;
+	ocrPrintf("SIZE=%" PRId64 " EDGE_SIZE=%" PRId64 " asize=%" PRId64 " vsize=%" PRId64 "\n", SIZE, EDGE_SIZE, aSIZE, vSIZE); FLUSH;
+	ocrPrintf("ROOT=%" PRId64 " ROOT_WORKER=%" PRId64 " ROOT_ID=%" PRId64 "\n", ROOT, ROOT_WORKER, ROOT_ID); FLUSH;
 
-	PRINTF("Matrix distributed to workers\n");
+	ocrPrintf("Matrix distributed to workers\n");
 	for (u64 u = 0; u<SIZE; u++) {
 		for (u64 v = 0; v<SIZE; v++) {
 			u64 worker, vertex, neighbor, index;
 			arrayindex2worker(u, v, &worker, &vertex, &neighbor, &index, R, C, SIZE);
-			PRINTF("(%" PRId64 " %" PRId64 " %" PRId64 " %" PRId64 ") ", worker, vertex, neighbor, index);
+			ocrPrintf("(%" PRId64 " %" PRId64 " %" PRId64 " %" PRId64 ") ", worker, vertex, neighbor, index);
 		}
-		PRINTF("\n");
+		ocrPrintf("\n");
 	}
-	PRINTF("\n");
+	ocrPrintf("\n");
 
-	PRINTF("List of workers and their work from matrix\n");
+	ocrPrintf("List of workers and their work from matrix\n");
 	for (u64 w = 0; w<R*C; w++) {
-		PRINTF("\n%" PRId64 ": ", w);
+		ocrPrintf("\n%" PRId64 ": ", w);
 		for (u64 index = 0; index<aSIZE; index++) {
 			u64 vertex, neighbor;
 			index2vertexneighbor(index, &vertex, &neighbor, R, C, SIZE);
 			u64 i, j;
 			worker2arrayindex(w, vertex, neighbor, &i, &j, R, C, SIZE);
-			PRINTF("[%" PRId64 " %" PRId64 "] ", i, j);
+			ocrPrintf("[%" PRId64 " %" PRId64 "] ", i, j);
 		}
 	}
-	PRINTF("\n");
+	ocrPrintf("\n");
 #endif
 
 	ocrGuid_t local_affinity = NULL_GUID;
@@ -1805,7 +1805,7 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 		ocrHintInit(&hints[i], OCR_HINT_EDT_T);
 		ocrSetHintValue(&hints[i], OCR_HINT_EDT_AFFINITY, ocrAffinityToHintValue(affinities[i]));
 	}
-	PRINTF("NOT using MAPS, affinity count: %" PRId64 "\n", af_count);
+	ocrPrintf("NOT using MAPS, affinity count: %" PRId64 "\n", af_count);
 #endif
 #endif
 
@@ -1952,6 +1952,6 @@ ocrGuid_t mainEdt(u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[]) {
 
 	ocrEdtTemplateDestroy(loadTMP);
 	ocrDbDestroy(depv[0].guid);
-	//PRINTF("main end"); FLUSH;
+	//ocrPrintf("main end"); FLUSH;
 	return NULL_GUID;
 }

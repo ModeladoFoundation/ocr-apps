@@ -1,5 +1,5 @@
-/* Copyright 2016 Stanford University, NVIDIA Corporation
- * Portions Copyright 2016 Rice University, Intel Corporation
+/* Copyright 2017 Stanford University, NVIDIA Corporation
+ * Portions Copyright 2017 Rice University, Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
 
 namespace Realm {
 
-    typedef unsigned int AddressSpace;
+    typedef ::legion_lowlevel_address_space_t AddressSpace;
 
     class Memory {
     public:
@@ -42,8 +42,6 @@ namespace Realm {
 
       // Return the address space for this memory
       AddressSpace address_space(void) const;
-      // Return the local ID within the address space
-      id_t local_id(void) const;
 
       // Different Memory types
       enum Kind {
@@ -68,6 +66,10 @@ namespace Realm {
       Kind kind(void) const;
       // Return the maximum capacity of this memory
       size_t capacity(void) const;
+
+      // reports a problem with a memory in general (this is primarily for fault injection)
+      void report_memory_fault(int reason,
+			       const void *reason_data, size_t reason_size) const;
     };
 
     inline std::ostream& operator<<(std::ostream& os, Memory m) { return os << std::hex << m.id << std::dec; }

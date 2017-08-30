@@ -1,0 +1,15 @@
+cd src/base; make
+make[1]: Entering directory `/lustre/home/bpawlow/xstack_repo/xstack/apps/apps/tempest/refactored/ocr/intel-v2/src/base'
+make[1]: Nothing to be done for `all'.
+make[1]: Leaving directory `/lustre/home/bpawlow/xstack_repo/xstack/apps/apps/tempest/refactored/ocr/intel-v2/src/base'
+cd src/atm; make
+make[1]: Entering directory `/lustre/home/bpawlow/xstack_repo/xstack/apps/apps/tempest/refactored/ocr/intel-v2/src/atm'
+make[1]: Nothing to be done for `all'.
+make[1]: Leaving directory `/lustre/home/bpawlow/xstack_repo/xstack/apps/apps/tempest/refactored/ocr/intel-v2/src/atm'
+cd test; make
+make[1]: Entering directory `/lustre/home/bpawlow/xstack_repo/xstack/apps/apps/tempest/refactored/ocr/intel-v2/test'
+cd nonhydro_sphere; make
+make[2]: Entering directory `/lustre/home/bpawlow/xstack_repo/xstack/apps/apps/tempest/refactored/ocr/intel-v2/test/nonhydro_sphere'
+mpicc -L../../lib -L/opt/local/lib  -o BaroclinicWaveJWTest /lustre/home/bpawlow/xstack_repo/xstack/apps/apps/tempest/refactored/ocr/intel-v2/test/nonhydro_sphere/build/BaroclinicWaveJWTest.o -lhardcoreatm -ltempestbase -lm -lnetcdf -lnetcdf_c++ -llapack -lblas
+make[2]: Leaving directory `/lustre/home/bpawlow/xstack_repo/xstack/apps/apps/tempest/refactored/ocr/intel-v2/test/nonhydro_sphere'
+make[1]: Leaving directory `/lustre/home/bpawlow/xstack_repo/xstack/apps/apps/tempest/refactored/ocr/intel-v2/test'

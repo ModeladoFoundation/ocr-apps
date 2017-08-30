@@ -56,9 +56,9 @@ ocrGuid_t stencilReportEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv
 
     u64 i = 0;
 
-    //PRINTF("Rank %ld\n", privPTR->myrank);
+    //ocrPrintf("Rank %ld\n", privPTR->myrank);
 
-    for(i=0;i<privPTR->npoints;i++) PRINTF("S%ld i%d valu %f \n", privPTR->myrank, i, a[i]);
+    for(i=0;i<privPTR->npoints;i++) ocrPrintf("S%ld i%d valu %f \n", privPTR->myrank, i, a[i]);
 
     if( privPTR->myrank < privPTR->nrank - 1 )
         ocrEventSatisfy( privPTR->rightSendEVT, NULL_GUID );
@@ -237,7 +237,7 @@ ocrGuid_t stencilInitEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]
      * 3: rBuff
      */
 
-    //PRINTF( "StencilInitEDT %ld\n", paramv[0] );
+    //ocrPrintf( "StencilInitEDT %ld\n", paramv[0] );
 
     u64 _idep = 0;
     u64 myrank = paramv[0];
@@ -255,7 +255,7 @@ ocrGuid_t stencilInitEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]
     buffer_t * rBuffPTR = (buffer_t *)rBuff.ptr;
 
     if( ocrGuidIsNull( shared.guid ) ){
-        PRINTF("%ld null shared ptr\n", paramv[0] );
+        ocrPrintf("%ld null shared ptr\n", paramv[0] );
         return NULL_GUID;
     }
 
@@ -383,7 +383,7 @@ ocrGuid_t realMainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     u64 i;
     double * dummy;
 
-    PRINTF("realMain!\n");
+    ocrPrintf("realMain!\n");
 
     realMainPRM_t * paramPTR = (realMainPRM_t *) paramv;
     ocrEdtDep_t shared = depv[0];
@@ -432,24 +432,24 @@ extern "C" ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t de
     realMainPRM_t realMainPRM;
 
     void * programArgv = depv[0].ptr;
-    u32 argc = getArgc(programArgv);
+    u32 argc = ocrGetArgc(programArgv);
 
     if(argc != 4) {
-        PRINTF("Using default runtime args\n");
+        ocrPrintf("Using default runtime args\n");
         nrank = 4;
         npoints = 10;
         maxt = 100;
     } else {
         i = 1;
-        nrank = (u32) atoi(getArgv(programArgv, i++));
-        npoints = (u32) atoi(getArgv(programArgv, i++));
-        maxt = (u32) atoi(getArgv(programArgv, i));
+        nrank = (u32) atoi(ocrGetArgv(programArgv, i++));
+        npoints = (u32) atoi(ocrGetArgv(programArgv, i++));
+        maxt = (u32) atoi(ocrGetArgv(programArgv, i));
     }
 
-    PRINTF("1D Stencil code with Channel Events.\n");
-    PRINTF("number of workers = %ld \n", nrank);
-    PRINTF("data on each worker = %ld \n", npoints);
-    PRINTF("number of timesteps = %ld \n", maxt);
+    ocrPrintf("1D Stencil code with Channel Events.\n");
+    ocrPrintf("number of workers = %ld \n", nrank);
+    ocrPrintf("data on each worker = %ld \n", npoints);
+    ocrPrintf("number of timesteps = %ld \n", maxt);
 
     realMainPRM.nrank = nrank;
     realMainPRM.npoints = npoints;
@@ -477,7 +477,7 @@ extern "C" ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t de
 #else
 extern "C" ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
-    PRINTF("Channel event extension not enabled!\n");
+    ocrPrintf("Channel event extension not enabled!\n");
 
     ocrShutdown();
     return NULL_GUID;

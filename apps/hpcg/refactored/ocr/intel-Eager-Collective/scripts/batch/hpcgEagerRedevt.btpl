@@ -1,0 +1,45 @@
+#!/bin/bash -l
+#SBATCH -p TPLARG_QUEUE
+#SBATCH -N TPLARG_NODE_SCALING
+#SBATCH -t TPLARG_HOUR:TPLARG_MIN:00
+#SBATCH -J TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
+#SBATCH -o TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN
+
+export OCR_INSTALL=TPLARG_OCR_INSTALL
+export RUN_MODE=runApp
+
+export REPO_TOP=TPLARG_REPO_TOP
+export XST_BATCH="yes"
+.  ${REPO_TOP}/ocr/ocr/scripts/xs-tools/jump_mpi_ws ${REPO_TOP}
+
+
+export nxyz=TPLARG_NXYZ
+export size=TPLARG_SIZE
+export iter=TPLARG_ITER
+export debug=TPLARG_DEBUG
+
+if [[ ${XST_BATCH} == "yes" ]]; then
+    if [[ ${SLURM_SUBMIT_DIR} != "" ]]; then
+        # arrange for logs to be under the submit folder
+        rundirName="rundir.TPLARG_SCALING_TYPE_TPLARG_NAME.TPLARG_NODE_SCALINGN"
+        export LOGDIR="${SLURM_SUBMIT_DIR}/${rundirName}"
+        mkdir -p ${LOGDIR}
+    fi
+fi
+
+cd ${REPO_TOP}/apps/apps/hpcg/refactored/ocr/intel-Eager-Collective
+
+export OCR_NUM_NODES=TPLARG_NODE_SCALING
+
+function runnerWorkloadArguments {
+    nxyzAsNum=`echo $nxyz | tr '_' ' '`
+    export WORKLOAD_ARGS="${nxyzAsNum} ${size} ${iter} ${debug}"
+}
+
+export NODE_SCALING="TPLARG_NODE_SCALING"
+export CORE_SCALING="TPLARG_CORE_SCALING"
+export NB_RUN="TPLARG_NB_RUN"
+export WORKLOAD_INSTALL_ROOT="TPLARG_APP_INSTALL"
+export TARGET="TPLARG_APP_NAME"
+
+. ./scripts/scaling.sh

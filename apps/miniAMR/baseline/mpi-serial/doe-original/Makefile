@@ -3,6 +3,7 @@ LD   = $(CC)
 CPPFLAGS = -I.
 #CFLAGS = -fast -fastsse #for gcc
 CFLAGS = -xHost  #for icc
+#CFLAGS += -DCOMPARISONWITHOCR
 LDFLAGS =
 LDLIBS = -lm
 

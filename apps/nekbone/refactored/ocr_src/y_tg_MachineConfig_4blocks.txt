@@ -1,0 +1,14 @@
+[Machines]
+    machine_count=3
+
+[machine0]
+    name="bar16-ib"
+    max_blocks=6
+
+[machine1]
+    name="bar12-ib"
+    max_blocks=6
+
+[machine2]
+    name="bar13-ib"
+    max_blocks=6

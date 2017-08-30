@@ -263,7 +263,7 @@ static inline int getPoliyDomainID( int b, u32* grid, int PD_X, int PD_Y, int PD
     //And, a 3-D subgrid of linkcells is mapped to a PD preserving "locality" within a PD.
     //
     int pd = globalRankFromCoords(pd_x, pd_y, pd_z, PD_X, PD_Y, PD_Z);
-    //PRINTF("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
+    //ocrPrintf("%d linkCell %d %d %d, policy domain %d: %d %d %d\n", b, id_x, id_y, id_z, pd, PD_X, PD_Y, PD_Z);
 
     return pd;
 }

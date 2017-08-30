@@ -277,7 +277,7 @@ void get_fine_boxes(level_type *fine, level_type *coarse, int coarse_box_id, ocr
       }
     }
   }
-  ASSERT(count == num_boxes);
+  ocrAssert(count == num_boxes);
 }
 
 void get_fine_box_ids(level_type *fine, level_type *coarse, int coarse_box_id, int *fine_box_ids) {
@@ -305,7 +305,7 @@ void get_fine_box_ids(level_type *fine, level_type *coarse, int coarse_box_id, i
       }
     }
   }
-  ASSERT(count == num_boxes);
+  ocrAssert(count == num_boxes);
 }
 
 
@@ -797,7 +797,7 @@ void populate_boundary(level_type *l, double *b, box_type *nb, int nb_off, int c
   } else if (c == 5) { // top
     update_boundary(l,b,nb,nb_off,0,0,1,1);
   } else {
-    PRINTF("populate_boundary: error processing a neighbor - %d\n", c);
+    ocrPrintf("populate_boundary: error processing a neighbor - %d\n", c);
   }
 
 }
@@ -838,8 +838,8 @@ void print_vectors_sum(level_type *level, box_type *box) {
     }
   }
 if (box->global_box_id == 0)
-PRINTF("L %f, B %d :: %15f, %15f, %15f, %15f, %15f, %15f, %15f\n",level->h,box->global_box_id, sum[5],sum[6], sum[7], sum[8], sum[9], sum[10], sum[11]);
-//PRINTF("L %f, B %d :: %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f\n",level->h,box->global_box_id, sum[0], sum[1], sum[2], sum[3], sum[4], sum[5],sum[6], sum[7], sum[8], sum[9], sum[10], sum[11]);
+ocrPrintf("L %f, B %d :: %15f, %15f, %15f, %15f, %15f, %15f, %15f\n",level->h,box->global_box_id, sum[5],sum[6], sum[7], sum[8], sum[9], sum[10], sum[11]);
+//ocrPrintf("L %f, B %d :: %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f\n",level->h,box->global_box_id, sum[0], sum[1], sum[2], sum[3], sum[4], sum[5],sum[6], sum[7], sum[8], sum[9], sum[10], sum[11]);
 }
 
 void print_vectors(level_type *level) {
@@ -882,8 +882,8 @@ void print_vectors(level_type *level) {
       }
     }
     if (b==0)
-      PRINTF("sum0-10:: %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f\n", sum[0], sum[1], sum[2], sum[3], sum[4], sum[5],sum[6], sum[7], sum[8], sum[9], sum[10], sum[11]);
-      //PRINTF("sum0-10:: %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f\n", sum[0], sum[1], sum[2], sum[3], sum[4], sum[5],sum[6], sum[7], sum[8], sum[9], sum[10], sum[11]);
+      ocrPrintf("sum0-10:: %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f, %15f\n", sum[0], sum[1], sum[2], sum[3], sum[4], sum[5],sum[6], sum[7], sum[8], sum[9], sum[10], sum[11]);
+      //ocrPrintf("sum0-10:: %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f, %10f\n", sum[0], sum[1], sum[2], sum[3], sum[4], sum[5],sum[6], sum[7], sum[8], sum[9], sum[10], sum[11]);
 
   }
 }

@@ -26,13 +26,13 @@ endif
 # Configurations to use
 OCR_CE_CONFIG ?=
 OCR_XE_CONFIG ?=
+TG_CONFIG ?=
 
 # Use a job scheduler
 # Can be 'no', 'torque', or 'slurm'
 RUN_TORQUE  ?= no
 # If RUN_TORQUE is no, you can specify a configuration file
 # for the simulator
-MACHINE_CONFIG ?= $(TG_INSTALL)/fsim-configs/localhost.cfg
 
 # GDB support
 RUN_GDB         ?= no
@@ -61,6 +61,7 @@ else ifeq ($(RUN_MODE), buildApp)
   OCR_BUILD_CEBUILDER   :=
   OCR_CE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/ce.cfg
   OCR_XE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/xe.cfg
+  TG_CONFIG_DEFAULT     := $(WORKLOAD_BUILD)/config.cfg
 else
   OCR_BUILD_XE          := ${OCR_BUILD_ROOT}/${XE_TARGET}
   OCR_BUILD_CE          := ${OCR_BUILD_ROOT}/${CE_TARGET}
@@ -68,6 +69,7 @@ else
   OCR_BUILD_CEBUILDER   := $(OCR_BUILD_ROOT)/$(CE_BUILDER)
   OCR_CE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/ce.cfg
   OCR_XE_CONFIG_DEFAULT := $(WORKLOAD_BUILD)/xe.cfg
+  TG_CONFIG_DEFAULT     := $(WORKLOAD_BUILD)/config.cfg
 endif
 
 FIX_TG_FSIM_CONFIG := ${OCR_INSTALL}/share/ocr/scripts/Configs/tg-fsim_config_fix.py
@@ -79,6 +81,9 @@ ifeq (,$(strip $(OCR_CE_CONFIG)))
 endif
 ifeq (,$(strip $(OCR_XE_CONFIG)))
   OCR_XE_CONFIG := $(OCR_XE_CONFIG_DEFAULT)
+endif
+ifeq (,$(strip $(TG_CONFIG)))
+  TG_CONFIG := $(TG_CONFIG_DEFAULT)
 endif
 
 # We modify the configuration so we use a modified copy
@@ -142,9 +147,17 @@ ifneq ($(RUN_TORQUE), no)
 # GDB is not supported for fsim-wrapper.sh for now
   RUN_GDB := no
 else
-  RUN_CMD := $(TG_INSTALL)/bin/fsim
-  MACHINE_CONFIG := -c $(MACHINE_CONFIG)
+  ifdef MACHINE_CONFIG
+    MACHINE_CONFIG := -f $(MACHINE_CONFIG)
+  endif
+  ifdef PROCESS_PER_NODE
+    PROCESS_PER_NODE := -p $(PROCESS_PER_NODE)
+  endif
+  RUN_CMD := $(TG_INSTALL)/bin/scripts/mpi_launch.sh
 endif
+
+# This sounds to make the assumption that whether or not
+# RUN_TORQUE is set if RUN_MODE is runApp we are already
 
 ifeq ($(RUN_MODE), runApp)
   RUN_CMD := $(TG_INSTALL)/bin/scripts/fsim-torque.sh
@@ -166,19 +179,19 @@ ifeq ($(RUN_MODE), runApp)
   install_internal: preinstall | ${WORKLOAD_INSTALL}
 else
   # Order of both should not matter here
-  install: preinstall $(WORKLOAD_SRC)/config.cfg $(WORKLOAD_INSTALL)/tgkrnl | ${WORKLOAD_INSTALL}
+  install: preinstall $(TG_CONFIG) $(WORKLOAD_INSTALL)/tgkrnl | ${WORKLOAD_INSTALL}
 endif
 	@echo "Installing from $(WORKLOAD_BUILD) into $(WORKLOAD_INSTALL)..."
 	@echo ""
 	@echo "####"
 	@echo "To run, use 'OCR_TYPE=${OCR_TYPE} make run <args>' or run manually:"
-	@echo "(from $(WORKLOAD_EXEC)): ${RUN_CMD} -s -L $(WORKLOAD_LOGS) ${MACHINE_CONFIG} -c ${WORKLOAD_INSTALL}/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg"
+	@echo "(from $(WORKLOAD_EXEC)): ${RUN_CMD} ${MACHINE_CONFIG} ${PROCESS_PER_NODE} -D $(WORKLOAD_LOGS) -L $(WORKLOAD_LOGS) -c ${WORKLOAD_INSTALL}/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg"
 	@echo "####"
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/$(TARGET) $(WORKLOAD_INSTALL)/$(TARGET).blob
 	$(AT)$(RM) -f $(WORKLOAD_INSTALL)/config.cfg
 	$(AT)$(CP) $(WORKLOAD_BUILD)/$(TARGET) $(WORKLOAD_INSTALL)/
 	$(AT)$(CP) $(WORKLOAD_BUILD)/$(TARGET).blob $(WORKLOAD_INSTALL)/
-	$(AT)$(CP) $(WORKLOAD_SRC)/config.cfg $(WORKLOAD_INSTALL)/
+	$(AT)$(CP) $(TG_CONFIG) $(WORKLOAD_INSTALL)/
 	$(AT)$(FIX_TG_FSIM_CONFIG) --tginstall $(TG_INSTALL) --fsimcfg $(WORKLOAD_INSTALL)/config.cfg
 
 postinstall: install_internal
@@ -277,7 +290,7 @@ endif
   else
 	$(AT)WORKLOAD_EXEC=$(WORKLOAD_EXEC) WORKLOAD_INSTALL=$(WORKLOAD_INSTALL) WORKLOAD_LOGS=$(WORKLOAD_LOGS) \
 	RUN_TORQUE=$(RUN_TORQUE) \
-	bash -ec 'cd $(WORKLOAD_LOGS) && $(RUN_CMD) -s -L $(WORKLOAD_LOGS) $(MACHINE_CONFIG) -c $(WORKLOAD_INSTALL)/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
+	bash -ec 'cd $(WORKLOAD_LOGS) && TG_INSTALL=$(TG_INSTALL) ${RUN_CMD} ${MACHINE_CONFIG} ${PROCESS_PER_NODE} -D $(WORKLOAD_LOGS) -L $(WORKLOAD_LOGS) -c ${WORKLOAD_INSTALL}/config.cfg $(ENERGY_CONFIG) -c $(TG_INSTALL)/fsim-configs/dvfs-default.cfg && \
 	$(GREP) -H "CONSOLE: XE[0-7]" $(WORKLOAD_LOGS)/*rck*.cub*.skt*.cls*.blk*.CE.00 \
 	| $(SED) "s/.*\.blk\([0-9]\+\)\.CE\.00:CONSOLE:/BLK\1/" > $(WORKLOAD_EXEC)/console.out'
   endif
@@ -294,6 +307,21 @@ run: postrun
 $(WORKLOAD_BUILD)/$(TARGET).blob: | prebuild
 $(WORKLOAD_BUILD)/$(TARGET): | prebuild
 prebuild: reqlibs
+
+ifeq ($(WITH_NEWLIB), yes)
+  TG_CONFIG_TEMPLATE_CFG ?= $(APPS_ROOT)/tg-configs/config-newlib-template.cfg
+else
+  TG_CONFIG_TEMPLATE_CFG ?= $(APPS_ROOT)/tg-configs/config-template.cfg
+endif
+
+.PHONY: $(TG_CONFIG)
+$(TG_CONFIG):
+ifeq ($(TG_CONFIG_DEFAULT), $(TG_CONFIG))
+	@echo "Generating TG config file for $(TARGET)"
+	@echo "[environment]" > $(TG_CONFIG)
+	@echo "   TARGET = $(TARGET)" >> $(TG_CONFIG)
+	@cat  $(TG_CONFIG_TEMPLATE_CFG) >> $(TG_CONFIG)
+endif
 
 # The next three rules force postbuild to run after build_internal
 # and default to run postbuild
@@ -391,11 +419,11 @@ $(WORKLOAD_BUILD)/$(TARGET).blob.arg | $(WORKLOAD_BUILD)
 	$(AT)$^ $(WORKLOAD_INPUTS) $@
 
 # Build the CE blob
-$(WORKLOAD_BUILD)/$(TARGET).blob.ce: $(OCR_CE_CONFIG) $(WORKLOAD_SRC)/config.cfg \
+$(WORKLOAD_BUILD)/$(TARGET).blob.ce: $(OCR_CE_CONFIG) $(TG_CONFIG) \
 $(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe \
 $(WORKLOAD_BUILD)/build.tgkrnl/tgkrnl.dbg | tgkrnl.dbg builderce $(WORKLOAD_BUILD)
 	@echo "#### BUILDING CE BLOB ####"
-	$(AT)$(FIX_CE_CONFIG) --fsimcfg $(WORKLOAD_SRC)/config.cfg --ocrcfg $(OCR_CE_CONFIG)
+	$(AT)$(FIX_CE_CONFIG) --fsimcfg $(TG_CONFIG) --ocrcfg $(OCR_CE_CONFIG)
 	$(AT)TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.ce \
 	$(OCR_INSTALL)/bin/ocrBuilder_$(CE_BUILDER).exe -ocr:cfg $(OCR_CE_CONFIG)
 
@@ -415,7 +443,7 @@ $(WORKLOAD_BUILD)/$(TARGET).dbg: | debug_post_prerun
 $(WORKLOAD_BUILD)/$(TARGET).blob.xe: $(OCR_XE_CONFIG) \
 $(WORKLOAD_BUILD)/$(TARGET).dbg $(OCR_INSTALL)/bin/ocrBuilder_$(XE_BUILDER).exe | debug_post_prerun builderxe $(WORKLOAD_BUILD) sectionSizeCheck
 	@echo "#### BUILDING XE BLOB ####"
-	$(AT)$(FIX_XE_CONFIG) --ocrcfg $(OCR_XE_CONFIG) --fsimcfg $(WORKLOAD_SRC)/config.cfg --binstart $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | \
+	$(AT)$(FIX_XE_CONFIG) --ocrcfg $(OCR_XE_CONFIG) --fsimcfg $(TG_CONFIG) --binstart $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | \
 	grep $(SECTION_STRING) | awk '{ print $$4 }' | sed -e 's/^0*/0x/g') --binend $(shell $(OBJDUMP) -x $(WORKLOAD_BUILD)/$(TARGET).dbg | grep _end_local | cut -d\  -f1 | sed -e 's/^0*/0x/g')
 	$(AT)TG_INSTALL=$(TG_INSTALL) WORKLOAD_BUILD=$(WORKLOAD_BUILD) STRUCT_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.xe \
 	ARGS_OUT=$(WORKLOAD_BUILD)/$(TARGET).blob.arg APP_FILE=$(WORKLOAD_BUILD)/$(TARGET).dbg \

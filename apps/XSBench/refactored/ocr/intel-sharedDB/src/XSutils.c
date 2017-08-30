@@ -110,7 +110,7 @@ double rn_v(u64* seed)
     n1 = ( a * (*seed) ) % m;
     *seed = n1;
     ret = (double) n1 / m;
-    //PRINTF("seed %d\n", *seed);
+    //ocrPrintf("seed %d\n", *seed);
     return ret;
 }
 

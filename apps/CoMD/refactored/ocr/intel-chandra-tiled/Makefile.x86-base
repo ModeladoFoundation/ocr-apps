@@ -49,7 +49,7 @@ RUN_MODE ?=
 STATIC_SCHEDULER ?= 0
 
 ## END of variables coming from user/environment
-CC := icc
+#CC := icc
 
 include ${APPS_ROOT}/makefiles/make-pre.inc
 
@@ -75,6 +75,7 @@ CONFIG_FLAGS+=--guid LABELED --binding seq
 #CFLAGS := -DOCR_ENABLE_EDT_NAMING
 CFLAGS += -g -std=c99
 CFLAGS += -DENABLE_EXTENSION_AFFINITY
+#CFLAGS += -DENABLE_SPAWNING_HINT
 CFLAGS += -DENABLE_EXTENSION_PARAMS_EVT -DENABLE_EXTENSION_COUNTED_EVT
 CFLAGS += -DENABLE_EXTENSION_CHANNEL_EVT
 CFLAGS += -DWITH_COUNTED_EVT
@@ -102,7 +103,7 @@ all:	CFLAGS += -O3
 all:	TARGETS := all
 all:	default
 
-debug:	CFLAGS += -O0
+debug:	CFLAGS += -g -O0
 debug:	TARGETS := debug
 debug:	default
 

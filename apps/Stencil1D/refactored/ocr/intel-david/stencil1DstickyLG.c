@@ -123,7 +123,7 @@ ocrGuid_t stencilEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
         private->timestep++;
 
-        if(depv[0].ptr == NULL) PRINTF("node %u problem.\n", private->mynode);
+        if(depv[0].ptr == NULL) ocrPrintf("node %u problem.\n", private->mynode);
 
         private->toggle = toggle;
 
@@ -220,11 +220,11 @@ ocrGuid_t wrapupEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 
     for(i=0;i<n;i++) {
         data[i] = depv[i].ptr;
-        for(j=0;j<m;j++) PRINTF("%lld %lld %f \n", i, j, data[i][j]);
+        for(j=0;j<m;j++) ocrPrintf("%lld %lld %f \n", i, j, data[i][j]);
         }
     if(m==50&&n==10&&t==10000) //default values for Jenkins
-        if(data[4][49] - .000836 < 1e-5) PRINTF("PASS\n");
-           else PRINTF("fail by %f\n", data[4][49]-.000836);
+        if(data[4][49] - .000836 < 1e-5) ocrPrintf("PASS\n");
+           else ocrPrintf("fail by %f\n", data[4][49]-.000836);
 
     ocrShutdown();
 
@@ -520,21 +520,21 @@ ocrGuid_t mainEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     u64 params[3];
 
     void* programArgv = depv[0].ptr;
-    u32 argc = getArgc( programArgv );
+    u32 argc = ocrGetArgc( programArgv );
 
-    PRINTF("STENCIL 1D PARALLEL INIT WITH LABELED STICKIES.\n");
+    ocrPrintf("STENCIL 1D PARALLEL INIT WITH LABELED STICKIES.\n");
 
     if(argc != 4){
-        PRINTF( "INCORRECT NUMBER OF ARGS. USING DEFAULT PARAMS. %s\n", getArgv(programArgv, 0) );
+        ocrPrintf( "INCORRECT NUMBER OF ARGS. USING DEFAULT PARAMS. %s\n", ocrGetArgv(programArgv, 0) );
         numNodes = N;
         chunkSize = M;
         timesteps = T;
     }else{
-        numNodes = (u64)atoi(getArgv(programArgv, 1));
-        chunkSize = (u64)atoi(getArgv(programArgv, 2));
-        timesteps = (u64)atoi(getArgv(programArgv, 3));
+        numNodes = (u64)atoi(ocrGetArgv(programArgv, 1));
+        chunkSize = (u64)atoi(ocrGetArgv(programArgv, 2));
+        timesteps = (u64)atoi(ocrGetArgv(programArgv, 3));
     }
-    PRINTF("N = %u\nM = %u\nT = %u\n", numNodes, chunkSize, timesteps);
+    ocrPrintf("N = %u\nM = %u\nT = %u\n", numNodes, chunkSize, timesteps);
 
     params[0] = numNodes;
     params[1] = chunkSize;

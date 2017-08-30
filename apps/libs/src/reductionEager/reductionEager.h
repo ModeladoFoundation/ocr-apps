@@ -22,7 +22,9 @@ See README for more details
 #include "ocr.h"
 #include "extensions/ocr-labeling.h"
 
+#ifndef ARITY
 #define ARITY 2
+#endif
 
 typedef enum {
     REDUCTION_F8_ADD,

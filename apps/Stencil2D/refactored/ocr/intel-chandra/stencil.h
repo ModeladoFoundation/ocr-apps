@@ -4,7 +4,7 @@
 #define _OCR_TASK_FNC_(X) ocrGuid_t X( u32 paramc, u64* paramv, u32 depc, ocrEdtDep_t depv[] )
 
 #ifdef DEBUG_APP
-    #define DEBUG_PRINTF(X) PRINTF X
+    #define DEBUG_PRINTF(X) ocrPrintf X
 #else
     #define DEBUG_PRINTF(X) do {} while(0)
 #endif
@@ -163,12 +163,12 @@ int globalRankFromCoords( int id_x, int id_y, int NR_X, int NR_Y );
 static void timestamp(const char* msg)
 {
 #ifdef TG_ARCH
-  PRINTF(msg);
+  ocrPrintf(msg);
 #else
   time_t t= time(NULL);
   char* timeString = ctime(&t);
   timeString[24] = '\0';
-  PRINTF("%s: %s\n", timeString, msg);
+  ocrPrintf("%s: %s\n", timeString, msg);
 #endif
 }
 

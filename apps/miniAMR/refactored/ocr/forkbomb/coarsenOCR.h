@@ -31,7 +31,7 @@ ocrGuid_t blockEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] );
 ocrGuid_t haloCoarsenSend( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
 {
         ocrGuid_t *sendChannel = (ocrGuid_t *)paramv;
-        ASSERT( !ocrGuidIsNull( depv[0].guid ) );
+        ocrAssert( !ocrGuidIsNull( depv[0].guid ) );
         if( paramc == 1 )
             ocrEventSatisfy( *sendChannel, depv[0].guid );
         if( /*sendCount==*/ 4) {
@@ -49,7 +49,7 @@ ocrGuid_t haloCoarsenRcv( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[]
         ocrGuid_t newDBK;
         intent_t *tmp;
         ocrDbCreate( &newDBK, (void **)&tmp, sizeof(intent_t), DB_PROP_NONE, NULL_HINT, NO_ALLOC );
-        //ASSERT( !ocrGuidIsNull(depv[0].guid) );
+        //ocrAssert( !ocrGuidIsNull(depv[0].guid) );
         memcpy( tmp, depv[0].ptr, sizeof(intent_t) );
         //ocrDbDestroy( depv[0].guid );
         return newDBK;
@@ -67,7 +67,7 @@ ocrGuid_t coarsenEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     //block_t * PRM_block = (block_t *) paramv;
     block_t PRM_block;
     memcpy( &PRM_block, paramv, sizeof( block_t ) );
-    PRINTF("COARSEN %ld\n", PRM_block.id);
+    ocrPrintf("COARSEN %ld\n", PRM_block.id);
     catalog_t *catalog = depv[0].ptr;
     ocrGuid_t blockDriverGUID;
 
@@ -95,7 +95,7 @@ ocrGuid_t coarsenEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
     {
         if( catalog->channelsNeeded[i] )
         {
-            //PRINTF("%ld is setting new send/rcv channels in %ld direction.\n", PRM_block.id, i);
+            //ocrPrintf("%ld is setting new send/rcv channels in %ld direction.\n", PRM_block.id, i);
             bundle_t *tBundle = depv[ddx++].ptr;
             for( j = 0; j < 4; j++ )
             {
@@ -123,18 +123,18 @@ ocrGuid_t coarsenEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_t depv[] )
             {
                 if( catalog->channelsNeeded[i] == WILL_REFINE ) newChannels = true;
             }
-            if( newChannels ) PRINTF("%ld is not refining, but has new channels incoming.\n", PRM_block.id);
+            if( newChannels ) ocrPrintf("%ld is not refining, but has new channels incoming.\n", PRM_block.id);
             else
             {
-                //PRINTF("no new connections to be made; falling back to driverEdt\n");
+                //ocrPrintf("no new connections to be made; falling back to driverEdt\n");
                 ocrEdtCreate( &blockDriverGUID, PRM_block.blockTML, EDT_PARAM_DEF, (u64 *)&PRM_block, 0,
                     NULL, EDT_PROP_NONE, NULL_HINT, NULL );
                     return NULL_GUID;
             }
             break;
         case MAY_COARSEN:
-            PRINTF("block fell to refine while still in the MAY_REFINE state.\n");
-            ASSERT(0);
+            ocrPrintf("block fell to refine while still in the MAY_REFINE state.\n");
+            ocrAssert(0);
             break;
         default:
             break;
@@ -193,7 +193,7 @@ ocrGuid_t coarsenUpdateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_
 
     if( stable && rState->disposition != MAY_REFINE )
     {
-        //PRINTF("%ld stable and establishing new connections.\n", PRM_block.id);
+        //ocrPrintf("%ld stable and establishing new connections.\n", PRM_block.id);
         ocrGuid_t newConnectionsGUID, newConnectionsTML;
         u32 pCount = sizeof(block_t)/sizeof(u64);
         ocrEdtTemplateCreate( &newConnectionsTML, establishNewConnections, pCount, 1 );
@@ -201,7 +201,7 @@ ocrGuid_t coarsenUpdateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEdtDep_
                                                                 &depv[0].guid, EDT_PROP_NONE, NULL_HINT, NO_ALLOC );
     } else {
         //decide if neighbors have decided to refine, and if I should refine, because of it.
-        //PRINTF("Block %ld isn't stable.\n", PRM_block.id);
+        //ocrPrintf("Block %ld isn't stable.\n", PRM_block.id);
         if( rState->disposition == MAY_REFINE ){
             u8 newDecision = WILL_REFINE; //placeholder for now.
             rState->prevDisposition = rState->disposition;
@@ -247,14 +247,14 @@ ocrGuid_t coarsenCommunicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEd
                 updateDepc++;
                 break;
             default:
-                PRINTF("EDT %ld has a relation that is %ld. this is not allowed!\n", PRM_block.id, difference);
-                ASSERT(0);
+                ocrPrintf("EDT %ld has a relation that is %ld. this is not allowed!\n", PRM_block.id, difference);
+                ocrAssert(0);
                 return NULL_GUID;
                 break;
         }
     }
 
-    ASSERT( updateDepc >= 6 );
+    ocrAssert( updateDepc >= 6 );
 
     ocrGuid_t updateIntentGUID, updateIntentTML;
     u32 pSize = ( sizeof( block_t ) / sizeof( u64 ) ) + 1;
@@ -268,7 +268,7 @@ ocrGuid_t coarsenCommunicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEd
     {
         s32 difference = PRM_block.comms.neighborRefineLvls[i] - PRM_block.refLvl;
 
-        ASSERT( iDep <= updateDepc );
+        ocrAssert( iDep <= updateDepc );
 
         ocrGuid_t rcvGUID;
         ocrGuid_t rcvOUT;
@@ -281,7 +281,7 @@ ocrGuid_t coarsenCommunicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEd
                 //set to receive from 1 receive channel (1 Edt, 1 receive Evt).
                 if( rState->neighborDisps[i*4] == MAY_COARSEN )
                 {
-                    //if( rState->cCount > 0 ) PRINTF("%ld's %ld neighbor may refine.\n", PRM_block.id, i );
+                    //if( rState->cCount > 0 ) ocrPrintf("%ld's %ld neighbor may refine.\n", PRM_block.id, i );
                     ocrEdtCreate( &rcvGUID, PRM_block.refineRcvTML, 0, NULL, 1, NULL, EDT_PROP_NONE,
                             NULL_HINT, &rcvOUT );
                     ocrAddDependence( rcvOUT, updateIntentGUID, iDep++, DB_MODE_RW );
@@ -297,8 +297,8 @@ ocrGuid_t coarsenCommunicateIntentEdt( u32 paramc, u64 * paramv, u32 depc, ocrEd
                 else ocrAddDependence( NULL_GUID, updateIntentGUID, iDep++, DB_MODE_RW );
                 break;
             default:
-                PRINTF("EDT %ld has a relation that is %ld. This is not allowed!\n", PRM_block.id, difference );
-                ASSERT(0);
+                ocrPrintf("EDT %ld has a relation that is %ld. This is not allowed!\n", PRM_block.id, difference );
+                ocrAssert(0);
                 return NULL_GUID;
         }
     }

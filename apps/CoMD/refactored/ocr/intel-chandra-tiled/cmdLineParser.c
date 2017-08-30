@@ -87,18 +87,18 @@ void printArgs(MyOption* myargs)
    MyOption* o = myargs;
    char s[4096];
    unsigned char *shortArg;
-   PRINTF("\n"
+   ocrPrintf("\n"
       "  Arguments are: \n");
    while(o)
    {
       if(o->shortArg[0]<0xFF) shortArg = o->shortArg;
       else shortArg = (unsigned char *) "---";
-      PRINTF("  --%%-%20s",o->longArg);
-      PRINTF(" -%c  arg=%1d type=%c  %s\n",shortArg[0],o->argFlag,o->type,o->help);
+      ocrPrintf("  --%%-%20s",o->longArg);
+      ocrPrintf(" -%c  arg=%1d type=%c  %s\n",shortArg[0],o->argFlag,o->type,o->help);
       o = nextOption(o);
 
    }
-   PRINTF("\n\n");
+   ocrPrintf("\n\n");
    return;
 }
 
@@ -153,7 +153,7 @@ void processArgs(MyOption* myargs, int argc, char** argv)
       o = findOption(myargs,c);
       if ( ! o )
       {
-         PRINTF("\n\n"
+         ocrPrintf("\n\n"
             "    invalid switch : -%c in getopt()\n"
             "\n\n",
             c);
@@ -185,7 +185,7 @@ void processArgs(MyOption* myargs, int argc, char** argv)
                sscanf(optarg,"%c",(char*)o->ptr);
                break;
             default:
-               PRINTF("\n\n"
+               ocrPrintf("\n\n"
                   "    invalid type : %c in getopt()\n"
                   "    valid values are 'e', 'z'. 'i','d','f','s', and 'c'\n"
                   "\n\n",
